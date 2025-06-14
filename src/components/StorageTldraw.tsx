@@ -68,7 +68,6 @@ const customEmbed: CustomEmbedDefinition = {
 const embeds = [...defaultEmbedsToKeep, customEmbed];
 
 export function StorageTldraw() {
-  // Getting authenticated user info. Doing this using selectors instead
   // of just `useSelf()` to prevent re-renders on Presence changes
   const id = useSelf((me) => me.id);
   const info = useSelf((me) => me.info);
