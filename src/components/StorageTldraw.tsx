@@ -80,6 +80,8 @@ export function StorageTldraw() {
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
       <Tldraw
+        store={store}
+        embeds={embeds}
         components={{
           // Render a live avatar stack at the top-right
           StylePanel: () => (
@@ -89,6 +91,8 @@ export function StorageTldraw() {
                 marginTop: 4,
               }}
             >
+              <Avatars />
+              <DefaultStylePanel />
               <Badge />
             </div>
           ),
