@@ -1,18 +1,26 @@
 "use client";
 
-import "tldraw/tldraw.css";
-import {
-  Tldraw,
-  DefaultStylePanel,
-  DefaultStylePanelContent,
-  CustomEmbedDefinition,
-  DEFAULT_EMBED_DEFINITIONS,
-  DefaultEmbedDefinitionType,
-} from "tldraw";
-import { useStorageStore } from "./useStorageStore";
-import { useSelf } from "@liveblocks/react/suspense";
 import { Avatars } from "@/components/Avatars";
-import { Badge } from "@/components/Badge";
+import { useSelf } from "@liveblocks/react/suspense";
+import {
+  DefaultKeyboardShortcutsDialog,
+  DefaultKeyboardShortcutsDialogContent,
+  DefaultStylePanel,
+  DefaultToolbar,
+  DefaultToolbarContent,
+  TLComponents,
+  Tldraw,
+  TldrawUiMenuItem,
+  TLUiAssetUrlOverrides,
+  TLUiOverrides,
+  useIsToolSelected,
+  useTools,
+} from "tldraw";
+import "tldraw/tldraw.css";
+import { ReactComponent } from "./ReactComponent";
+import { myInteractiveShape } from "./custom-shapes/shape.component";
+import { StickerTool } from "./custom-shapes/shape.tool";
+import { useStorageStore } from "./useStorageStore";
 
 /**
  * IMPORTANT: LICENSE REQUIRED
@@ -22,50 +30,58 @@ import { Badge } from "@/components/Badge";
 
 // There's a guide at the bottom of this file!
 
+const customShapeUtils = [myInteractiveShape];
+
 // [1]
-const defaultEmbedTypesToKeep: DefaultEmbedDefinitionType[] = [
-  "tldraw",
-  "youtube",
-];
-const defaultEmbedsToKeep = DEFAULT_EMBED_DEFINITIONS.filter((embed) =>
-  defaultEmbedTypesToKeep.includes(embed.type)
-);
+const uiOverrides: TLUiOverrides = {
+  tools(editor, tools) {
+    // Create a tool item in the ui's context.
+    tools.myComponent = {
+      id: "myComponent",
+      icon: "heart-icon",
+      label: "myComponent",
+      kbd: "s",
+      onSelect: () => {
+        editor.setCurrentTool("myComponent");
+      },
+    };
+    return tools;
+  },
+};
 
 // [2]
-const customEmbed: CustomEmbedDefinition = {
-  type: "jsfiddle",
-  title: "JSFiddle",
-  hostnames: ["jsfiddle.net"],
-  minWidth: 300,
-  minHeight: 300,
-  width: 720,
-  height: 500,
-  doesResize: true,
-  toEmbedUrl: (url) => {
-    const urlObj = new URL(url);
-    const matches = urlObj.pathname.match(
-      /\/([^/]+)\/([^/]+)\/(\d+)\/embedded/
+const components: TLComponents = {
+  Toolbar: (props) => {
+    const tools = useTools();
+    const isStickerSelected = useIsToolSelected(tools["myComponent"]);
+    return (
+      <DefaultToolbar {...props}>
+        <TldrawUiMenuItem
+          {...tools["myComponent"]}
+          isSelected={isStickerSelected}
+        />
+        <DefaultToolbarContent />
+      </DefaultToolbar>
     );
-    if (matches) {
-      return `https://jsfiddle.net/${matches[1]}/${matches[2]}/embedded/`;
-    }
-    return;
   },
-  fromEmbedUrl: (url) => {
-    const urlObj = new URL(url);
-    const matches = urlObj.pathname.match(
-      /\/([^/]+)\/([^/]+)\/(\d+)\/embedded/
+  KeyboardShortcutsDialog: (props) => {
+    const tools = useTools();
+    return (
+      <DefaultKeyboardShortcutsDialog {...props}>
+        <DefaultKeyboardShortcutsDialogContent />
+        {/* Ideally, we'd interleave this into the tools group */}
+        <TldrawUiMenuItem {...tools["myComponent"]} />
+      </DefaultKeyboardShortcutsDialog>
     );
-    if (matches) {
-      return `https://jsfiddle.net/${matches[1]}/${matches[2]}/`;
-    }
-    return;
   },
-  icon: "https://jsfiddle.net/img/favicon.png",
 };
 
 // [3]
-const embeds = [...defaultEmbedsToKeep, customEmbed];
+export const customAssetUrls: TLUiAssetUrlOverrides = {
+  icons: {
+    "heart-icon": "/heart-icon.svg",
+  },
+};
 
 export function StorageTldraw() {
   // of just `useSelf()` to prevent re-renders on Presence changes
@@ -76,13 +92,20 @@ export function StorageTldraw() {
     user: { id, color: info.color, name: info.name },
   });
 
+  const customTools = [StickerTool];
+
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
       <Tldraw
-        store={store}
-        embeds={embeds}
+        // store={store}
+        // embeds={embeds}
+        tools={customTools}
+        shapeUtils={customShapeUtils}
+        overrides={uiOverrides}
+        assetUrls={customAssetUrls}
         components={{
           // Render a live avatar stack at the top-right
+          ...components,
           StylePanel: () => (
             <div
               style={{
@@ -92,7 +115,7 @@ export function StorageTldraw() {
             >
               <Avatars />
               <DefaultStylePanel />
-              <Badge />
+              <ReactComponent />
             </div>
           ),
         }}
