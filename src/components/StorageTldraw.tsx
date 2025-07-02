@@ -24,8 +24,10 @@ import { ReactComponent } from "./ReactComponent";
 // import { useStorageStore } from "./useStorageStore";
 import { CodeEditorTool } from "./code-editor/code-editor.tool";
 import { codeEditorShape } from "./code-editor/code-editor.component";
+import { ProjectBrowserTool } from "./project-browser/project-browser.tool";
+import { projectBrowserShape } from "./project-browser/project-browser.component";
 
-const customShapeUtils = [codeEditorShape];
+const customShapeUtils = [codeEditorShape, projectBrowserShape];
 
 // [1]
 const uiOverrides: TLUiOverrides = {
@@ -41,6 +43,17 @@ const uiOverrides: TLUiOverrides = {
       },
     };
 
+    // Add ProjectBrowserTool to the UI
+    tools.projectBrowser = {
+      id: "project-browser-tool",
+      icon: "folder",
+      label: "Project Browser",
+      kbd: "p",
+      onSelect: () => {
+        editor.setCurrentTool("project-browser-tool");
+      },
+    };
+
     return tools;
   },
 };
@@ -50,11 +63,16 @@ const components: TLComponents = {
   Toolbar: (props) => {
     const tools = useTools();
     const isCodeEditorSelected = useIsToolSelected(tools["codeEditor"]);
+    const isProjectBrowserSelected = useIsToolSelected(tools["projectBrowser"]);
     return (
       <DefaultToolbar {...props}>
         <TldrawUiMenuItem
           {...tools["codeEditor"]}
           isSelected={isCodeEditorSelected}
+        />
+        <TldrawUiMenuItem
+          {...tools["projectBrowser"]}
+          isSelected={isProjectBrowserSelected}
         />
         <DefaultToolbarContent />
       </DefaultToolbar>
@@ -67,6 +85,7 @@ const components: TLComponents = {
         <DefaultKeyboardShortcutsDialogContent />
         {/* Ideally, we'd interleave this into the tools group */}
         <TldrawUiMenuItem {...tools["codeEditor"]} />
+        <TldrawUiMenuItem {...tools["projectBrowser"]} />
       </DefaultKeyboardShortcutsDialog>
     );
   },
@@ -86,7 +105,7 @@ export function StorageTldraw() {
     shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
   });
 
-  const customTools = [CodeEditorTool];
+  const customTools = [CodeEditorTool, ProjectBrowserTool];
 
   return (
     <div style={{ height: "100vh", width: "100vw" }}>

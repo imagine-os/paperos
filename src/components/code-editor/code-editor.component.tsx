@@ -17,7 +17,7 @@ import { getYjsProviderForRoom } from "@liveblocks/yjs";
 
 export type ICodeEditorShape = TLBaseShape<
   "code-editor-shape",
-  { w: number; h: number }
+  { w: number; h: number; fileName?: string; content?: string }
 >;
 
 export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
@@ -25,6 +25,8 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
   static override props: RecordProps<ICodeEditorShape> = {
     w: T.number,
     h: T.number,
+    fileName: T.optional(T.string),
+    content: T.optional(T.string),
   };
 
   getDefaultProps(): ICodeEditorShape["props"] {
@@ -61,9 +63,15 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
         colorLight: "#00000080", // 6-digit hex code at 50% opacity
       });
 
+      // Initialize with content if provided, otherwise use ytext
+      const initialContent = shape.props.content || ytext.toString();
+      if (shape.props.content && ytext.toString() === "") {
+        ytext.insert(0, shape.props.content);
+      }
+
       // Set up CodeMirror and extensions
       const state = EditorState.create({
-        doc: ytext.toString(),
+        doc: initialContent,
         extensions: [
           basicSetup,
           javascript(),
@@ -101,7 +109,7 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
               fontWeight: "bold",
             }}
           >
-            Code Editor
+{shape.props.fileName || "Code Editor"}
           </div>
           <div
             ref={ref}
