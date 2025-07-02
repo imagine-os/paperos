@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "WebFetch(domain:tldraw.dev)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 10s npm run dev)",
+      "Bash(true)",
+      "Bash(npm run lint)"
+    ],
+    "deny": []
+  }
+}

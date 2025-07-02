@@ -21,16 +21,10 @@ import { ReactComponent } from "./ReactComponent";
 import { myInteractiveShape } from "./custom-shapes/shape.component";
 import { StickerTool } from "./custom-shapes/shape.tool";
 import { useStorageStore } from "./useStorageStore";
+import { CodeEditorTool } from "./code-eidtor/code-editor.tool";
+import { codeEditorShape } from "./code-eidtor/code-editor.component";
 
-/**
- * IMPORTANT: LICENSE REQUIRED
- * To remove the watermark, you must first purchase a license
- * Learn more: https://tldraw.dev/community/license
- */
-
-// There's a guide at the bottom of this file!
-
-const customShapeUtils = [myInteractiveShape];
+const customShapeUtils = [myInteractiveShape, codeEditorShape];
 
 // [1]
 const uiOverrides: TLUiOverrides = {
@@ -45,6 +39,18 @@ const uiOverrides: TLUiOverrides = {
         editor.setCurrentTool("myComponent");
       },
     };
+    
+    // Add CodeEditorTool to the UI
+    tools.codeEditor = {
+      id: "code-editor-tool",
+      icon: "code",
+      label: "Code Editor",
+      kbd: "c",
+      onSelect: () => {
+        editor.setCurrentTool("code-editor-tool");
+      },
+    };
+    
     return tools;
   },
 };
@@ -54,11 +60,16 @@ const components: TLComponents = {
   Toolbar: (props) => {
     const tools = useTools();
     const isStickerSelected = useIsToolSelected(tools["myComponent"]);
+    const isCodeEditorSelected = useIsToolSelected(tools["codeEditor"]);
     return (
       <DefaultToolbar {...props}>
         <TldrawUiMenuItem
           {...tools["myComponent"]}
           isSelected={isStickerSelected}
+        />
+        <TldrawUiMenuItem
+          {...tools["codeEditor"]}
+          isSelected={isCodeEditorSelected}
         />
         <DefaultToolbarContent />
       </DefaultToolbar>
@@ -71,6 +82,7 @@ const components: TLComponents = {
         <DefaultKeyboardShortcutsDialogContent />
         {/* Ideally, we'd interleave this into the tools group */}
         <TldrawUiMenuItem {...tools["myComponent"]} />
+        <TldrawUiMenuItem {...tools["codeEditor"]} />
       </DefaultKeyboardShortcutsDialog>
     );
   },
@@ -78,9 +90,7 @@ const components: TLComponents = {
 
 // [3]
 export const customAssetUrls: TLUiAssetUrlOverrides = {
-  icons: {
-    "heart-icon": "/heart-icon.svg",
-  },
+  icons: { "heart-icon": "/heart-icon.svg" },
 };
 
 export function StorageTldraw() {
@@ -90,14 +100,15 @@ export function StorageTldraw() {
 
   const store = useStorageStore({
     user: { id, color: info.color, name: info.name },
+    shapeUtils: customShapeUtils,
   });
 
-  const customTools = [StickerTool];
+  const customTools = [StickerTool, CodeEditorTool];
 
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
       <Tldraw
-        // store={store}
+        store={store}
         // embeds={embeds}
         tools={customTools}
         shapeUtils={customShapeUtils}
@@ -107,12 +118,7 @@ export function StorageTldraw() {
           // Render a live avatar stack at the top-right
           ...components,
           StylePanel: () => (
-            <div
-              style={{
-                display: "flex-column",
-                marginTop: 4,
-              }}
-            >
+            <div style={{ display: "flex-column", marginTop: 4 }}>
               <Avatars />
               <DefaultStylePanel />
               <ReactComponent />
