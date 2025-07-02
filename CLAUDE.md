@@ -1,7 +1,13 @@
-# CLAUDE.md
+## Project Purpose
 
-This file provides guidance to Claude Code (claude.ai/code) when working with
-code in this repository.
+This is a **Visual IDE** project - a canvas-based development environment where developers can open projects, drag code editors onto the canvas, and see real-time output. Think of it as an interactive whiteboard for code development.
+
+## Current Development Phase
+
+**Phase 1: File Management & Code Editing**
+- Primary focus: Enable opening project files in draggable code editor shapes
+- Goal: Create file browser functionality integrated with tldraw canvas
+- Status: Basic code editor shape implemented, need file system integration
 
 ## Development Commands
 
@@ -28,7 +34,7 @@ Required environment variable:
 
 ## Architecture Overview
 
-This is a collaborative whiteboard application built with:
+This Visual IDE is built on a collaborative whiteboard foundation with:
 
 - **Next.js 14** (App Router) - Application framework
 - **Liveblocks** - Real-time collaboration infrastructure
@@ -36,57 +42,12 @@ This is a collaborative whiteboard application built with:
 - **Yjs** - Collaborative data structures for code editing
 - **CodeMirror** - Code editor with syntax highlighting
 
-### Key Integration Points
-
-**Liveblocks Configuration** (`src/liveblocks.config.ts`):
-
-- Defines TypeScript interfaces for Presence, Storage, and UserMeta
-- Storage uses `LiveMap<string, any>` for tldraw records
-- UserMeta includes id, name, color, and avatar
-
-**Main Canvas Component** (`src/components/StorageTldraw.tsx`):
-
-- Integrates tldraw with Liveblocks storage via `useStorageStore` hook
-- Registers custom shapes and tools
-- Includes UI overrides for custom toolbar items
-
 ### Custom Extensions
 
-1. **Interactive Shape Component** (`src/components/custom-shapes/`):
-
-   - `shape.component.tsx` - Defines custom HTML-based shapes with theme support
-   - `shape.tool.ts` - Tool for creating interactive shapes
-
-2. **Code Editor Component** (`src/components/code-editor/`):
-
-   - `code-editor.component.tsx` - Collaborative code editor shape
-   - `code-editor.tool.ts` - Tool for creating code editor instances
-   - Uses Yjs for real-time collaborative editing
-
-3. **Storage Hook** (`src/components/useStorageStore.ts`):
-   - Synchronizes tldraw state with Liveblocks storage
-   - Handles conflict resolution and persistence
-
-### Authentication & Users
-
-Mock authentication system in `src/database.ts` with predefined users. API
-endpoint at `src/app/api/liveblocks-auth/` handles user sessions.
-
-### Next.js Configuration
-
-`next.config.js` includes webpack configuration to ensure consistent Yjs module
-resolution across the application.
-
-## Custom Shape Development
-
-When adding new custom shapes:
-
-1. Create shape component in `src/components/custom-shapes/`
-2. Create corresponding tool in same directory
-3. Register both in `StorageTldraw.tsx`:
-   - Add to `customShapeUtils` array
-   - Add tool to `uiOverrides.tools()`
-   - Add to `customTools` array
+1. **Code Editor Component** (`src/components/code-editor/`):
+   - `code-editor.component.tsx` - Draggable code editor shape for IDE
+   - `code-editor.tool.ts` - Tool for creating code editor instances on canvas
+   - Uses CodeMirror with syntax highlighting and Yjs for collaboration
 
 ## Known Issues
 
