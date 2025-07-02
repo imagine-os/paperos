@@ -1,8 +1,11 @@
 "use client";
 
-import { Avatars } from "@/components/Avatars";
-import { useSelf } from "@liveblocks/react/suspense";
+// TEMPORARY: Running in offline mode to avoid Liveblocks storage validation errors
+// import { Avatars } from "@/components/Avatars";
+// import { useSelf } from "@liveblocks/react/suspense";
 import {
+  createTLStore,
+  defaultShapeUtils,
   DefaultKeyboardShortcutsDialog,
   DefaultKeyboardShortcutsDialogContent,
   DefaultStylePanel,
@@ -18,28 +21,15 @@ import {
 } from "tldraw";
 import "tldraw/tldraw.css";
 import { ReactComponent } from "./ReactComponent";
-import { myInteractiveShape } from "./custom-shapes/shape.component";
-import { StickerTool } from "./custom-shapes/shape.tool";
-import { useStorageStore } from "./useStorageStore";
+// import { useStorageStore } from "./useStorageStore";
 import { CodeEditorTool } from "./code-eidtor/code-editor.tool";
 import { codeEditorShape } from "./code-eidtor/code-editor.component";
 
-const customShapeUtils = [myInteractiveShape, codeEditorShape];
+const customShapeUtils = [codeEditorShape];
 
 // [1]
 const uiOverrides: TLUiOverrides = {
   tools(editor, tools) {
-    // Create a tool item in the ui's context.
-    tools.myComponent = {
-      id: "myComponent",
-      icon: "heart-icon",
-      label: "myComponent",
-      kbd: "s",
-      onSelect: () => {
-        editor.setCurrentTool("myComponent");
-      },
-    };
-    
     // Add CodeEditorTool to the UI
     tools.codeEditor = {
       id: "code-editor-tool",
@@ -59,14 +49,9 @@ const uiOverrides: TLUiOverrides = {
 const components: TLComponents = {
   Toolbar: (props) => {
     const tools = useTools();
-    const isStickerSelected = useIsToolSelected(tools["myComponent"]);
     const isCodeEditorSelected = useIsToolSelected(tools["codeEditor"]);
     return (
       <DefaultToolbar {...props}>
-        <TldrawUiMenuItem
-          {...tools["myComponent"]}
-          isSelected={isStickerSelected}
-        />
         <TldrawUiMenuItem
           {...tools["codeEditor"]}
           isSelected={isCodeEditorSelected}
@@ -81,7 +66,6 @@ const components: TLComponents = {
       <DefaultKeyboardShortcutsDialog {...props}>
         <DefaultKeyboardShortcutsDialogContent />
         {/* Ideally, we'd interleave this into the tools group */}
-        <TldrawUiMenuItem {...tools["myComponent"]} />
         <TldrawUiMenuItem {...tools["codeEditor"]} />
       </DefaultKeyboardShortcutsDialog>
     );
@@ -90,20 +74,19 @@ const components: TLComponents = {
 
 // [3]
 export const customAssetUrls: TLUiAssetUrlOverrides = {
-  icons: { "heart-icon": "/heart-icon.svg" },
+  icons: {},
 };
 
 export function StorageTldraw() {
-  // of just `useSelf()` to prevent re-renders on Presence changes
-  const id = useSelf((me) => me.id);
-  const info = useSelf((me) => me.info);
+  // TEMPORARY: Using local store instead of Liveblocks collaborative store
+  // const id = useSelf((me) => me.id);
+  // const info = useSelf((me) => me.info);
 
-  const store = useStorageStore({
-    user: { id, color: info.color, name: info.name },
-    shapeUtils: customShapeUtils,
+  const store = createTLStore({ 
+    shapeUtils: [...defaultShapeUtils, ...customShapeUtils] 
   });
 
-  const customTools = [StickerTool, CodeEditorTool];
+  const customTools = [CodeEditorTool];
 
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
@@ -115,11 +98,11 @@ export function StorageTldraw() {
         overrides={uiOverrides}
         assetUrls={customAssetUrls}
         components={{
-          // Render a live avatar stack at the top-right
+          // TEMPORARY: Removed Avatars component for offline mode
           ...components,
           StylePanel: () => (
             <div style={{ display: "flex-column", marginTop: 4 }}>
-              <Avatars />
+              {/* <Avatars /> */}
               <DefaultStylePanel />
               <ReactComponent />
             </div>
