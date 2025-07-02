@@ -10,7 +10,6 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { yCollab } from "y-codemirror.next";
@@ -173,31 +172,31 @@ const CodeEditorComponent = ({
         yCollab(ytext, provider.awareness, { undoManager }),
         updateListener,
         EditorView.theme({
-          '&': {
-            height: '100%',
-            backgroundColor: '#ffffff'
+          "&": {
+            height: "100%",
+            backgroundColor: "#ffffff",
           },
-          '.cm-scroller': {
-            overflow: 'auto'
+          ".cm-scroller": {
+            overflow: "auto",
           },
-          '.cm-editor': {
-            backgroundColor: '#ffffff'
+          ".cm-editor": {
+            backgroundColor: "#ffffff",
           },
-          '.cm-content': {
-            backgroundColor: '#ffffff',
-            color: '#333333',
-            padding: '10px'
+          ".cm-content": {
+            backgroundColor: "#ffffff",
+            color: "#333333",
+            padding: "10px",
           },
-          '.cm-focused': {
-            outline: 'none'
+          ".cm-focused": {
+            outline: "none",
           },
-          '.cm-line': {
-            color: '#333333'
+          ".cm-line": {
+            color: "#333333",
           },
-          '.cm-cursor': {
-            borderColor: '#000000'
-          }
-        })
+          ".cm-cursor": {
+            borderColor: "#000000",
+          },
+        }),
       ],
     });
 
@@ -240,7 +239,14 @@ const CodeEditorComponent = ({
           <span style={{ pointerEvents: "none", flexGrow: 1 }}>
             {shape?.props?.fileName || "Code Editor"}
           </span>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", pointerEvents: "auto" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              pointerEvents: "auto",
+            }}
+          >
             {isHtml && (
               <button
                 onPointerDown={(e) => {
@@ -301,6 +307,7 @@ const CodeEditorComponent = ({
                 alignItems: "center",
                 justifyContent: "center",
               }}
+              
               onMouseEnter={(e) => {
                 const target = e.target as HTMLButtonElement;
                 target.style.backgroundColor = "#d32f2f";
@@ -326,10 +333,17 @@ const CodeEditorComponent = ({
               overflow: "auto",
               pointerEvents: "auto",
             }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              // First select the shape to bring it to front
+              if (shape && shape.id) {
+                editor.select(shape.id);
+              }
+              e.stopPropagation();
+            }}
             onTouchStart={(e) => e.stopPropagation()}
             onTouchEnd={(e) => e.stopPropagation()}
             onClick={() => {
+              // Focus the CodeMirror editor
               if (editorView) {
                 editorView.focus();
               }
@@ -348,7 +362,13 @@ const CodeEditorComponent = ({
                 }}
                 onMouseDown={handleMouseDown}
               />
-              <div style={{ width: `${previewWidth}px`, height: "100%", pointerEvents: "auto" }}>
+              <div
+                style={{
+                  width: `${previewWidth}px`,
+                  height: "100%",
+                  pointerEvents: "auto",
+                }}
+              >
                 <iframe
                   srcDoc={currentContent}
                   style={{
