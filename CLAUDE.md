@@ -57,7 +57,7 @@ This is a collaborative whiteboard application built with:
    - `shape.component.tsx` - Defines custom HTML-based shapes with theme support
    - `shape.tool.ts` - Tool for creating interactive shapes
 
-2. **Code Editor Component** (`src/components/code-eidtor/`):
+2. **Code Editor Component** (`src/components/code-editor/`):
 
    - `code-editor.component.tsx` - Collaborative code editor shape
    - `code-editor.tool.ts` - Tool for creating code editor instances
@@ -90,7 +90,6 @@ When adding new custom shapes:
 
 ## Known Issues
 
-- Directory name `code-eidtor` has typo (should be `code-editor`)
 - tldraw requires commercial license to remove watermark
 
 ## Basic Rules which are required to follow

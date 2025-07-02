@@ -77,7 +77,7 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
 
       return () => {
         view?.destroy();
-        setEditorView(null);3
+        setEditorView(null);
       };
     }, [element]);
 
@@ -103,8 +103,8 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
           >
             Code Editor
           </div>
-          <div 
-            ref={ref} 
+          <div
+            ref={ref}
             style={{ height: "calc(100% - 40px)" }}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}

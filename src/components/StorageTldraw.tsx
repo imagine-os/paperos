@@ -22,8 +22,8 @@ import {
 import "tldraw/tldraw.css";
 import { ReactComponent } from "./ReactComponent";
 // import { useStorageStore } from "./useStorageStore";
-import { CodeEditorTool } from "./code-eidtor/code-editor.tool";
-import { codeEditorShape } from "./code-eidtor/code-editor.component";
+import { CodeEditorTool } from "./code-editor/code-editor.tool";
+import { codeEditorShape } from "./code-editor/code-editor.component";
 
 const customShapeUtils = [codeEditorShape];
 
@@ -40,7 +40,7 @@ const uiOverrides: TLUiOverrides = {
         editor.setCurrentTool("code-editor-tool");
       },
     };
-    
+
     return tools;
   },
 };
@@ -82,8 +82,8 @@ export function StorageTldraw() {
   // const id = useSelf((me) => me.id);
   // const info = useSelf((me) => me.info);
 
-  const store = createTLStore({ 
-    shapeUtils: [...defaultShapeUtils, ...customShapeUtils] 
+  const store = createTLStore({
+    shapeUtils: [...defaultShapeUtils, ...customShapeUtils],
   });
 
   const customTools = [CodeEditorTool];
