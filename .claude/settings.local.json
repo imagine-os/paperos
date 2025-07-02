@@ -8,7 +8,9 @@
       "Bash(true)",
       "Bash(npm run lint)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run lint:*)",
+      "WebFetch(domain:canary.tldraw.dev)"
     ],
     "deny": []
   }
