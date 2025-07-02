@@ -33,6 +33,7 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
 
   component(shape: ICodeEditorShape) {
     const [element, setElement] = useState<HTMLElement>();
+    const [editorView, setEditorView] = useState<EditorView | null>(null);
     const room = useRoom();
     const provider = getYjsProviderForRoom(room);
 
@@ -72,14 +73,16 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
 
       // Attach CodeMirror to element
       const view = new EditorView({ state, parent: element });
+      setEditorView(view);
 
       return () => {
         view?.destroy();
+        setEditorView(null);3
       };
     }, [element]);
 
     return (
-      <HTMLContainer>
+      <HTMLContainer style={{ pointerEvents: "all" }}>
         <div
           style={{
             width: shape.props.w,
@@ -100,7 +103,19 @@ export class codeEditorShape extends BaseBoxShapeUtil<ICodeEditorShape> {
           >
             Code Editor
           </div>
-          {/* <div ref={ref} style={{ height: "calc(100% - 40px)" }}></div> */}
+          <div 
+            ref={ref} 
+            style={{ height: "calc(100% - 40px)" }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onClick={() => {
+              // Focus the editor when clicked
+              if (editorView) {
+                editorView.focus();
+              }
+            }}
+          />
         </div>
       </HTMLContainer>
     );
