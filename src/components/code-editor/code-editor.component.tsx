@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { yCollab } from "y-codemirror.next";
@@ -171,6 +172,14 @@ const CodeEditorComponent = ({
         languageExtension,
         yCollab(ytext, provider.awareness, { undoManager }),
         updateListener,
+        EditorView.theme({
+          '&': {
+            height: '100%'
+          },
+          '.cm-scroller': {
+            overflow: 'auto'
+          }
+        })
       ],
     });
 
@@ -296,6 +305,7 @@ const CodeEditorComponent = ({
                 ? `${(shape?.props?.w || 530) - previewWidth - 6}px`
                 : "100%",
               height: "100%",
+              overflow: "auto",
               pointerEvents: "auto",
             }}
             onPointerDown={(e) => e.stopPropagation()}
