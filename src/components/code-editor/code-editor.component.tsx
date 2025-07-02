@@ -174,10 +174,28 @@ const CodeEditorComponent = ({
         updateListener,
         EditorView.theme({
           '&': {
-            height: '100%'
+            height: '100%',
+            backgroundColor: '#ffffff'
           },
           '.cm-scroller': {
             overflow: 'auto'
+          },
+          '.cm-editor': {
+            backgroundColor: '#ffffff'
+          },
+          '.cm-content': {
+            backgroundColor: '#ffffff',
+            color: '#333333',
+            padding: '10px'
+          },
+          '.cm-focused': {
+            outline: 'none'
+          },
+          '.cm-line': {
+            color: '#333333'
+          },
+          '.cm-cursor': {
+            borderColor: '#000000'
           }
         })
       ],

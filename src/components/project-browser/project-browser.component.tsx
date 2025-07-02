@@ -78,11 +78,40 @@ export class projectBrowserShape extends BaseBoxShapeUtil<IProjectBrowserShape> 
           const file = await fileItem.handle.getFile();
           const content = await file.text();
 
-          // Create a new code editor shape next to the project browser
+          // Create a new code editor shape with smart positioning
           const currentShape = editor.getShape(shape.id);
           if (currentShape) {
-            const newX = currentShape.x + currentShape.props.w + 20;
-            const newY = currentShape.y;
+            // Get all existing code editor shapes
+            const allShapes = editor.getCurrentPageShapes();
+            const codeEditorShapes = allShapes.filter(s => s.type === 'code-editor-shape');
+            
+            // Calculate base position next to project browser
+            const baseX = currentShape.x + currentShape.props.w + 20;
+            const baseY = currentShape.y;
+            
+            // Find a non-overlapping position using cascade pattern
+            const CASCADE_OFFSET = 30;
+            let newX = baseX;
+            let newY = baseY;
+            
+            // Check for overlaps and adjust position
+            let attempts = 0;
+            const maxAttempts = codeEditorShapes.length + 1;
+            
+            while (attempts < maxAttempts) {
+              const hasOverlap = codeEditorShapes.some(shape => {
+                const tolerance = 10;
+                return Math.abs(shape.x - newX) < tolerance && 
+                       Math.abs(shape.y - newY) < tolerance;
+              });
+              
+              if (!hasOverlap) break;
+              
+              // Apply cascade offset
+              newX += CASCADE_OFFSET;
+              newY += CASCADE_OFFSET;
+              attempts++;
+            }
 
             editor.createShape({
               type: "code-editor-shape",
