@@ -68,6 +68,14 @@ const CodeEditorComponent = ({
     });
   };
 
+  const handleClose = () => {
+    if (!shape || !shape.id) {
+      console.error("Shape or shape.id is undefined in handleClose", { shape });
+      return;
+    }
+    editor.deleteShape(shape.id);
+  };
+
   const handleResize = (clientX: number) => {
     if (!shape || !shape.id || !shape.type) {
       console.error(
@@ -177,7 +185,7 @@ const CodeEditorComponent = ({
   }, [element, provider, shape?.props?.content]);
 
   return (
-    <HTMLContainer style={{ pointerEvents: "all" }}>
+    <HTMLContainer style={{ pointerEvents: "none" }}>
       <div
         style={{
           width: shape?.props?.w || 530,
@@ -199,17 +207,52 @@ const CodeEditorComponent = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            pointerEvents: "auto",
+            pointerEvents: "none",
           }}
-          onPointerDown={(e) => e.stopPropagation()}
         >
-          <span>{shape?.props?.fileName || "Code Editor"}</span>
-          {isHtml && (
+          <span style={{ pointerEvents: "none", flexGrow: 1 }}>
+            {shape?.props?.fileName || "Code Editor"}
+          </span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", pointerEvents: "auto" }}>
+            {isHtml && (
+              <button
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  togglePreview();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: "12px",
+                  backgroundColor: showPreview ? "#007acc" : "#ddd",
+                  color: showPreview ? "white" : "#333",
+                  border: "none",
+                  borderRadius: "3px",
+                  cursor: "pointer",
+                  pointerEvents: "auto",
+                  zIndex: 1000,
+                }}
+                onMouseEnter={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.opacity = "0.8";
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.opacity = "1";
+                }}
+              >
+                {showPreview ? "Hide Preview" : "Show Preview"}
+              </button>
+            )}
             <button
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                togglePreview();
+                handleClose();
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -217,27 +260,33 @@ const CodeEditorComponent = ({
               }}
               style={{
                 padding: "4px 8px",
-                fontSize: "12px",
-                backgroundColor: showPreview ? "#007acc" : "#ddd",
-                color: showPreview ? "white" : "#333",
+                fontSize: "14px",
+                backgroundColor: "#f44336",
+                color: "white",
                 border: "none",
                 borderRadius: "3px",
                 cursor: "pointer",
                 pointerEvents: "auto",
                 zIndex: 1000,
+                lineHeight: "1",
+                minWidth: "24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
               onMouseEnter={(e) => {
                 const target = e.target as HTMLButtonElement;
-                target.style.opacity = "0.8";
+                target.style.backgroundColor = "#d32f2f";
               }}
               onMouseLeave={(e) => {
                 const target = e.target as HTMLButtonElement;
-                target.style.opacity = "1";
+                target.style.backgroundColor = "#f44336";
               }}
+              title="Close Editor"
             >
-              {showPreview ? "Hide Preview" : "Show Preview"}
+              ×
             </button>
-          )}
+          </div>
         </div>
         <div style={{ display: "flex", height: "calc(100% - 40px)" }}>
           <div
@@ -247,6 +296,7 @@ const CodeEditorComponent = ({
                 ? `${(shape?.props?.w || 530) - previewWidth - 6}px`
                 : "100%",
               height: "100%",
+              pointerEvents: "auto",
             }}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -266,10 +316,11 @@ const CodeEditorComponent = ({
                   backgroundColor: "#ddd",
                   borderLeft: "1px solid #ccc",
                   borderRight: "1px solid #ccc",
+                  pointerEvents: "auto",
                 }}
                 onMouseDown={handleMouseDown}
               />
-              <div style={{ width: `${previewWidth}px`, height: "100%" }}>
+              <div style={{ width: `${previewWidth}px`, height: "100%", pointerEvents: "auto" }}>
                 <iframe
                   srcDoc={currentContent}
                   style={{
@@ -277,6 +328,7 @@ const CodeEditorComponent = ({
                     height: "100%",
                     border: "none",
                     backgroundColor: "white",
+                    pointerEvents: "auto",
                   }}
                   sandbox="allow-scripts"
                 />
