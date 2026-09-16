@@ -25,7 +25,30 @@
 - [x] Validate: `npm run check`, `npm run build`, screenshots, e2e
 - [x] Push to `main`
 
-## Review
+## M1 - Window manager
+
+- [ ] Plan written, foundation read (`src/desktop/`, `src/wm/`, docs)
+- [ ] Layout engine (`src/wm/`): types, `layout()` with gaps/padding/min sizes,
+      presets (free, columns, grid, bento x3, split-tree), operations
+      (insert/splitLeaf/swap/resizeRatio/remove/prune/tile), geometry helpers
+      (drop zones, neighbour search), unit tests incl. rectangle invariants
+- [ ] `Window` shape: `tiled` prop + migration, tiled look, focus ring,
+      double-click title edit, per-window menu, long-press menu
+- [ ] `WindowManager` service: region = viewport bounds, apply layouts via one
+      `updateShapes` batch, z-order (tiled below floating), drag-detach,
+      drop swap/insert with quadrant hint, gutter resize overlay
+- [ ] Workspaces: typed localStorage store (`paperos-v2:workspaces`),
+      defaults Desk + Grid, top-bar menu (save/switch/rename/duplicate/delete),
+      camera animation on switch
+- [ ] Controls: Layout menu, Tile all / Untile all / Focus mode, keyboard via
+      `overrides.actions` (Alt+1..5, Alt+Arrows, Alt+Shift+Arrows, Alt+Enter,
+      Alt+F, Alt+N), responsive reflow (debounced), narrow columns collapse
+- [ ] Docs: PLAN.md (M1 status + decisions), README (shortcuts, workspaces),
+      this checklist + Review
+- [ ] Tests: unit (engine, stores), e2e `e2e/wm.spec.ts`
+- [ ] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+
+## Review (M0)
 
 ### What changed
 
