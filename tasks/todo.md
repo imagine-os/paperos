@@ -75,31 +75,88 @@
 
 ## M3 - Programmable
 
-- [ ] Plan written, foundation read (`src/ide/commands.ts`, `src/wm/window-manager.ts`,
+- [x] Plan written, foundation read (`src/ide/commands.ts`, `src/wm/window-manager.ts`,
       `src/desktop/window-kinds.tsx`, `src/ide/project/store.ts`, `src/ide/docs.ts`,
       `src/ide/open-file.ts`)
-- [ ] Canvas API (`src/api/`): tool schema (`schema.ts`), event bus, facade over a
+- [x] Canvas API (`src/api/`): tool schema (`schema.ts`), event bus, facade over a
       `CanvasHost` interface (windows, layout, workspaces, projects, files,
       preview, console, commands, canvas, events), browser host on tldraw + WM +
       stores, `window.paperos`, `invokeTool` for object-style calls
-- [ ] `docs/CANVAS_API.md` generated from the schema (`npm run api:gen`) + sync test
-- [ ] Script console window kind (`script`): CodeMirror JS editor, output pane,
+- [x] `docs/CANVAS_API.md` generated from the schema (`npm run api:gen`) + sync test
+- [x] Script console window kind (`script`): CodeMirror JS editor, output pane,
       Run (Ctrl+Enter), snippets menu, text persisted in `content`
-- [ ] Plugins (`src/plugins/`): ES-module plugins with `activate(api)`, commands,
+- [x] Plugins (`src/plugins/`): ES-module plugins with `activate(api)`, commands,
       React-free window kinds, events; manager window kind (`plugins`); built-ins
       `clock` and `auto-tile`; enabled set in localStorage
-- [ ] Agent bridge: protocol module, browser WebSocket client, top-bar toggle +
+- [x] Agent bridge: protocol module, browser WebSocket client, top-bar toggle +
       status, `?bridge=1`, `agent` transcript window with pause
-- [ ] MCP CLI in `tools/paperos-mcp/` (stdio MCP server + WebSocket bridge on
+- [x] MCP CLI in `tools/paperos-mcp/` (stdio MCP server + WebSocket bridge on
       127.0.0.1:7331, tools generated from the schema), `npm run mcp`, `docs/MCP.md`
-- [ ] Fix (M2 review): new editors join the editor column instead of squeezing
+- [x] Fix (M2 review): new editors join the editor column instead of squeezing
       the Files row; unit test
-- [ ] Tests: API facade (fake host), schema/tool generation, script runner,
+- [x] Tests: API facade (fake host), schema/tool generation, script runner,
       plugin loader, bridge protocol; e2e `e2e/api.spec.ts`
-- [ ] Docs: README Programmability section, `docs/PLAN.md` (M3 done, decisions),
+- [x] Docs: README Programmability section, `docs/PLAN.md` (M3 done, decisions),
       this file (Review)
-- [ ] Validate: `npm run check`, `npm run build`, screenshots, MCP end-to-end drive
-- [ ] Push to `main`, check CI
+- [x] Validate: `npm run check`, `npm run build`, screenshots, MCP end-to-end drive
+- [x] Push to `main`, check CI
+
+## Review (M3)
+
+### What changed
+
+- `src/api/`: the Canvas API. `schema.ts` is the single description of the
+  surface (42 methods, 10 namespaces); `canvas-api.ts` the facade;
+  `host.ts` + `browser-host.ts` the app binding; `install.ts` wires events
+  and `window.paperos`; `invoke.ts` and `run-script.ts` serve the bridge and
+  the Script window; `bridge-protocol.ts` / `bridge-client.ts` the tab side
+  of the agent bridge. `fake-host.ts` backs the tests.
+- Window kinds `script`, `plugins`, `agent`; plugin system in
+  `src/plugins/` with built-ins `clock` and `auto-tile`; sample project has
+  `plugins/hello.js`.
+- `tools/paperos-mcp/`: MCP server + WebSocket bridge CLI (own package,
+  `npm run mcp:build`, `npm run mcp`), `scripts/demo.mjs` end-to-end driver.
+- Docs: `docs/CANVAS_API.md` (generated), `docs/MCP.md`, README
+  Programmability section, PLAN decisions 18-23.
+- Small hooks in existing code: `ProjectStore.lastChange`,
+  `onCommandRun` + `Command.run(args)`, `previewReload` signal,
+  `WindowManager.setTree`, window-kinds `unregisterWindowKind` +
+  `windowKindsChanged`, `WindowShapeUtil.toSvg`, tiling into an empty
+  desktop starts Columns.
+- Fix: `placeFileWindow` stacks new editors under the focused editor.
+
+### Verified
+
+- `npm run check` (typecheck, lint, 162 unit tests) and `npm run build`.
+- Playwright: 15 e2e tests (smoke, wm, ide, api) against the dev server.
+- Production build driven end to end over MCP: the SDK's stdio client starts
+  the CLI, a headless tab connects with `?bridge=1`, `windows_create`,
+  `layout_apply`, `windows_update`, `canvas_zoomTo`, `canvas_screenshot`
+  (returned as an MCP image) and `events_poll` all round-trip; a call before
+  the tab connects returns the "no tab connected" error.
+
+### Decisions and notes
+
+- Schema as data, facade over a host interface, page-privilege scripts and
+  plugins, React-free plugin kinds, local CLI bridge: see PLAN decisions
+  18-23.
+- MCP tool names use `_` (`windows_create`) because MCP names allow no dots.
+  A tool whose only parameter is an options object takes that object
+  directly.
+- The CLI's copies of `schema.ts` and `bridge-protocol.ts` are committed
+  (so `npx -y .` works from a clone) and regenerated by `npm run api:gen`;
+  `src/api/docs.test.ts` fails when they differ from the source.
+- `tools/` is excluded from the root tsconfig and ESLint so the root build
+  never depends on the CLI's `node_modules`. The CLI is not built in CI
+  (it would add an install step); `npm run mcp:build` does it locally.
+- `layout.tile(ids)` into an active split tree inserts at the right of the
+  tree (the layout the caller asked for); editors opened from Files use the
+  stacking rule instead.
+- Known limitations: the tab dials `ws://127.0.0.1:7331` only (change both
+  sides to use another port); one tab per bridge; window bodies other than
+  note/script text are not in screenshots; plugin `html()` is not
+  sanitized (plugins already run with page privileges); Playwright is still
+  not in CI.
 
 ## Review (M2)
 

@@ -70,13 +70,49 @@ API later makes it programmable.
   tabs inside one editor window, Sandpack (see decision 13), a real
   awareness/cursor layer (M4).
 
-### M3 - Programmable
+### M3 - Programmable (done)
 
-- Canvas API: create/move/resize/close windows, run layouts, read the
-  workspace, subscribe to events. Expose the M2 command registry through it.
-- Command palette: done in M2 (`Ctrl+K`); M3 adds API-defined commands.
-- Script console that talks to the Canvas API.
-- MCP server exposing the same API to agents.
+- Canvas API in `src/api/`: a schema (`schema.ts`, 42 methods in 10
+  namespaces: windows, layout, workspaces, projects, files, preview,
+  console, commands, canvas, events) and a typed facade
+  (`createCanvasApi(host, events)`) over a `CanvasHost` interface. The
+  browser host sits on tldraw, the window manager and the IDE stores; a
+  fake host drives the unit tests. Results are plain JSON, bad input throws
+  readable errors, `files.write` goes through the Yjs document so editors
+  update, `canvas.screenshot` uses tldraw's export (windows draw as titled
+  frames; note and script text is rendered). Events: window
+  created/closed/focused, layout changed, file changed, command run,
+  project changed, with a 200-entry ring buffer for pollers.
+  `window.paperos` for the devtools. `docs/CANVAS_API.md` is generated
+  from the schema by `npm run api:gen`; a test fails when it is stale.
+- Script window kind: CodeMirror JS editor (plain buffer), code runs as an
+  async function with `paperos` and a capturing `console`, output pane
+  (images inline), Snippets menu, `Ctrl+Enter`, source in the window's
+  `content` prop.
+- Plugins (`src/plugins/`): ES modules exporting `activate(api)` that
+  register commands, React-free window kinds and event handlers; built-in
+  (`clock`, `auto-tile`), project (`plugins/*.js`, loaded through a blob
+  URL) and URL sources; enabled set in `paperos-v2:plugins`; Plugins
+  window kind. The sample project ships `plugins/hello.js`.
+- Agent bridge: `tools/paperos-mcp` (own package, `@modelcontextprotocol/sdk`
+  - `ws`, built with tsc) runs an MCP server over stdio whose tools are
+    generated from the schema and a loopback WebSocket bridge on 7331; the
+    tab connects when "Agent bridge" is toggled in the top bar or with
+    `?bridge=1` (status dot: off / listening / connected). Agent window kind
+    shows the transcript and can pause calls. `docs/MCP.md` has the Claude
+    Desktop and Claude Code snippets; `scripts/demo.mjs` drives the canvas end
+    to end with the SDK's client.
+- Fix from the M2 review: new editors stack under the focused editor
+  (`placeFileWindow`) instead of squeezing the Files row.
+- Tests: 162 unit tests (API facade, schema/tool generation, script runner,
+  event bus, bridge protocol and client, plugin manager, editor placement)
+  and `e2e/api.spec.ts` (script snippet creates and tiles windows, clock
+  plugin, `window.paperos`).
+- Not done, deferred: the tab always dials the default port (the CLI's
+  `--port` needs a matching setting in the tab), one tab per bridge,
+  `commands.run` arguments are only used by script/plugin commands, no
+  sandbox for scripts and plugins (documented as running with page
+  privileges), bodies of non-text windows are not part of screenshots.
 
 ### M4 - Collaboration
 
@@ -88,7 +124,8 @@ API later makes it programmable.
 
 ### M5 - Polish and plugins
 
-- GenMoji plugin (see the original "3D GenMoji Generator" issue).
+- GenMoji plugin (see the original "3D GenMoji Generator" issue), now as a
+  PaperOS plugin (`activate(api)`).
 - Themes beyond light/dark.
 - Export/import of workspaces.
 
@@ -169,6 +206,41 @@ API later makes it programmable.
 17. **Reload right after a change can lose it.** tldraw's local persistence
     is throttled; e2e tests wait ~800 ms before reloading. The IDE's own
     stores (projects, documents) write immediately.
+18. **The API surface is data first.** `src/api/schema.ts` describes every
+    method once (name, description, params as a JSON Schema subset,
+    returns). The facade implements it, the docs are generated from it,
+    `invokeTool()` maps object-style calls onto positional JS parameters
+    with it, and the MCP CLI turns it into tools. Adding a method means one
+    schema entry, one facade method and `npm run api:gen`; a unit test
+    checks the facade covers the schema and that the generated files are
+    current.
+19. **Facade over a host interface, not over tldraw.** `createCanvasApi`
+    talks to a small `CanvasHost` (plain records, no atoms or tldraw types)
+    so the validation and result shaping can be unit tested against a fake
+    in Node. `browser-host.ts` is the only file that knows both worlds.
+20. **Scripts and plugins run with page privileges.** No sandbox: a script
+    is `new AsyncFunction(...)` in the page, a plugin is a dynamic
+    `import()` (a blob URL for project files). This is the devtools model
+    and is stated in the Script window, the Plugins window and the docs.
+    Sandboxing (a worker with a message-passing API proxy) is possible
+    later because everything already goes through the Canvas API.
+21. **Plugin window kinds are React-free.** Plugins get an element to draw
+    into (`render(el, ctx)`) or return HTML (`html(ctx)`); a single React
+    host component wraps them. Plugins therefore need no build step and no
+    React import.
+22. **The MCP bridge is a local CLI, not a server.** Canvas state lives in
+    the tab, so the CLI (stdio MCP server + WebSocket on 127.0.0.1:7331)
+    forwards each tool call to the connected tab and returns its answer.
+    Nothing is deployed, no vendor is involved, and the Vercel build is
+    untouched. The CLI is its own package under `tools/` with two runtime
+    dependencies; the shared schema and protocol are copied verbatim by
+    `npm run api:gen` and a test fails when the copies drift. Loopback only,
+    one tab at a time, 30 s call timeout, clear error when no tab is
+    connected.
+23. **Editors stack in the editor column.** `placeFileWindow` inserts a new
+    file window below the focused (else last) tiled editor; the Files column
+    keeps its width however many files are opened. `WindowManager.setTree`
+    replaces the tree without re-capturing the region.
 
 ## Notes
 

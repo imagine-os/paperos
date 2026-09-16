@@ -6,13 +6,14 @@ arrange. A tiling engine arranges windows into layouts, the windows hold IDE
 tools (file tree, editors, previews, consoles), and a Canvas API later makes
 the whole desktop programmable.
 
-**Status:** v2 preview, milestone M2 (IDE inside windows). The desktop
-renders, windows tile into layouts and workspaces (M1), and the windows now
-hold an IDE: a file tree over a project (a folder on disk, a ZIP, a public
-GitHub repository or the built-in sample site), CodeMirror editors with one
-shared document per file, a live preview with a console, Markdown rendering,
-and a command palette. Everything runs in the browser and survives a refresh.
-The rest of the roadmap is in [`docs/PLAN.md`](docs/PLAN.md).
+**Status:** v2 preview, milestone M3 (programmable). The desktop renders,
+windows tile into layouts and workspaces (M1), the windows hold an IDE (file
+tree, CodeMirror editors, live preview, console, Markdown, command palette;
+M2), and the whole desktop is now scriptable: a typed **Canvas API**
+(`window.paperos`), a **Script** window, **plugins**, and a local **MCP
+bridge** so agents like Claude can drive the canvas (M3). Everything runs in
+the browser and survives a refresh; the bridge is a small Node CLI on your
+machine. The rest of the roadmap is in [`docs/PLAN.md`](docs/PLAN.md).
 
 The 2025 prototype (a tldraw whiteboard with a code editor and a project
 browser) still runs at `/legacy`.
@@ -31,14 +32,17 @@ No accounts, keys or paid services are needed. The canvas shows the tldraw
 
 Other commands:
 
-| Command          | What it does                                           |
-| ---------------- | ------------------------------------------------------ |
-| `npm run check`  | Typecheck, lint and unit tests. Run before every push. |
-| `npm run build`  | Production build (what Vercel runs).                   |
-| `npm start`      | Serve the production build.                            |
-| `npm test`       | Unit tests (Vitest).                                   |
-| `npm run e2e`    | Browser smoke test (Playwright, needs Chromium).       |
-| `npm run format` | Prettier.                                              |
+| Command             | What it does                                                              |
+| ------------------- | ------------------------------------------------------------------------- |
+| `npm run check`     | Typecheck, lint and unit tests. Run before every push.                    |
+| `npm run build`     | Production build (what Vercel runs).                                      |
+| `npm start`         | Serve the production build.                                               |
+| `npm test`          | Unit tests (Vitest).                                                      |
+| `npm run e2e`       | Browser tests (Playwright, needs Chromium).                               |
+| `npm run format`    | Prettier.                                                                 |
+| `npm run api:gen`   | Regenerate `docs/CANVAS_API.md` and the MCP CLI's schema copy (Node 22+). |
+| `npm run mcp:build` | Install and build the MCP bridge CLI (`tools/paperos-mcp`).               |
+| `npm run mcp`       | Run the MCP bridge CLI (agents normally start it themselves).             |
 
 For `npm run e2e`, Playwright needs a Chromium. Either run
 `npx playwright install chromium` once, or point
@@ -154,10 +158,15 @@ writes it back. To make files collaborative later, attach a sync provider in
 | Console  | `console.*` output and errors from the preview, with levels and Clear, plus a one-line input that evaluates JavaScript inside the preview.                                                                                              |
 | Markdown | A rendered `.md` file (`README.md` by default), sanitized with DOMPurify. **Edit** opens it in an editor.                                                                                                                               |
 | Note     | Plain text, stored in the window.                                                                                                                                                                                                       |
+| Script   | A JavaScript editor that runs against the Canvas API (`paperos`) with a captured `console`; output pane, Snippets menu, `Ctrl+Enter`. See Programmability.                                                                              |
+| Plugins  | The plugin manager: built-in, project (`plugins/*.js`) and URL plugins, enable/disable, permissions note.                                                                                                                               |
+| Agent    | Read-only transcript of the tool calls an agent makes over the MCP bridge, with a Pause switch.                                                                                                                                         |
 
 One file per editor window: opening a file focuses its existing window, fills
-an empty editor, or creates a new one tiled next to Files (cascading when no
-layout is active). The title shows the path and a dot while unsaved.
+an empty editor, or creates a new one. When a layout is active the new editor
+stacks under the focused editor (the editor column grows downwards, Files
+keeps its width); without a layout it cascades. The title shows the path and
+a dot while unsaved.
 
 ### Command palette
 
@@ -165,7 +174,8 @@ layout is active). The title shows the path and a dot while unsaved.
 everything: layouts and window-manager actions, new windows per kind, files
 of the active project (type a name to open it), workspaces, projects, Open
 actions and the theme toggle. Commands live in a registry
-(`src/ide/commands.ts`) that M3's Canvas API will expose.
+(`src/ide/commands.ts`) that the Canvas API exposes as `paperos.commands` and
+that scripts and plugins can add to.
 
 ### Theme
 
@@ -173,6 +183,77 @@ The desktop follows the system color scheme; the sun/moon button (or the
 palette's "Toggle light / dark theme") forces one, stored under
 `paperos-v2:theme`. The editor switches between a token-based light theme and
 One Dark; the tldraw canvas follows too.
+
+## Programmability
+
+Everything the desktop does is reachable from one typed object, the
+**Canvas API**, documented method by method in
+[`docs/CANVAS_API.md`](docs/CANVAS_API.md): `windows`, `layout`,
+`workspaces`, `projects`, `files`, `preview`, `console`, `commands`, `canvas`
+and `events`. Every method returns plain JSON and throws a readable error on
+bad input. Three doors lead to it:
+
+### Script window
+
+**New window → Script** opens a JavaScript editor whose code runs as an
+async function with `paperos` (the Canvas API) and a capturing `console` in
+scope, so `await` works at the top level. **Run** (or `Ctrl+Enter`) shows
+logs, the returned value and errors in the pane below; a returned image data
+URL renders inline. The **Snippets** menu has starters: tile everything in a
+grid, open every `.js` file, create a note per file, take a screenshot,
+subscribe to events. The source is stored in the window, so it survives a
+reload and can be saved in a workspace.
+
+```js
+const files = await paperos.files.list();
+for (const f of files.filter((f) => f.path.endsWith(".js")))
+  paperos.files.open(f.path);
+paperos.layout.apply("grid");
+```
+
+The same object is `window.paperos` in the browser devtools once the desktop
+has mounted. Scripts run inside the page with the page's privileges, exactly
+like code pasted into the devtools: only run code you trust.
+
+### Plugins
+
+A plugin is an ES module exporting `activate(api)`; `api` is the Canvas API
+plus `registerCommand`, `registerWindowKind` (React-free: draw into an
+element with `render(el, ctx)` or return HTML from `html(ctx)`), `on` for
+events and `log`. Everything a plugin registers is removed when it is
+disabled. **New window → Plugins** lists them:
+
+- **Built-in**: `clock` (a window kind showing the time) and `auto-tile`
+  (new windows join the active layout).
+- **From this project**: any `plugins/*.js` in the active project appears
+  automatically. The sample project ships `plugins/hello.js` as a template.
+- **From URL**: any URL serving an ES module.
+
+Enabled plugins are remembered in the browser (`paperos-v2:plugins`). Plugins
+run in the page with full access to it; the manager says so, and only what
+you enable runs.
+
+### Agent bridge (MCP)
+
+`tools/paperos-mcp` is a small Node CLI that speaks
+[MCP](https://modelcontextprotocol.io) over stdio to an agent and opens a
+loopback WebSocket the PaperOS tab connects to. Each Canvas API method
+becomes an MCP tool (`windows_create`, `layout_apply`, `files_write`,
+`canvas_screenshot`...). Quick start:
+
+```bash
+npm run mcp:build                    # once: installs the CLI's deps and compiles it
+# Claude Code:
+claude mcp add paperos -- node "$PWD/tools/paperos-mcp/dist/index.js"
+# Claude Desktop: add {"command":"node","args":["<repo>/tools/paperos-mcp/dist/index.js"]}
+#                 under mcpServers in claude_desktop_config.json
+```
+
+Then open PaperOS and click **Agent bridge** in the top bar (or open the app
+with `?bridge=1`): the dot is amber while the tab waits for the CLI and green
+when connected. The **Agent** window shows every tool call as it arrives and
+can pause them. No server is deployed and nothing leaves your machine. Details,
+options and security notes: [`docs/MCP.md`](docs/MCP.md).
 
 ## Environment variables
 
@@ -212,13 +293,32 @@ src/
     window-tool.ts     toolbar tool: press "w", click to open a window
     window-kinds.tsx   registry of what a window can show (icon, size, component)
     kinds/             one file per kind: files, editor, preview, console,
-                       markdown, note, about (+ file-picker for empty windows)
+                       markdown, script, plugins, agent, note, about
+                       (+ file-picker for empty windows)
     create-window.ts   create a window with cascading placement
     cascade.ts         pure placement helper (unit tested)
     project-actions.ts Open folder / sample / ZIP / GitHub / dropped files
     ide-workspace.ts   the "IDE" arrangement, applied on first run
     ide-commands.ts    fills the command registry (WM, windows, files, ...)
     command-palette.tsx Ctrl+K palette over the registry
+  api/            The Canvas API (M3)
+    schema.ts          every method as data: names, params, returns (the
+                       docs and the MCP tools are generated from it)
+    canvas-api.ts      the typed facade (validation, plain JSON results)
+    host.ts            what the facade needs from the app; browser-host.ts
+                       implements it on tldraw + WM + stores; fake-host.ts for tests
+    install.ts         builds the API, forwards events, sets window.paperos
+    events.ts          event bus with a ring buffer (events.poll)
+    invoke.ts          call a method by dotted name with object args (MCP)
+    run-script.ts      runs Script-window code with paperos + console
+    bridge-protocol.ts messages between the tab and the MCP CLI (shared)
+    bridge-client.ts   the tab side of the bridge (status, transcript, pause)
+  plugins/        Plugin system (M3)
+    types.ts           PluginModule / PluginApi contract
+    manager.ts         load, activate, disable, persist (paperos-v2:plugins)
+    install.ts         wires the manager into commands, kinds, project scans
+    plugin-window.tsx  React host for React-free plugin window kinds
+    builtin/           clock, auto-tile
   ide/            The IDE (plain TypeScript apart from the hooks)
     project/           Project model: paths, tree, KV (IndexedDB) store,
                        memory + File System Access backends, sample, ZIP,
@@ -241,8 +341,11 @@ src/
     workspace-store.ts localStorage-backed workspaces; wm-state.ts live arrangement
   lib/            Shared helpers: env, bundled tldraw assets
   legacy/         The 2025 prototype, moved verbatim (see src/legacy/README.md)
-e2e/              Playwright: smoke, window manager and IDE tests
+tools/paperos-mcp/ MCP server + WebSocket bridge CLI (own package, built with tsc)
+scripts/gen-api.mts Generates docs/CANVAS_API.md and the CLI's schema copy
+e2e/              Playwright: smoke, window manager, IDE and API tests
 docs/PLAN.md      Milestones and architecture decisions
+docs/CANVAS_API.md Generated Canvas API reference; docs/MCP.md the bridge guide
 tasks/todo.md     Working checklist and review notes
 ```
 

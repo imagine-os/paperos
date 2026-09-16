@@ -25,10 +25,15 @@ export function AboutWindow() {
         <li>
           <kbd>Ctrl+K</kbd> opens the command palette.
         </li>
+        <li>
+          <strong>Script</strong> windows run JavaScript against the Canvas API
+          (<code>paperos</code>, also in the devtools); <strong>Plugins</strong>{" "}
+          add commands and window kinds; the <strong>Agent bridge</strong> lets
+          an MCP agent drive the canvas.
+        </li>
       </ul>
       <p className="pos-about__muted">
-        Coming next: a Canvas API that makes the desktop programmable, then
-        collaboration.
+        Coming next: collaboration (shared canvas, cursors, shared documents).
       </p>
     </div>
   );
