@@ -10,6 +10,7 @@ import {
   Editor,
   TLComponents,
   Tldraw,
+  TldrawUiMenuActionItem,
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
   TLUiOverrides,
@@ -23,6 +24,7 @@ import { tldrawAssetUrls } from "@/lib/tldraw-assets";
 import { tldrawLicenseKey } from "@/lib/env";
 import { getWindowManager } from "@/wm/window-manager";
 import { TopBar } from "./top-bar";
+import { WM_ACTION_IDS, wmActions } from "./wm-actions";
 import { WmOverlay } from "./wm-overlay";
 import { WindowShapeUtil } from "./window-shape";
 import { WindowTool } from "./window-tool";
@@ -42,6 +44,7 @@ const uiOverrides: TLUiOverrides = {
     };
     return tools;
   },
+  actions: wmActions,
 };
 
 const components: TLComponents = {
@@ -61,6 +64,9 @@ const components: TLComponents = {
       <DefaultKeyboardShortcutsDialog {...props}>
         <TldrawUiMenuGroup id="paperos" label="PaperOS">
           <TldrawUiMenuItem {...tools["window"]} />
+          {WM_ACTION_IDS.map((id) => (
+            <TldrawUiMenuActionItem key={id} actionId={id} />
+          ))}
         </TldrawUiMenuGroup>
         <DefaultKeyboardShortcutsDialogContent />
       </DefaultKeyboardShortcutsDialog>
