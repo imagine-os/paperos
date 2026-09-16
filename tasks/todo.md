@@ -27,26 +27,89 @@
 
 ## M1 - Window manager
 
-- [ ] Plan written, foundation read (`src/desktop/`, `src/wm/`, docs)
-- [ ] Layout engine (`src/wm/`): types, `layout()` with gaps/padding/min sizes,
+- [x] Plan written, foundation read (`src/desktop/`, `src/wm/`, docs)
+- [x] Layout engine (`src/wm/`): types, `layout()` with gaps/padding/min sizes,
       presets (free, columns, grid, bento x3, split-tree), operations
       (insert/splitLeaf/swap/resizeRatio/remove/prune/tile), geometry helpers
       (drop zones, neighbour search), unit tests incl. rectangle invariants
-- [ ] `Window` shape: `tiled` prop + migration, tiled look, focus ring,
-      double-click title edit, per-window menu, long-press menu
-- [ ] `WindowManager` service: region = viewport bounds, apply layouts via one
+- [x] `Window` shape: `tiled` prop + migration, tiled look, focus ring,
+      inline title edit (from the menu), per-window menu, long-press menu
+- [x] `WindowManager` service: region = viewport bounds, apply layouts via one
       `updateShapes` batch, z-order (tiled below floating), drag-detach,
       drop swap/insert with quadrant hint, gutter resize overlay
-- [ ] Workspaces: typed localStorage store (`paperos-v2:workspaces`),
-      defaults Desk + Grid, top-bar menu (save/switch/rename/duplicate/delete),
-      camera animation on switch
-- [ ] Controls: Layout menu, Tile all / Untile all / Focus mode, keyboard via
-      `overrides.actions` (Alt+1..5, Alt+Arrows, Alt+Shift+Arrows, Alt+Enter,
-      Alt+F, Alt+N), responsive reflow (debounced), narrow columns collapse
-- [ ] Docs: PLAN.md (M1 status + decisions), README (shortcuts, workspaces),
-      this checklist + Review
-- [ ] Tests: unit (engine, stores), e2e `e2e/wm.spec.ts`
-- [ ] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+- [x] Workspaces: typed localStorage store (`paperos-v2:workspaces`),
+      defaults Desk + Grid, top-bar menu (save/switch/update/rename/duplicate/
+      delete), camera animation on switch
+- [x] Controls: Layout menu, Tile all / Untile all / Show layout / Focus mode,
+      keyboard via `overrides.actions` (Alt+1..5, Alt+Arrows, Alt+Shift+Arrows,
+      Alt+Enter, Alt+F, Alt+N), responsive reflow (debounced), narrow columns
+      collapse
+- [ ] Follow-up: double-click on the title bar to rename (dropped, see Review)
+- [x] Docs: PLAN.md (M1 status + decisions 7-10), README (window manager,
+      shortcuts, workspaces), this checklist + Review
+- [x] Tests: unit (engine, stores), e2e `e2e/wm.spec.ts`
+- [x] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+
+## Review (M1)
+
+### What changed
+
+- `src/wm/` is now a real engine: `types.ts` (leaf / n-ary split / grid
+  tree, presets, workspace), `tree.ts` (immutable tree helpers),
+  `layout-engine.ts` (`layout()`, minimum sizes via `fitSizes`), `presets.ts`
+  (columns, grid, Bento templates filled in reading order, alternating split
+  tree), `operations.ts` (insert as sibling when the parent splits the same
+  way, otherwise wrap; swap; ratio resize clamped to 8%; remove with
+  collapse; `tile()`), `geometry.ts` (drop zones with a 40% center, neighbour
+  search, reading order). Everything is pure and covered by 70 unit tests
+  including invariants (no overlap, inside region, ratios sum to 1) and a
+  200-step randomized operation sequence.
+- `window-manager.ts` holds the live tree/preset/region in tldraw atoms,
+  writes rectangles with one `updateShapes` per change (undo works; gutter
+  drags squash into one entry), sends tiled windows to the back after every
+  apply, prunes deleted windows via a side effect, re-tiles a window that
+  comes back from undo, re-captures the region on viewport resize
+  (debounced 150 ms) and rebuilds flat presets with `narrow` under 720 px.
+- `window-shape.tsx`: `tiled` prop with a props migration (existing canvases
+  load), `canResize` false when tiled, `onTranslate` detaches after 24 page
+  units and feeds the drop hint, `onTranslateEnd` inserts or swaps. Focus
+  ring from `wm.focusedId`, `...` menu, long-press (500 ms) opens the same
+  menu, "Rename..." in the menu edits the title inline.
+- `wm-overlay.tsx` (`InFrontOfTheCanvas`): gutters between split children
+  (min 8 px on screen, cursor col/row-resize) and the drop-zone highlight.
+- Top bar: `Layout` and `Workspaces` dropdowns (`menu.tsx` primitives, no
+  dependency). Workspaces are in `workspace-store.ts` (validated JSON in
+  `localStorage`), live arrangement in `wm-state.ts`.
+- `wm-actions.ts` registers the shortcuts as tldraw actions; the shortcuts
+  dialog gets a "PaperOS" group.
+- e2e: `e2e/wm.spec.ts` (columns geometry, Alt+3/Alt+1, workspace save +
+  reload + switch, drag detach + center swap + edge insert). Both specs pass
+  against the production build.
+
+### Verified in a real browser (Chromium 1440x900 and 390x844)
+
+- Zero console errors on `/` while tiling, switching presets, using every
+  shortcut and dragging. `/legacy` unchanged (only its known Liveblocks 503).
+- Screenshots and a webm of the tiling flow are in the session scratchpad
+  (`v2shots/m1/`).
+
+### Decisions and notes
+
+- Layout region = viewport bounds at apply time (PLAN decision 7). The
+  tree lives outside the tldraw document (decision 8) so shapes only carry
+  `tiled`.
+- tldraw's `Alt+Arrow` (change page) and `Alt+F` (tldraw focus mode) were
+  remapped to `Alt+PageUp/PageDown` and `Alt+Shift+F`.
+- Double-click-to-rename was dropped (per the owner's steer): tldraw's select
+  tool owns double-clicks on shapes, and without a util handler it creates a
+  text shape at the pointer. `WindowShapeUtil.onDoubleClick` now returns a
+  no-op change so double-clicking a window does nothing, and "Rename..." lives
+  in the per-window menu (inline title editor).
+- Rename / delete workspace use `window.prompt` / `window.confirm` on
+  purpose (smallest thing that works; a dialog can replace them later).
+- Not done: stack/tab nodes and a separate "maximize" state (Focus mode zooms
+  the camera instead). Playwright is still not in CI (needs a Chromium
+  download step); run `npm run e2e` locally.
 
 ## Review (M0)
 
