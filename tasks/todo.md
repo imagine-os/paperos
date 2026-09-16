@@ -52,22 +52,107 @@
 
 ## M2 - IDE inside windows
 
-- [ ] Plan written, M1 foundation read (`src/desktop/`, `src/wm/`, docs)
-- [ ] Project model (`src/ide/project/`): paths + tree helpers, backends
-      (memory/IndexedDB, File System Access, GitHub zipball, ZIP upload),
-      project store under `paperos-v2:projects`, sample project on first run
-- [ ] Per-file Yjs documents (`src/ide/docs.ts`): `Y.Doc` per project+path,
-      `y-indexeddb` persistence, dirty tracking, `attachProvider()` hook
-- [ ] Window kinds: `files`, `editor`, `preview`, `console`, `markdown`
-      (icons, default sizes, content refs)
-- [ ] Preview bundler (`src/ide/preview/`): srcdoc from in-memory files,
+- [x] Plan written, M1 foundation read (`src/desktop/`, `src/wm/`, docs)
+- [x] Project model (`src/ide/project/`): paths + tree helpers, backends
+      (memory/IndexedDB, File System Access, GitHub zipball, ZIP upload,
+      dropped folders), project store under `paperos-v2:projects`, sample
+      project on first run, permission re-request for folders
+- [x] Per-file Yjs documents (`src/ide/docs.ts`): `Y.Doc` per project+path,
+      `y-indexeddb` persistence, dirty tracking, save/reload,
+      `attachProvider()` hook
+- [x] Window kinds: `files`, `editor`, `preview`, `console`, `markdown`
+      (icons, default sizes, file refs in `content`)
+- [x] Preview bundler (`src/ide/preview/`): srcdoc from live buffers,
       console bridge, 300 ms debounce, snippet eval
-- [ ] Top bar: Open menu, New window submenu, theme toggle; "IDE" workspace
-      preset applied on first run
-- [ ] Command palette (Ctrl+K) on a command registry (`src/ide/commands.ts`)
-- [ ] Tests: unit (project model, paths, bundler, commands), e2e `e2e/ide.spec.ts`
-- [ ] Docs: README IDE section, PLAN.md M2 status + decisions, this Review
-- [ ] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+- [x] Top bar: Open menu, New window menu, Commands, theme toggle; "IDE"
+      workspace preset applied on first run; drop-to-import
+- [x] Command palette (Ctrl+K) on a command registry (`src/ide/commands.ts`)
+- [x] Tests: unit (project model, paths, tree, imports, docs, bundler,
+      commands, formatter), e2e `e2e/ide.spec.ts`
+- [x] Docs: README IDE section, PLAN.md M2 status + decisions 11-17, this
+      Review
+- [x] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+
+## Review (M2)
+
+### What changed
+
+- `src/ide/project/`: `paths.ts` (normalize/join/resolveRelative),
+  `tree.ts` (build/filter/flatten), `kv.ts` (IndexedDB key-value with a
+  memory twin for tests), `memory-backend.ts`, `fsa-backend.ts` (directory
+  handle, permission query/request, copy-then-delete rename),
+  `sample.ts`, `zip.ts` (JSZip on demand, text-only, common root stripped),
+  `github.ts` (URL parsing, zipball fetch, explicit CORS/rate-limit errors),
+  `store.ts` (`ProjectStore`: metas + active id in IndexedDB, sessions with
+  reactive file lists, mutations that bump a `changes` signal).
+- `src/ide/docs.ts`: `getFileDoc(project, path)` returns a shared
+  `FileDoc` (Y.Doc, Y.Text, `ready`, `dirty`, `error`, `save`, `reload`);
+  `readLiveText()` gives the buffer or the backend; `docsChanged` ticks on
+  every edit for the preview and markdown windows.
+- `src/ide/preview/bundle.ts` + `CONSOLE_BRIDGE`; `src/ide/commands.ts`
+  (registry, sources, `fuzzyScore`, `searchCommands`); `src/ide/theme.ts`;
+  `src/ide/editor/create-editor.ts` (lazy CodeMirror factory, themes in a
+  Compartment) and `format.ts` (Prettier standalone by extension).
+- `src/desktop/kinds/`: `files.tsx`, `editor.tsx`, `preview.tsx`,
+  `console.tsx`, `markdown.tsx`, `file-picker.tsx`. `window-kinds.tsx`
+  gained `icon`, `defaultSize`, `hidden`. `open-file.ts` implements the
+  reuse/insert/cascade rule. `project-actions.ts` holds the Open actions
+  and drop import. `ide-workspace.ts` builds the IDE split tree through the
+  new `WindowManager.applyTree()`; "IDE" is a default workspace
+  (`ws_ide`). `ide-commands.ts` fills the registry; `command-palette.tsx`
+  renders it (Ctrl+K is captured at the document level so it works inside
+  CodeMirror; the tldraw action `$k` lists it in the shortcuts dialog).
+- Top bar: Open, New window (per kind), Commands, theme toggle; tldraw's
+  color scheme follows `resolvedTheme`. `desktop.tsx` runs the first-run
+  IDE setup, drop handlers and a Ctrl+S default-prevent.
+- Dependencies added: `y-indexeddb`, `jszip`, `marked`, `dompurify`,
+  `@codemirror/language-data`, `@codemirror/theme-one-dark`, the
+  `@codemirror/*` packages the factory imports directly; `prettier` moved
+  to dependencies (standalone + plugins are dynamic imports).
+- e2e: `e2e/ide.spec.ts` (6 tests), `e2e/helpers.ts` (`skipFirstRun`,
+  `newNoteWindow`); `smoke.spec.ts` and `wm.spec.ts` go through the New
+  window menu and skip the first-run IDE setup.
+
+### Verified in a real browser (Chromium 1440x900, production build)
+
+- Zero console errors on `/` through: first run, editing index.html
+  (preview updates live, dirty dot, Ctrl+S saves, Save disabled), console
+  snippet result, palette (search + open file by name), Markdown window,
+  dark theme, file context menu, reload (arrangement, edited buffer and
+  preview all come back). `/legacy` renders with only its known Liveblocks 503.
+- Screenshots and a webm of edit-to-preview are in the session scratchpad
+  (`v2shots/m2/`). All 12 Playwright tests pass; `npm run check` and
+  `npm run build` pass. Route `/` first-load JS stays at 106 kB; editors,
+  Prettier, JSZip, marked/DOMPurify and y-indexeddb load on demand.
+
+### Decisions and notes
+
+- Sandpack was replaced by an in-house srcdoc bundler (PLAN decision 13):
+  no CDN, works offline, no vendor.
+- The preview reflects unsaved buffers, not just saved files: the spec
+  asked for refresh on save, but live buffers make edit-to-preview
+  immediate and the 300 ms debounce keeps it cheap. Save still matters for
+  the backing store (disk for folder projects).
+- One file per editor window, per the spec's "keep it simple"; the title
+  carries the path and the dirty dot. Opening a file reuses the window that
+  shows it, then an empty editor, then creates one next to Files.
+- Files are text only in M2; binaries are skipped on import with a count
+  in the console. SVG assets are inlined as data URIs.
+- Folder projects: renames copy then delete (the File System Access API
+  has no portable rename). Permission must be re-granted after a reload
+  from a click; the Files window shows the button.
+- `window.prompt`/`confirm` are used for names and confirmations, matching
+  M1.
+- `y-indexeddb` creates one IndexedDB database per opened file. Fine for a
+  project's worth of files; a single-database persistence can replace it
+  behind `docs.ts` later.
+- Known: opening a file while the "IDE" split tree is active inserts a new
+  editor as a sibling of Files, so several opened files squeeze the row;
+  close editors or float them. Tabs are a follow-up.
+- Known: tldraw's local persistence is throttled, so reloading within
+  ~600 ms of creating a window loses it (pre-existing, PLAN decision 17).
+- Vercel's deployment status on `main` continues to show the known
+  Hobby-plan failure; CI is the GitHub Actions workflow.
 
 ## Review (M1)
 

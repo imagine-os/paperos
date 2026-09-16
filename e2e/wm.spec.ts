@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { newNoteWindow, skipFirstRun } from "./helpers";
 
 async function boxes(page: Page) {
   const handles = await page.locator(".pos-window").all();
@@ -24,7 +25,7 @@ function overlap(
 
 async function openWindows(page: Page, count: number) {
   for (let i = 0; i < count; i++) {
-    await page.getByRole("button", { name: "New window" }).click();
+    await newNoteWindow(page);
   }
   await expect(page.getByTestId("window")).toHaveCount(count);
 }
@@ -32,6 +33,7 @@ async function openWindows(page: Page, count: number) {
 test("Columns tiles three windows side by side across the viewport", async ({
   page,
 }) => {
+  await skipFirstRun(page);
   await page.goto("/");
   await openWindows(page, 3);
 
@@ -66,6 +68,7 @@ test("Columns tiles three windows side by side across the viewport", async ({
 });
 
 test("Alt+3 applies Grid and Alt+1 frees the windows", async ({ page }) => {
+  await skipFirstRun(page);
   await page.goto("/");
   await openWindows(page, 4);
   const canvas = (await page.locator(".pos-canvas").boundingBox())!;
@@ -82,6 +85,7 @@ test("Alt+3 applies Grid and Alt+1 frees the windows", async ({ page }) => {
 test("workspaces are saved, survive a reload and can be switched to", async ({
   page,
 }) => {
+  await skipFirstRun(page);
   await page.goto("/");
   await openWindows(page, 3);
   await page.getByTestId("layout-menu").click();
@@ -98,10 +102,15 @@ test("workspaces are saved, survive a reload and can be switched to", async ({
   await page.getByTestId("layout-free").click();
   await expect(page.locator('.pos-window[data-tiled="true"]')).toHaveCount(0);
 
+  // tldraw persists to IndexedDB on a throttle; give it a moment before reloading.
+  await page.waitForTimeout(800);
   await page.reload();
   await expect(page.getByTestId("window")).toHaveCount(3);
+  // The real menu (with the restored active name) replaces a disabled placeholder once the editor mounts.
+  await expect(page.getByTestId("workspaces-menu")).toContainText("Review");
   await page.getByTestId("workspaces-menu").click();
   const menu = page.getByTestId("workspaces-menu-menu");
+  await expect(menu).toBeVisible();
   await expect(menu).toContainText("Desk");
   await expect(menu).toContainText("Grid");
   await menu.getByRole("menuitemradio", { name: "Review" }).click();
@@ -112,6 +121,7 @@ test("workspaces are saved, survive a reload and can be switched to", async ({
 test("drag detaches a tiled window; drop swaps on center and inserts on edges", async ({
   page,
 }) => {
+  await skipFirstRun(page);
   await page.goto("/");
   await openWindows(page, 3);
   await page.getByTestId("layout-menu").click();

@@ -61,7 +61,6 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.25",
     "eslint-config-prettier": "^10.1.8",
-    "fake-indexeddb": "^6.2.5",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
   }

@@ -36,20 +36,45 @@ API later makes it programmable.
 - Not done, deferred: stack/tab nodes (the engine's types allow adding one),
   maximize as a distinct state (Focus mode covers the camera side of it).
 
-### M2 - IDE inside windows
+### M2 - IDE inside windows (done)
 
-- File tree window (File System Access API, with a fallback in-browser
-  workspace).
-- Editor window: CodeMirror 6, one Yjs document per file.
-- Preview window: Sandpack.
-- Console window for output and errors.
-- Windows link to each other (file tree opens editor, editor updates preview).
+- Project model in `src/ide/project/` (pure TypeScript, unit tested):
+  normalized paths, tree building and filtering, a `ProjectBackend`
+  interface with two implementations (memory mirrored to IndexedDB, File
+  System Access directory handle), ZIP import (JSZip, text files), GitHub
+  public-repo import (zipball fetched client-side, friendly errors, ZIP as
+  the fallback), a sample HTML/CSS/JS site with a README created on first
+  run, and a `ProjectStore` (`paperos-v2:projects`) with the active project,
+  sessions, permission re-request for folders and file mutations.
+- One `Y.Doc` per file (`src/ide/docs.ts`), persisted with `y-indexeddb`,
+  seeded from the backend, dirty tracking, save, reload,
+  `attachProvider()` hook.
+- Window kinds `files`, `editor` (CodeMirror 6 + y-codemirror.next,
+  language-data, light/One Dark themes, Ctrl+S, Prettier standalone on
+  demand), `preview` (srcdoc bundler, sandboxed iframe, 300 ms debounce,
+  console bridge), `console` (levels, clear, snippet eval in the preview),
+  `markdown` (marked + DOMPurify). Kinds carry an icon and a default size.
+- Windows link to each other: Files opens editors next to itself (reusing a
+  window for the same file), editors update the preview, the preview feeds
+  the console, Markdown's Edit opens an editor.
+- Top bar: Open menu, New window menu, Commands, theme toggle. "IDE"
+  default workspace built on first run. Folders/ZIPs/files dropped on the
+  canvas become a project.
+- Command palette (`Ctrl+K`) over a command registry (`src/ide/commands.ts`)
+  with static commands and dynamic sources (files, workspaces, projects).
+- Tests: 117 unit tests (project model, paths, tree, imports, documents,
+  bundler, commands, formatter) and `e2e/ide.spec.ts` (first run, open
+  file, edit-to-preview + save + reload, console, palette, markdown +
+  context menu).
+- Not done, deferred: binary files in projects (images other than SVG),
+  tabs inside one editor window, Sandpack (see decision 13), a real
+  awareness/cursor layer (M4).
 
 ### M3 - Programmable
 
 - Canvas API: create/move/resize/close windows, run layouts, read the
-  workspace, subscribe to events.
-- Command palette.
+  workspace, subscribe to events. Expose the M2 command registry through it.
+- Command palette: done in M2 (`Ctrl+K`); M3 adds API-defined commands.
 - Script console that talks to the Canvas API.
 - MCP server exposing the same API to agents.
 
@@ -57,7 +82,9 @@ API later makes it programmable.
 
 - Multiplayer canvas (tldraw sync or Liveblocks; decide then).
 - Presence: cursors, who is in which window.
-- Shared Yjs documents for files.
+- Shared Yjs documents for files: attach a provider via
+  `attachProvider()` in `src/ide/docs.ts`; pass its awareness to
+  `yCollab` for remote cursors.
 
 ### M5 - Polish and plugins
 
@@ -108,6 +135,40 @@ API later makes it programmable.
     join or leave; a split tree is the user's structure and only receives
     targeted insert/remove/ratio changes. Inserting with a side into a flat
     preset turns it into a split tree.
+
+11. **Projects are a backend interface, files are strings.** `ProjectBackend`
+    (list/read/write/mkdir/rename/remove) has a memory implementation
+    mirrored to IndexedDB and a File System Access one; ZIP, GitHub, the
+    sample and dropped folders all feed the memory backend. M2 keeps file
+    content as text; binaries are skipped on import and can be added as a
+    typed entry later without changing the interface.
+12. **Per-file Yjs documents persist locally, providers attach later.** Each
+    file's `Y.Doc` is keyed `paperos-v2:doc:<project>:<path>` and saved by
+    `y-indexeddb`, so the buffer (including unsaved edits) survives reloads.
+    "Saved" compares the buffer with the backend content. A single hook,
+    `attachProvider(doc, key)`, is where M4 plugs a sync provider in.
+13. **Own srcdoc bundler instead of Sandpack.** Sandpack needs its bundler
+    served from a CDN or self-hosted; PaperOS must run offline with no
+    vendor. `bundle()` inlines stylesheets, `@import`, `url()` SVG assets and
+    scripts into one `srcdoc`, runs it in a sandboxed iframe (no
+    same-origin), and a console bridge forwards `console.*`, errors and
+    snippet results over `postMessage`. It reads the live editor buffers, so
+    the preview reflects unsaved edits (300 ms debounce). Module graphs and
+    npm dependencies are out of scope until a bundler is needed.
+14. **The window `content` prop carries a file reference.** Editor and
+    Markdown windows store `{"project","path"}` as JSON in `content`; a
+    Preview stores an entry-path override. No new shape props or types were
+    needed, and windows can be duplicated, saved in workspaces and reopened
+    after a reload with the same file.
+15. **Commands are a registry.** `src/ide/commands.ts` holds static commands
+    and dynamic sources (files, workspaces, projects) with fuzzy search. The
+    palette is one client; M3's Canvas API and MCP server are the next ones.
+16. **Theme is `data-theme` on `<html>`.** Tokens default to the system
+    preference and are forced by `data-theme="light|dark"`; tldraw's color
+    scheme and the CodeMirror theme follow the same signal.
+17. **Reload right after a change can lose it.** tldraw's local persistence
+    is throttled; e2e tests wait ~800 ms before reloading. The IDE's own
+    stores (projects, documents) write immediately.
 
 ## Notes
 
