@@ -1,5 +1,35 @@
 @import url("@liveblocks/react-ui/styles.css");
 
-html, body {
-  margin: 0;
+.legacy-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+}
+
+.legacy-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  border-bottom: 1px solid var(--pos-border);
+}
+
+.legacy-banner a {
+  color: var(--pos-accent);
+  text-decoration: none;
+}
+
+.legacy-banner a:hover {
+  text-decoration: underline;
+}
+
+.legacy-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }

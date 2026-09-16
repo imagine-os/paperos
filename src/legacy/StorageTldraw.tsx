@@ -20,6 +20,7 @@ import {
   useTools,
 } from "tldraw";
 import "tldraw/tldraw.css";
+import { tldrawAssetUrls } from "@/lib/tldraw-assets";
 import { ReactComponent } from "./ReactComponent";
 // import { useStorageStore } from "./useStorageStore";
 import { CodeEditorTool } from "./code-editor/code-editor.tool";
@@ -108,14 +109,14 @@ export function StorageTldraw() {
   const customTools = [CodeEditorTool, ProjectBrowserTool];
 
   return (
-    <div style={{ height: "100vh", width: "100vw" }}>
+    <div style={{ height: "100%", width: "100%" }}>
       <Tldraw
         store={store}
         // embeds={embeds}
         tools={customTools}
         shapeUtils={customShapeUtils}
         overrides={uiOverrides}
-        assetUrls={customAssetUrls}
+        assetUrls={tldrawAssetUrls}
         components={{
           // TEMPORARY: Removed Avatars component for offline mode
           ...components,

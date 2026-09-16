@@ -79,7 +79,7 @@ export class projectBrowserShape extends BaseBoxShapeUtil<IProjectBrowserShape> 
           const content = await file.text();
 
           // Create a new code editor shape with smart positioning
-          const currentShape = editor.getShape(shape.id);
+          const currentShape = editor.getShape<IProjectBrowserShape>(shape.id);
           if (currentShape) {
             // Get all existing code editor shapes
             const allShapes = editor.getCurrentPageShapes();

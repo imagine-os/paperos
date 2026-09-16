@@ -1,15 +1,22 @@
 import { Liveblocks } from "@liveblocks/node";
-import { NextRequest } from "next/server";
-import { getRandomUser } from "@/database";
+import { getRandomUser } from "@/legacy/database";
 
 // Authenticating your Liveblocks application
 // https://liveblocks.io/docs/authentication
+//
+// Legacy (2025 prototype) only. LIVEBLOCKS_SECRET_KEY is optional: without it
+// this route answers 503 and the legacy client stays disconnected.
 
-const liveblocks = new Liveblocks({
-  secret: process.env.LIVEBLOCKS_SECRET_KEY as string,
-});
+export async function POST() {
+  const secret = process.env.LIVEBLOCKS_SECRET_KEY;
+  if (!secret) {
+    return new Response("LIVEBLOCKS_SECRET_KEY is not configured", {
+      status: 503,
+    });
+  }
 
-export async function POST(request: NextRequest) {
+  const liveblocks = new Liveblocks({ secret });
+
   // Get the current user's unique id and info from your database
   const user = getRandomUser();
 

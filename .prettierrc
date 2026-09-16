@@ -8,5 +8,5 @@
   "bracketSpacing": true,
   "bracketSameLine": false,
   "trailingComma": "es5",
-  "proseWrap": "always"
+  "proseWrap": "preserve"
 }

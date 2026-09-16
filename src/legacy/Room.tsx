@@ -4,7 +4,7 @@ import { ClientSideSuspense, RoomProvider } from "@liveblocks/react/suspense";
 import { useSearchParams } from "next/navigation";
 import { ReactNode, useMemo } from "react";
 import { LiveMap } from "@liveblocks/core";
-import { Loading } from "@/components/Loading";
+import { Loading } from "@/legacy/Loading";
 
 export function Room({ children }: { children: ReactNode }) {
   const roomId = useExampleRoomId("liveblocks:1");
