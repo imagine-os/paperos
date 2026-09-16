@@ -141,11 +141,25 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
     return <WindowFrame shape={shape} />;
   }
 
-  /** Export (and `paperos.canvas.screenshot()`): a frame with the title bar; bodies are live HTML and are not rendered. */
+  /**
+   * Export (and `paperos.canvas.screenshot()`): a frame with the title bar.
+   * Bodies are live HTML and are not rendered, except plain-text kinds (note,
+   * script) whose first lines are drawn.
+   */
   override toSvg(shape: WindowShape) {
-    const { w, h, title, kind, tiled } = shape.props;
+    const { w, h, title, kind, tiled, content } = shape.props;
     const r = tiled ? 4 : 10;
     const label = `${getWindowKind(kind)?.icon ?? ""} ${title}`.trim();
+    const textual = kind === "note" || kind === "script";
+    const lineHeight = 18;
+    const lines = textual
+      ? content
+          .split("\n")
+          .slice(0, Math.max(0, Math.floor((h - 52) / lineHeight)))
+          .map((l) =>
+            l.length > w / 7 ? l.slice(0, Math.max(3, w / 7 - 1)) + "…" : l
+          )
+      : [];
     return (
       <g>
         <rect
@@ -173,16 +187,36 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
             ? label.slice(0, Math.max(3, w / 8 - 1)) + "…"
             : label}
         </text>
-        <text
-          x={w / 2}
-          y={h / 2 + 4}
-          textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
-          fontSize="12"
-          fill="#8a8a9a"
-        >
-          {kind}
-        </text>
+        {textual ? (
+          lines.map((line, i) => (
+            <text
+              key={i}
+              x="12"
+              y={52 + i * lineHeight}
+              fontFamily={
+                kind === "script"
+                  ? "ui-monospace, monospace"
+                  : "system-ui, sans-serif"
+              }
+              fontSize="12"
+              fill="#232333"
+              xmlSpace="preserve"
+            >
+              {line}
+            </text>
+          ))
+        ) : (
+          <text
+            x={w / 2}
+            y={h / 2 + 4}
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+            fontSize="12"
+            fill="#8a8a9a"
+          >
+            {kind}
+          </text>
+        )}
       </g>
     );
   }

@@ -1,0 +1,29 @@
+{
+  "name": "paperos-mcp",
+  "version": "0.1.0",
+  "description": "MCP server and local WebSocket bridge for the PaperOS Canvas API.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "bin": {
+    "paperos-mcp": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "start": "node dist/index.js",
+    "demo": "node scripts/demo.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3"
+  }
+}

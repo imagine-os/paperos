@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { useValue, type Editor } from "tldraw";
+import { getBridgeClient } from "@/api/bridge-client";
 import { togglePalette } from "@/ide/palette-state";
 import { resolvedTheme, toggleTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
@@ -70,6 +71,7 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         >
           Commands <span className="pos-menu__kbd">Ctrl+K</span>
         </button>
+        <BridgeToggle editor={editor} />
         <button
           type="button"
           className="pos-button pos-topbar__icon-button"
@@ -97,6 +99,54 @@ export function TopBar({ editor }: { editor: Editor | null }) {
     </header>
   );
 }
+
+const BRIDGE_LABEL = {
+  off: "Agent bridge: off",
+  waiting: "Agent bridge: listening",
+  connected: "Agent bridge: connected",
+} as const;
+
+/** Turns the connection to the local MCP bridge on and off; the dot shows its state. */
+function BridgeToggle({ editor }: { editor: Editor | null }) {
+  const [, force] = useState(0);
+  const client = getBridgeClient();
+  useEffect(() => {
+    if (client || !editor) return;
+    const t = setInterval(() => getBridgeClient() && force((n) => n + 1), 200);
+    return () => clearInterval(t);
+  }, [client, editor]);
+  const status = useSignal(client?.status ?? OFF_STATUS);
+  return (
+    <button
+      type="button"
+      className="pos-button pos-topbar__bridge"
+      disabled={!client}
+      data-testid="bridge-toggle"
+      data-status={status}
+      title={
+        status === "off"
+          ? "Connect this tab to the local MCP bridge (npm run mcp) so agents can drive the canvas"
+          : status === "waiting"
+            ? `Waiting for the bridge at ${client?.url}. Start it with npm run mcp. Click to turn off.`
+            : "An MCP bridge is connected. Click to disconnect."
+      }
+      onClick={() => client?.toggle()}
+    >
+      <span
+        className={`pos-bridge-dot pos-bridge-dot--${status}`}
+        aria-hidden="true"
+      />
+      {BRIDGE_LABEL[status]}
+    </button>
+  );
+}
+
+const OFF_STATUS = {
+  get: () => "off" as const,
+  set() {},
+  update() {},
+  subscribe: () => () => {},
+};
 
 function OpenMenu() {
   return (

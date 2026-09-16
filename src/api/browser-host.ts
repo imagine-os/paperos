@@ -257,14 +257,15 @@ export function createBrowserHost(editor: Editor): CanvasHost {
         const c = editor.getCamera();
         return { x: c.x, y: c.y, z: c.z };
       },
-      setCamera: (c) => editor.setCamera(c, { animation: { duration: 200 } }),
+      // No animation: the returned camera must be the final one.
+      setCamera: (c) => editor.setCamera(c),
       zoomTo(ids) {
         const bounds = ids
           .map((id) => editor.getShapePageBounds(sid(id)))
           .filter((b) => b !== undefined);
         if (bounds.length === 0) return;
         const union = bounds.reduce((a, b) => a.clone().union(b));
-        editor.zoomToBounds(union, { inset: 32, animation: { duration: 260 } });
+        editor.zoomToBounds(union, { inset: 32 });
       },
       async screenshot(ids, scale) {
         const { blob, width, height } = await editor.toImage(ids.map(sid), {

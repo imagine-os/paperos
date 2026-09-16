@@ -26,6 +26,7 @@ import { getProjectStore } from "@/ide/project";
 import { initTheme, resolvedTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
 import { getWindowManager } from "@/wm/window-manager";
+import { installBridgeClient } from "@/api/bridge-client";
 import { installCanvasApi } from "@/api/install";
 import { installPlugins } from "@/plugins/install";
 import { CommandPalette } from "./command-palette";
@@ -123,6 +124,7 @@ export function Desktop() {
     const off = registerIdeCommands(editor);
     const installed = installCanvasApi(editor);
     const offPlugins = installPlugins(installed.api, installed.events);
+    const bridge = installBridgeClient(installed.api);
     // First run: open the sample project in the IDE arrangement.
     if (isFirstRun()) {
       markInitialized();
@@ -132,6 +134,7 @@ export function Desktop() {
       if (!hasWindows) void applyIdeWorkspace(editor);
     }
     return () => {
+      bridge.stop();
       offPlugins();
       installed.dispose();
       off();

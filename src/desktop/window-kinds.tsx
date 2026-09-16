@@ -11,6 +11,7 @@ import { ConsoleWindow } from "./kinds/console";
 import { MarkdownWindow } from "./kinds/markdown";
 import { ScriptWindow } from "./kinds/script";
 import { PluginsWindow } from "./kinds/plugins";
+import { AgentWindow } from "./kinds/agent";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -116,6 +117,15 @@ registerWindowKind({
   icon: "\u{1F9E9}",
   defaultSize: { w: 460, h: 480 },
   Component: PluginsWindow,
+});
+
+registerWindowKind({
+  id: "agent",
+  label: "Agent",
+  defaultTitle: "Agent",
+  icon: "\u{1F916}",
+  defaultSize: { w: 460, h: 400 },
+  Component: AgentWindow,
 });
 
 registerWindowKind({
