@@ -1,95 +1,105 @@
-<p align="center">
-  <a href="https://liveblocks.io#gh-light-mode-only">
-    <img src="https://raw.githubusercontent.com/liveblocks/liveblocks/main/.github/assets/header-light.svg" alt="Liveblocks" />
-  </a>
-  <a href="https://liveblocks.io#gh-dark-mode-only">
-    <img src="https://raw.githubusercontent.com/liveblocks/liveblocks/main/.github/assets/header-dark.svg" alt="Liveblocks" />
-  </a>
-</p>
+# PaperOS
 
-# Tldraw Whiteboard (Storage)
+PaperOS is a zoomable canvas that behaves like an OS desktop. Windows are the
+one primitive: everything you open lives in a window you can move, resize and
+arrange. A tiling engine arranges windows into layouts, the windows hold IDE
+tools (file tree, editors, previews, consoles), and a Canvas API later makes
+the whole desktop programmable.
 
-<p>
-  <a href="https://liveblocks.io/examples/tldraw-whiteboard/nextjs-tldraw-whiteboard-storage/preview">
-    <img src="https://img.shields.io/badge/live%20preview-message?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTE2Ljg0OSA0Ljc1SDBsNC44NDggNS4wNzV2Ny4wMDhsMTItMTIuMDgzWk03LjE1IDE5LjI1SDI0bC00Ljg0OS01LjA3NVY3LjE2N2wtMTIgMTIuMDgzWiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==&color=333" alt="Live Preview" /> 
-  </a>
-  <a href="https://codesandbox.io/s/github/liveblocks/liveblocks/tree/main/examples/nextjs-tldraw-whiteboard-storage">
-    <img src="https://img.shields.io/badge/open%20in%20codesandbox-message?style=flat&logo=codesandbox&color=333&logoColor=fff" alt="Open in CodeSandbox" />
-  </a>
-  <img src="https://img.shields.io/badge/react-message?style=flat&logo=react&color=0bd&logoColor=fff" alt="React" />
-  <img src="https://img.shields.io/badge/next.js-message?style=flat&logo=next.js&color=07f&logoColor=fff" alt="Next.js" />
-</p>
+**Status:** v2 preview, milestone M0 (clean start). The desktop renders, you
+can open, move, resize, edit and close windows, and the canvas survives a
+refresh. Everything else is on the roadmap in [`docs/PLAN.md`](docs/PLAN.md).
 
-This example shows how to build a collaborative [tldraw](https://tldraw.dev/)
-canvas with [Liveblocks](https://liveblocks.io) Storage, and
-[Next.js](https://nextjs.org/).
+The 2025 prototype (a tldraw whiteboard with a code editor and a project
+browser) still runs at `/legacy`.
 
-<img src="https://raw.githubusercontent.com/liveblocks/liveblocks/main/.github/assets/examples/tldraw-whiteboard.png" width="536" alt="tldraw collaborative canvas" />
+## Run it
 
-## Getting started
-
-Run the following command to try this example locally:
+Requirements: Node 20 or newer, npm.
 
 ```bash
-npx create-liveblocks-app@latest --example nextjs-tldraw-whiteboard-storage --api-key
+npm ci          # install exactly what package-lock.json says
+npm run dev     # http://localhost:3000
 ```
 
-This will download the example and ask permission to open your browser, enabling
-you to automatically get your API key from your
-[liveblocks.io](https://liveblocks.io) account.
+No accounts, keys or paid services are needed. The canvas shows the tldraw
+"made with tldraw" watermark, which is allowed under the tldraw free tier.
 
-### Manual setup
+Other commands:
 
-<details><summary>Read more</summary>
+| Command          | What it does                                           |
+| ---------------- | ------------------------------------------------------ |
+| `npm run check`  | Typecheck, lint and unit tests. Run before every push. |
+| `npm run build`  | Production build (what Vercel runs).                   |
+| `npm start`      | Serve the production build.                            |
+| `npm test`       | Unit tests (Vitest).                                   |
+| `npm run e2e`    | Browser smoke test (Playwright, needs Chromium).       |
+| `npm run format` | Prettier.                                              |
 
-<p></p>
+For `npm run e2e`, Playwright needs a Chromium. Either run
+`npx playwright install chromium` once, or point
+`PLAYWRIGHT_BROWSERS_PATH` at an existing install.
 
-Alternatively, you can set up your project manually:
+## Environment variables
 
-- Install all dependencies with `npm install`
-- Create an account on [liveblocks.io](https://liveblocks.io/dashboard)
-- Copy your **secret** key from the
-  [dashboard](https://liveblocks.io/dashboard/apikeys)
-- Create an `.env.local` file and add your **secret** key as the
-  `LIVEBLOCKS_SECRET_KEY` environment variable
-- Run `npm run dev` and go to [http://localhost:3000](http://localhost:3000)
+All optional. Copy `.env.example` to `.env.local` if you want to set any.
 
-</details>
+| Variable                         | Used by   | Effect                                                         |
+| -------------------------------- | --------- | -------------------------------------------------------------- |
+| `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` | `/`       | tldraw SDK license key. Removes the watermark. No code change. |
+| `LIVEBLOCKS_SECRET_KEY`          | `/legacy` | Lets the 2025 prototype's collaboration client connect.        |
 
-### Deploy on Vercel
+## Routes
 
-<details><summary>Read more</summary>
+| Route     | What                                                          |
+| --------- | ------------------------------------------------------------- |
+| `/`       | PaperOS v2 desktop. Top bar, persistent canvas, Window shape. |
+| `/legacy` | The 2025 prototype, frozen. Has a banner linking back to `/`. |
 
-<p></p>
+Both pages link to each other.
 
-To both deploy on [Vercel](https://vercel.com), and run the example locally, use
-the following command:
+## Architecture
 
-```bash
-npx create-liveblocks-app@latest --example nextjs-tldraw-whiteboard-storage --vercel
+```
+src/
+  app/            Next.js App Router: routes, root layout, global tokens
+    page.tsx      /        -> the v2 desktop
+    legacy/       /legacy  -> the frozen prototype (own layout + providers)
+    api/liveblocks-auth/   legacy-only auth route (optional key)
+  desktop/        The v2 desktop
+    desktop.tsx        tldraw canvas + top bar + toolbar overrides
+    window-shape.tsx   the Window shape (title bar, close, content, min size)
+    window-tool.ts     toolbar tool: press "w", click to open a window
+    window-kinds.tsx   registry of what a window can show (note, about, ...)
+    kinds/             one file per kind
+    create-window.ts   create a window with cascading placement
+    cascade.ts         pure placement helper (unit tested)
+  wm/             Window manager: layout types and the engine placeholder (M1)
+  lib/            Shared helpers: env, bundled tldraw assets
+  legacy/         The 2025 prototype, moved verbatim (see src/legacy/README.md)
+e2e/              Playwright smoke test
+docs/PLAN.md      Milestones and architecture decisions
+tasks/todo.md     Working checklist and review notes
 ```
 
-This will download the example and ask permission to open your browser, enabling
-you to deploy to Vercel.
+Design tokens live in `src/app/globals.css` as CSS variables (`--pos-*`),
+with a dark set under `prefers-color-scheme: dark`. The tldraw canvas follows
+the same system preference.
 
-</details>
+tldraw's icons, fonts and translations are bundled from `@tldraw/assets`
+(see `src/lib/tldraw-assets.ts` and `next.config.ts`), so the app does not
+load anything from `cdn.tldraw.com`.
 
-### Develop on CodeSandbox
+## Upgrading later
 
-<details><summary>Read more</summary>
-
-<p></p>
-
-After forking
-[this example](https://codesandbox.io/s/github/liveblocks/liveblocks/tree/main/examples/nextjs-tldraw-whiteboard-storage)
-on CodeSandbox, create the `LIVEBLOCKS_SECRET_KEY` environment variable as a
-[secret](https://codesandbox.io/docs/secrets).
-
-</details>
-
-## License
-
-The `tldraw` library is provided under the
-[tldraw license](https://github.com/tldraw/tldraw/blob/main/LICENSE.md) which
-allows commercial and non-commercial use. To purchase a business license and
-remove the watermark, contact [sales@tldraw.com](mailto:sales@tldraw.com).
+- **Remove the tldraw watermark:** buy a tldraw license, set
+  `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` in your environment (Vercel: Project
+  Settings -> Environment Variables) and redeploy. `src/lib/env.ts` passes it
+  to `<Tldraw licenseKey>`.
+- **Real-time collaboration (M4):** the v2 canvas uses tldraw's local
+  persistence (`persistenceKey="paperos-v2"`, IndexedDB). Swapping in a sync
+  backend means replacing that one prop with a store from a sync provider
+  (tldraw sync, Liveblocks, Yjs over WebSocket, ...) in
+  `src/desktop/desktop.tsx`. No other code depends on where the store lives.
+- **tldraw version:** one `tldraw` version serves both `/` and `/legacy`;
+  bump `tldraw` and `@tldraw/assets` together in `package.json`.
