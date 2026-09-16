@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -19,9 +19,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  height: var(--pos-topbar-h);
-  padding: 0 14px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  min-height: var(--pos-topbar-h);
+  padding: 6px 14px;
   background: var(--pos-surface);
   border-bottom: 1px solid var(--pos-border);
   flex: none;
@@ -52,7 +53,20 @@
 .pos-topbar__actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Narrow screens: keep the window-manager controls, drop the extras */
+@media (max-width: 720px) {
+  .pos-topbar__link,
+  .pos-topbar__about {
+    display: none;
+  }
+
+  .pos-button {
+    padding: 6px 9px;
+  }
 }
 
 .pos-topbar__link {
@@ -119,6 +133,7 @@
   border: 1px solid var(--pos-border);
   box-shadow: var(--pos-shadow);
   font-family: var(--pos-font);
+  position: relative;
 }
 
 .pos-window__titlebar {
@@ -141,19 +156,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.pos-window__close {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--pos-text-muted);
-  cursor: pointer;
-  pointer-events: all;
 }
 
 .pos-window__close:hover {
@@ -223,4 +225,225 @@
 
 .pos-about__muted {
   color: var(--pos-text-muted);
+}
+
+/* Tiled windows sit flush in the layout: no shadow, tighter corners */
+.pos-window[data-tiled="true"] {
+  box-shadow: none;
+  border-radius: 4px;
+}
+
+/* Focus ring */
+.pos-window[data-focused="true"] {
+  outline: 2px solid var(--pos-accent);
+  outline-offset: -1px;
+}
+
+.pos-window__frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.pos-window__controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.pos-window__button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.pos-window__button:hover {
+  background: var(--pos-border);
+  color: var(--pos-text);
+}
+
+.pos-window__title-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: 5px;
+  border: 1px solid var(--pos-accent);
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  outline: none;
+  pointer-events: all;
+}
+
+/* Menus (top bar dropdowns and the per-window menu) */
+.pos-menu {
+  position: absolute;
+  z-index: 40;
+  min-width: 180px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--pos-border);
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  box-shadow: var(--pos-shadow);
+  font-family: var(--pos-font);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: all;
+}
+
+.pos-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pos-menu__item:hover,
+.pos-menu__item:focus-visible {
+  background: var(--pos-surface-2);
+  outline: none;
+}
+
+.pos-menu__item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pos-menu__item--danger:hover {
+  background: color-mix(in srgb, var(--pos-danger) 12%, transparent);
+  color: var(--pos-danger);
+}
+
+.pos-menu__item[aria-checked="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.pos-menu__check {
+  width: 14px;
+  flex: none;
+  color: var(--pos-accent);
+}
+
+.pos-menu__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.pos-menu__kbd {
+  font-family: var(--pos-mono);
+  font-size: 11px;
+  color: var(--pos-text-muted);
+}
+
+.pos-menu__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--pos-border);
+}
+
+.pos-menu__heading {
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pos-text-muted);
+}
+
+.pos-window__menu {
+  top: 36px;
+  right: 6px;
+}
+
+/* Top bar dropdown */
+.pos-dropdown {
+  position: relative;
+}
+
+.pos-dropdown > .pos-menu {
+  top: calc(100% + 6px);
+  left: 0;
+}
+
+.pos-dropdown__button {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pos-dropdown__button[aria-expanded="true"] {
+  background: var(--pos-surface-2);
+}
+
+/* Window manager overlay (screen space, in front of the canvas) */
+.pos-wm-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--layer-canvas-overlays, 500);
+}
+
+.pos-gutter {
+  position: absolute;
+  pointer-events: all;
+  touch-action: none;
+  border-radius: 3px;
+  transition: background-color 120ms;
+}
+
+.pos-gutter[data-direction="horizontal"] {
+  cursor: col-resize;
+}
+
+.pos-gutter[data-direction="vertical"] {
+  cursor: row-resize;
+}
+
+.pos-gutter:hover,
+.pos-gutter:active {
+  background: color-mix(in srgb, var(--pos-accent) 45%, transparent);
+}
+
+.pos-drop-hint {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 6px;
+  border: 2px solid var(--pos-accent);
+  background: color-mix(in srgb, var(--pos-accent) 22%, transparent);
+  transition:
+    left 90ms,
+    top 90ms,
+    width 90ms,
+    height 90ms;
 }

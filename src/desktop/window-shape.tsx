@@ -1,7 +1,10 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseBoxShapeUtil,
+  createShapePropsMigrationIds,
+  createShapePropsMigrationSequence,
   HTMLContainer,
   RecordProps,
   resizeBox,
@@ -9,9 +12,14 @@ import {
   T,
   TLBaseShape,
   TLResizeInfo,
+  TLShapePartial,
   useEditor,
+  useValue,
 } from "tldraw";
+import { DETACH_DISTANCE, getWindowManager } from "@/wm/window-manager";
+import { useWindowManager } from "./use-window-manager";
 import { getWindowKind } from "./window-kinds";
+import { WindowMenu } from "./window-menu";
 
 export interface WindowShapeProps {
   w: number;
@@ -19,12 +27,33 @@ export interface WindowShapeProps {
   title: string;
   kind: string;
   content: string;
+  /** Managed by the window manager: position and size come from the layout. */
+  tiled: boolean;
 }
 
 export type WindowShape = TLBaseShape<"window", WindowShapeProps>;
 
 export const WINDOW_MIN = { w: 240, h: 160 } as const;
 export const WINDOW_DEFAULT = { w: 480, h: 320 } as const;
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 8;
+
+const versions = createShapePropsMigrationIds("window", { AddTiled: 1 });
+
+export const windowShapeMigrations = createShapePropsMigrationSequence({
+  sequence: [
+    {
+      id: versions.AddTiled,
+      up: (props) => {
+        props.tiled = false;
+      },
+      down: (props) => {
+        delete props.tiled;
+      },
+    },
+  ],
+});
 
 export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
   static override type = "window" as const;
@@ -35,7 +64,10 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
     title: T.string,
     kind: T.string,
     content: T.string,
+    tiled: T.boolean,
   };
+
+  static override migrations = windowShapeMigrations;
 
   getDefaultProps(): WindowShapeProps {
     return {
@@ -44,6 +76,7 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
       title: "Window",
       kind: "note",
       content: "",
+      tiled: false,
     };
   }
 
@@ -59,6 +92,11 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
     return false;
   }
 
+  /** Tiled windows are sized by the layout; drag the gutters instead. */
+  override canResize(shape: WindowShape) {
+    return !shape.props.tiled;
+  }
+
   override onResize(shape: WindowShape, info: TLResizeInfo<WindowShape>) {
     return resizeBox(shape, info, {
       minWidth: WINDOW_MIN.w,
@@ -66,20 +104,67 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
     });
   }
 
+  /**
+   * tldraw creates a text shape when a non-editable shape is double-clicked
+   * unless the util handles it. Handle it (a no-op change) so double-clicking
+   * a window never litters the canvas; renaming is in the window menu.
+   */
+  override onDoubleClick(shape: WindowShape): TLShapePartial<WindowShape> {
+    return { id: shape.id, type: "window" };
+  }
+
+  override onTranslateStart() {
+    getWindowManager(this.editor).dropHint.set(null);
+  }
+
+  override onTranslate(
+    initial: WindowShape,
+    current: WindowShape
+  ): TLShapePartial<WindowShape> | void {
+    const wm = getWindowManager(this.editor);
+    if (current.props.tiled) {
+      const moved = Math.hypot(current.x - initial.x, current.y - initial.y);
+      if (moved < DETACH_DISTANCE) return;
+      wm.detach(current.id);
+      return { id: current.id, type: "window", props: { tiled: false } };
+    }
+    wm.updateDropHint(current.id, this.editor.inputs.currentPagePoint);
+  }
+
+  override onTranslateEnd(initial: WindowShape, current: WindowShape) {
+    const wm = getWindowManager(this.editor);
+    wm.dropWindow(current.id, { x: initial.x, y: initial.y });
+  }
+
   component(shape: WindowShape) {
     return <WindowFrame shape={shape} />;
   }
 
   indicator(shape: WindowShape) {
-    return (
-      <rect width={shape.props.w} height={shape.props.h} rx={10} ry={10} />
-    );
+    const r = shape.props.tiled ? 4 : 10;
+    return <rect width={shape.props.w} height={shape.props.h} rx={r} ry={r} />;
   }
 }
 
 function WindowFrame({ shape }: { shape: WindowShape }) {
   const editor = useEditor();
+  const wm = useWindowManager();
   const kind = getWindowKind(shape.props.kind);
+  const focused = useValue(
+    "window focused",
+    () => wm.focusedId.get() === shape.id,
+    [wm, shape.id]
+  );
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const editingTitle = useValue(
+    "editing title",
+    () => wm.titleEditId.get() === shape.id,
+    [wm, shape.id]
+  );
+  const stopEditingTitle = () => {
+    if (wm.titleEditId.get() === shape.id) wm.titleEditId.set(null);
+  };
 
   const update = (patch: Partial<WindowShapeProps>) => {
     editor.updateShape<WindowShape>({
@@ -89,52 +174,181 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
     });
   };
 
-  const focus = () => {
-    const top = editor.getCurrentPageShapesSorted().at(-1);
-    if (top?.id !== shape.id) editor.bringToFront([shape.id]);
+  const focus = () => wm.focusWindow(shape.id, { select: false });
+  const close = () => editor.deleteShape(shape.id);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  const openMenu = (at: { x: number; y: number } | null) => {
+    setMenuAt(at);
+    setMenuOpen(true);
   };
 
-  const close = () => editor.deleteShape(shape.id);
+  const longPress = useLongPress((point) => {
+    const el = frameRef.current;
+    if (!el) return openMenu(null);
+    const box = el.getBoundingClientRect();
+    const zoom = editor.getZoomLevel();
+    openMenu({ x: (point.x - box.left) / zoom, y: (point.y - box.top) / zoom });
+  });
+  const frameRef = useRef<HTMLDivElement>(null);
 
   return (
     <HTMLContainer
       className="pos-window"
       data-testid="window"
       data-kind={shape.props.kind}
+      data-tiled={shape.props.tiled}
+      data-focused={focused}
       style={{ pointerEvents: "all" }}
       onPointerDownCapture={focus}
     >
-      <div className="pos-window__titlebar">
-        <span className="pos-window__title" title={shape.props.title}>
-          {shape.props.title}
-        </span>
-        <button
-          type="button"
-          className="pos-window__close"
-          aria-label="Close window"
-          title="Close"
-          onPointerDown={stopEventPropagation}
-          onClick={close}
-        >
-          <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
-            <path
-              d="M2 2l8 8M10 2l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
+      <div ref={frameRef} className="pos-window__frame">
+        <div className="pos-window__titlebar" {...longPress}>
+          {editingTitle ? (
+            <TitleEditor
+              value={shape.props.title}
+              onCommit={(title) => {
+                stopEditingTitle();
+                if (title.trim()) update({ title: title.trim() });
+              }}
+              onCancel={stopEditingTitle}
             />
-          </svg>
-        </button>
-      </div>
-      <div className="pos-window__body">
-        {kind ? (
-          <kind.Component shape={shape} editor={editor} update={update} />
-        ) : (
-          <div className="pos-about pos-about__muted">
-            Unknown window kind: {shape.props.kind}
+          ) : (
+            <span className="pos-window__title" title={shape.props.title}>
+              {shape.props.title}
+            </span>
+          )}
+          <div className="pos-window__controls">
+            <button
+              type="button"
+              className="pos-window__button"
+              aria-label="Window menu"
+              title="Window menu"
+              data-testid="window-menu-button"
+              onPointerDown={stopEventPropagation}
+              onClick={() => (menuOpen ? closeMenu() : openMenu(null))}
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="12"
+                height="12"
+                aria-hidden="true"
+              >
+                <circle cx="2" cy="6" r="1.2" fill="currentColor" />
+                <circle cx="6" cy="6" r="1.2" fill="currentColor" />
+                <circle cx="10" cy="6" r="1.2" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="pos-window__button pos-window__close"
+              aria-label="Close window"
+              title="Close"
+              onPointerDown={stopEventPropagation}
+              onClick={close}
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="10"
+                height="10"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 2l8 8M10 2l-8 8"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
           </div>
+        </div>
+        <div className="pos-window__body">
+          {kind ? (
+            <kind.Component shape={shape} editor={editor} update={update} />
+          ) : (
+            <div className="pos-about pos-about__muted">
+              Unknown window kind: {shape.props.kind}
+            </div>
+          )}
+        </div>
+        {menuOpen && (
+          <WindowMenu shape={shape} wm={wm} at={menuAt} onClose={closeMenu} />
         )}
       </div>
     </HTMLContainer>
   );
+}
+
+function TitleEditor({
+  value,
+  onCommit,
+  onCancel,
+}: {
+  value: string;
+  onCommit: (title: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  return (
+    <input
+      className="pos-window__title-input"
+      value={draft}
+      autoFocus
+      aria-label="Window title"
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setDraft(e.target.value)}
+      onPointerDown={stopEventPropagation}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") onCommit(draft);
+        if (e.key === "Escape") onCancel();
+      }}
+      onBlur={() => onCommit(draft)}
+    />
+  );
+}
+
+/** Pointer handlers that fire `onLongPress` after a still press (touch context menu). */
+function useLongPress(onLongPress: (point: { x: number; y: number }) => void) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+
+  const cancel = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    start.current = null;
+  }, []);
+
+  useEffect(() => cancel, [cancel]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    cancel();
+    const point = { x: e.clientX, y: e.clientY };
+    start.current = point;
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      if (start.current) onLongPress(start.current);
+      start.current = null;
+    }, LONG_PRESS_MS);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!start.current) return;
+    if (
+      Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) >
+      LONG_PRESS_SLOP
+    ) {
+      cancel();
+    }
+  };
+
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+  };
 }
