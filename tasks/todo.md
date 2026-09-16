@@ -50,6 +50,25 @@
 - [x] Tests: unit (engine, stores), e2e `e2e/wm.spec.ts`
 - [x] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
 
+## M2 - IDE inside windows
+
+- [ ] Plan written, M1 foundation read (`src/desktop/`, `src/wm/`, docs)
+- [ ] Project model (`src/ide/project/`): paths + tree helpers, backends
+      (memory/IndexedDB, File System Access, GitHub zipball, ZIP upload),
+      project store under `paperos-v2:projects`, sample project on first run
+- [ ] Per-file Yjs documents (`src/ide/docs.ts`): `Y.Doc` per project+path,
+      `y-indexeddb` persistence, dirty tracking, `attachProvider()` hook
+- [ ] Window kinds: `files`, `editor`, `preview`, `console`, `markdown`
+      (icons, default sizes, content refs)
+- [ ] Preview bundler (`src/ide/preview/`): srcdoc from in-memory files,
+      console bridge, 300 ms debounce, snippet eval
+- [ ] Top bar: Open menu, New window submenu, theme toggle; "IDE" workspace
+      preset applied on first run
+- [ ] Command palette (Ctrl+K) on a command registry (`src/ide/commands.ts`)
+- [ ] Tests: unit (project model, paths, bundler, commands), e2e `e2e/ide.spec.ts`
+- [ ] Docs: README IDE section, PLAN.md M2 status + decisions, this Review
+- [ ] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
+
 ## Review (M1)
 
 ### What changed
