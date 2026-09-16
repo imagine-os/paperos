@@ -215,6 +215,11 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
             />
           ) : (
             <span className="pos-window__title" title={shape.props.title}>
+              {kind?.icon && (
+                <span className="pos-window__icon" aria-hidden="true">
+                  {kind.icon}
+                </span>
+              )}
               {shape.props.title}
             </span>
           )}

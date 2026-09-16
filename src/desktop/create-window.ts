@@ -18,7 +18,7 @@ export function createWindow(
 ): TLShapeId {
   const kindId = options.kind ?? "note";
   const kind = getWindowKind(kindId);
-  const { w, h } = WINDOW_DEFAULT;
+  const { w, h } = kind?.defaultSize ?? WINDOW_DEFAULT;
 
   const wanted = options.at ?? {
     x: editor.getViewportPageBounds().center.x - w / 2,

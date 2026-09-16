@@ -1,0 +1,184 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { stopEventPropagation } from "tldraw";
+import {
+  consoleEvalTarget,
+  isPreviewMessage,
+  pushConsole,
+} from "@/ide/console-store";
+import { docsChanged, readLiveText } from "@/ide/docs";
+import { bundle, pickEntry } from "@/ide/preview/bundle";
+import { getProjectStore } from "@/ide/project";
+import { useSignal } from "@/ide/use-signal";
+import type { WindowKindProps } from "../window-kinds";
+
+export const PREVIEW_DEBOUNCE_MS = 300;
+
+/**
+ * Live preview of the active project's web entry in a sandboxed iframe.
+ * The document is rebuilt from the live buffers (unsaved edits included)
+ * 300 ms after the last change. `content` holds an entry path override.
+ */
+export function PreviewWindow({ shape, update }: WindowKindProps) {
+  const store = getProjectStore();
+  const state = useSignal(store.state);
+  const changes = useSignal(store.changes);
+  const docTick = useSignal(docsChanged);
+  const project = state.activeId;
+  const iframe = useRef<HTMLIFrameElement>(null);
+  const [srcdoc, setSrcdoc] = useState<string>("");
+  const [entry, setEntry] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string[]>([]);
+  const [paths, setPaths] = useState<string[]>([]);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+  const override = shape.props.content || null;
+
+  // Files of the active project (for picking the entry).
+  useEffect(() => {
+    store.init();
+    if (!project) return;
+    let off = () => {};
+    let cancelled = false;
+    store.session(project).then((s) => {
+      if (!s || cancelled) return;
+      const sync = () =>
+        setPaths(
+          s.files
+            .get()
+            .filter((f) => f.type === "file")
+            .map((f) => f.path)
+        );
+      sync();
+      off = s.files.subscribe(sync);
+    });
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, [store, project]);
+
+  useEffect(() => {
+    setEntry(
+      override && paths.includes(override) ? override : pickEntry(paths)
+    );
+  }, [override, paths]);
+
+  const rebuild = useCallback(async () => {
+    if (!project || !entry) {
+      setSrcdoc("");
+      return;
+    }
+    const out = await bundle(entry, (p) => readLiveText(project, p, store));
+    setSrcdoc(out.html);
+    setMissing(out.missing);
+  }, [project, entry, store]);
+
+  // Debounced rebuild on any document or file change.
+  useEffect(() => {
+    const t = setTimeout(() => void rebuild(), PREVIEW_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [rebuild, changes, docTick, version]);
+
+  // Console bridge: messages from this iframe go to the console store.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (
+        e.source !== iframe.current?.contentWindow ||
+        !isPreviewMessage(e.data)
+      )
+        return;
+      if (e.data.type === "console" && e.data.level) {
+        pushConsole(e.data.level, (e.data.args ?? []).join(" "));
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  // This window runs Console snippets (the latest preview wins).
+  useEffect(() => {
+    const run = (code: string) => {
+      iframe.current?.contentWindow?.postMessage(
+        { source: "paperos-console", type: "eval", code },
+        "*"
+      );
+    };
+    consoleEvalTarget.set(run);
+    return () => {
+      if (consoleEvalTarget.get() === run) consoleEvalTarget.set(null);
+    };
+  }, []);
+
+  const commitEntry = () => {
+    if (draft === null) return;
+    const next = draft.trim().replace(/^\/+/, "");
+    setDraft(null);
+    if (next && next !== entry) update({ content: next });
+  };
+
+  return (
+    <div
+      className="pos-preview"
+      data-testid="preview-window"
+      onPointerDown={stopEventPropagation}
+    >
+      <div className="pos-toolbar pos-toolbar--dense">
+        <button
+          type="button"
+          className="pos-button pos-button--small"
+          title="Reload"
+          aria-label="Reload preview"
+          onClick={() => setVersion((v) => v + 1)}
+        >
+          {"↻"}
+        </button>
+        <input
+          className="pos-preview__url"
+          aria-label="Entry file"
+          data-testid="preview-entry"
+          list={`entries-${shape.id}`}
+          value={draft ?? (entry ? `/${entry}` : "")}
+          placeholder={paths.length ? "Entry file (index.html)" : "No files"}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => setDraft(entry ? `/${entry}` : "")}
+          onBlur={commitEntry}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setDraft(null);
+          }}
+        />
+        <datalist id={`entries-${shape.id}`}>
+          {paths
+            .filter((p) => /\.html?$/i.test(p))
+            .map((p) => (
+              <option key={p} value={`/${p}`} />
+            ))}
+        </datalist>
+      </div>
+      {missing.length > 0 && (
+        <div className="pos-preview__warn" role="status">
+          Missing: {missing.join(", ")}
+        </div>
+      )}
+      {entry ? (
+        <iframe
+          ref={iframe}
+          className="pos-preview__frame"
+          title={`Preview of ${entry}`}
+          sandbox="allow-scripts allow-forms allow-modals allow-popups"
+          srcDoc={srcdoc}
+          onWheel={stopEventPropagation}
+        />
+      ) : (
+        <div className="pos-files__hint">
+          {project
+            ? "No HTML file in this project. Add an index.html to preview it."
+            : "No project is open."}
+        </div>
+      )}
+    </div>
+  );
+}

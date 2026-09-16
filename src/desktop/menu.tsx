@@ -8,11 +8,17 @@ export function Dropdown({
   testId,
   children,
   disabled,
+  small,
+  align = "left",
 }: {
   label: string;
   testId?: string;
   children: React.ReactNode;
   disabled?: boolean;
+  /** Compact button for use inside windows. */
+  small?: boolean;
+  /** Which edge of the button the menu aligns to. */
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,7 +46,7 @@ export function Dropdown({
     <div className="pos-dropdown" ref={ref}>
       <button
         type="button"
-        className="pos-button pos-dropdown__button"
+        className={`pos-button pos-dropdown__button${small ? " pos-button--small" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={id}
@@ -54,7 +60,7 @@ export function Dropdown({
       {open && (
         <div
           id={id}
-          className="pos-menu"
+          className={`pos-menu${align === "right" ? " pos-menu--right" : ""}`}
           role="menu"
           data-testid={testId ? `${testId}-menu` : undefined}
           onClick={(e) => {

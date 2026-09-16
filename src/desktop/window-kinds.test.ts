@@ -14,6 +14,19 @@ describe("window kinds registry", () => {
     );
   });
 
+  it("ships the IDE kinds with sizes", () => {
+    for (const id of ["files", "editor", "preview", "console", "markdown"]) {
+      const kind = getWindowKind(id);
+      expect(kind?.defaultSize?.w).toBeGreaterThan(0);
+      expect(kind?.icon).toBeTruthy();
+    }
+    expect(
+      listWindowKinds()
+        .filter((k) => !k.hidden)
+        .map((k) => k.id)
+    ).not.toContain("about");
+  });
+
   it("returns undefined for unknown kinds", () => {
     expect(getWindowKind("nope")).toBeUndefined();
   });
