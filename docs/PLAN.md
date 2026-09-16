@@ -242,6 +242,18 @@ API later makes it programmable.
     keeps its width however many files are opened. `WindowManager.setTree`
     replaces the tree without re-capturing the region.
 
+24. **GitHub Pages hosts a static export; Vercel keeps the server build.**
+    `PAPEROS_STATIC=1 next build` (`npm run build:static`) turns on
+    `output: "export"` with `basePath`/`assetPrefix` `/paperos`, trailing
+    slashes and unoptimized images, entirely inside `next.config.ts`, so the
+    normal build is untouched. The one route handler (legacy Liveblocks auth,
+    a POST) cannot be exported; in static mode `pageExtensions` omits `ts`,
+    which leaves `route.ts` out without moving files (all pages and layouts
+    are `.tsx`). The legacy page still renders; its client fails to auth and
+    stays offline as it does without a key. `withBasePath()` (`src/lib/env.ts`)
+    is for hand-written URLs; `<Link>` and imported assets already get the
+    prefix. `.github/workflows/pages.yml` deploys on push to `main`.
+
 ## Notes
 
 - The annotated tag `v0-prototype` (at `aa5f51d`) could not be pushed from

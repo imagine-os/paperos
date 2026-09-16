@@ -101,6 +101,23 @@
 - [x] Validate: `npm run check`, `npm run build`, screenshots, MCP end-to-end drive
 - [x] Push to `main`, check CI
 
+## Hosting - GitHub Pages
+
+- [x] Static export mode in `next.config.ts` (`PAPEROS_STATIC=1`): `output:
+    "export"`, base path `/paperos`, trailing slashes, unoptimized images,
+      API route left out via `pageExtensions`
+- [x] `withBasePath()` helper; legacy `authEndpoint` uses it (the only
+      hard-coded absolute URL; links already use `<Link>`)
+- [x] `npm run build:static` (`scripts/build-static.mjs`, writes `out/.nojekyll`)
+- [x] `.github/workflows/pages.yml`: build + deploy on push to `main`; CI also
+      runs `build:static`
+- [x] Validate: `check`, `build`, `build:static`; `out/` served under
+      `/paperos/` in Chromium: 0 console errors on `/`, tldraw assets 200 under
+      `/paperos/_next/`, IDE first run (files/editor/preview/console), New
+      window works, Legacy link and Back link stay under the base path; legacy
+      page renders with the expected auth 404
+- [x] README Hosting section, PLAN decision 24
+
 ## Review (M3)
 
 ### What changed

@@ -255,6 +255,33 @@ when connected. The **Agent** window shows every tool call as it arrives and
 can pause them. No server is deployed and nothing leaves your machine. Details,
 options and security notes: [`docs/MCP.md`](docs/MCP.md).
 
+## Hosting
+
+PaperOS is a static, local-first app; the only server code is the legacy
+prototype's optional auth route.
+
+- **GitHub Pages (static):** <https://imagine-os.github.io/paperos/>. The
+  `pages` workflow (`.github/workflows/pages.yml`) runs on every push to
+  `main`: `npm run build:static` exports the site to `out/` and
+  `actions/deploy-pages` publishes it. `/` and `/legacy` both work under the
+  `/paperos/` base path. The static build is `next build` with
+  `PAPEROS_STATIC=1` (see `next.config.ts`): `output: "export"`,
+  `basePath`/`assetPrefix` from `PAPEROS_BASE_PATH` (default `/paperos`),
+  trailing slashes, unoptimized images, and no API routes, so the legacy
+  prototype's Liveblocks client cannot authenticate and stays disconnected
+  (its normal no-key behavior). Hand-written URLs go through `withBasePath()`
+  in `src/lib/env.ts`; `<Link>`, the router and imported assets get the base
+  path from Next. Caveat: GitHub Pages for a **private** repository needs a
+  paid GitHub plan; on a free plan the workflow's `configure-pages` step
+  fails until the repository is public or the plan is upgraded.
+- **Vercel (server build):** the normal `npm run build` / `next start`, with
+  the `/api/liveblocks-auth` route included. Nothing about it changes when
+  `PAPEROS_STATIC` is unset.
+
+To try the static build locally, serve `out/` under the base path, e.g.
+`mkdir -p /tmp/root && ln -s "$PWD/out" /tmp/root/paperos && npx http-server /tmp/root -p 3100`
+and open <http://localhost:3100/paperos/>.
+
 ## Environment variables
 
 All optional. Copy `.env.example` to `.env.local` if you want to set any.
@@ -263,6 +290,8 @@ All optional. Copy `.env.example` to `.env.local` if you want to set any.
 | -------------------------------- | --------- | -------------------------------------------------------------- |
 | `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` | `/`       | tldraw SDK license key. Removes the watermark. No code change. |
 | `LIVEBLOCKS_SECRET_KEY`          | `/legacy` | Lets the 2025 prototype's collaboration client connect.        |
+| `PAPEROS_STATIC`                 | build     | `1` = static export for GitHub Pages (`npm run build:static`). |
+| `PAPEROS_BASE_PATH`              | build     | Base path of the static export. Default `/paperos`.            |
 
 ## Routes
 
@@ -280,7 +309,7 @@ src/
   app/            Next.js App Router: routes, root layout, global tokens
     page.tsx      /        -> the v2 desktop
     legacy/       /legacy  -> the frozen prototype (own layout + providers)
-    api/liveblocks-auth/   legacy-only auth route (optional key)
+    api/liveblocks-auth/   legacy-only auth route (optional key; not in the static export)
   desktop/        The v2 desktop
     desktop.tsx        tldraw canvas + top bar + toolbar overrides
     window-shape.tsx   the Window shape (title bar, menu, tiled/focused state,
