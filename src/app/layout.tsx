@@ -1,18 +1,17 @@
-import { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "../globals.css";
-import { Providers } from "./Providers";
-import { Suspense } from "react";
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Liveblocks",
+  title: "PaperOS",
+  description:
+    "PaperOS: a zoomable canvas that behaves like an OS desktop. Windows are the one primitive.",
 };
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "light dark",
+};
 
 export default function RootLayout({
   children,
@@ -20,26 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className}>
-      <head>
-        <link
-          href="https://liveblocks.io/favicon-32x32.png"
-          rel="icon"
-          sizes="32x32"
-          type="image/png"
-        />
-        <link
-          href="https://liveblocks.io/favicon-16x16.png"
-          rel="icon"
-          sizes="16x16"
-          type="image/png"
-        />
-      </head>
-      <body>
-        <Suspense>
-          <Providers>{children}</Providers>
-        </Suspense>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
