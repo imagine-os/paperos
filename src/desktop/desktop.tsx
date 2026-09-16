@@ -26,6 +26,7 @@ import { getProjectStore } from "@/ide/project";
 import { initTheme, resolvedTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
 import { getWindowManager } from "@/wm/window-manager";
+import { installCanvasApi } from "@/api/install";
 import { CommandPalette } from "./command-palette";
 import { registerIdeCommands } from "./ide-commands";
 import {
@@ -119,6 +120,7 @@ export function Desktop() {
   useEffect(() => {
     if (!editor) return;
     const off = registerIdeCommands(editor);
+    const installed = installCanvasApi(editor);
     // First run: open the sample project in the IDE arrangement.
     if (isFirstRun()) {
       markInitialized();
@@ -127,7 +129,10 @@ export function Desktop() {
         .some((s) => s.type === "window");
       if (!hasWindows) void applyIdeWorkspace(editor);
     }
-    return off;
+    return () => {
+      installed.dispose();
+      off();
+    };
   }, [editor]);
 
   // Ctrl+S outside an editor: never let the browser offer to save the page.

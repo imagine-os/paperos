@@ -18,7 +18,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "api:gen": "node --experimental-strip-types scripts/gen-api.mts && prettier --write docs/CANVAS_API.md",
+    "mcp": "node tools/paperos-mcp/dist/index.js",
+    "mcp:build": "npm --prefix tools/paperos-mcp ci && npm --prefix tools/paperos-mcp run build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

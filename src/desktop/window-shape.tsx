@@ -140,6 +140,52 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
     return <WindowFrame shape={shape} />;
   }
 
+  /** Export (and `paperos.canvas.screenshot()`): a frame with the title bar; bodies are live HTML and are not rendered. */
+  override toSvg(shape: WindowShape) {
+    const { w, h, title, kind, tiled } = shape.props;
+    const r = tiled ? 4 : 10;
+    const label = `${getWindowKind(kind)?.icon ?? ""} ${title}`.trim();
+    return (
+      <g>
+        <rect
+          width={w}
+          height={h}
+          rx={r}
+          ry={r}
+          fill="#f7f7fb"
+          stroke="#c9c9d6"
+        />
+        <path
+          d={`M0 ${r} A${r} ${r} 0 0 1 ${r} 0 H${w - r} A${r} ${r} 0 0 1 ${w} ${r} V32 H0 Z`}
+          fill="#ececf3"
+        />
+        <line x1="0" y1="32" x2={w} y2="32" stroke="#c9c9d6" />
+        <text
+          x="12"
+          y="21"
+          fontFamily="system-ui, sans-serif"
+          fontSize="13"
+          fontWeight="600"
+          fill="#232333"
+        >
+          {label.length > w / 8
+            ? label.slice(0, Math.max(3, w / 8 - 1)) + "…"
+            : label}
+        </text>
+        <text
+          x={w / 2}
+          y={h / 2 + 4}
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+          fontSize="12"
+          fill="#8a8a9a"
+        >
+          {kind}
+        </text>
+      </g>
+    );
+  }
+
   indicator(shape: WindowShape) {
     const r = shape.props.tiled ? 4 : 10;
     return <rect width={shape.props.w} height={shape.props.h} rx={r} ry={r} />;

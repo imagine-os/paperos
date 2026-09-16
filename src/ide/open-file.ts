@@ -2,6 +2,7 @@ import type { Editor, TLShapeId } from "tldraw";
 import { createWindow } from "@/desktop/create-window";
 import type { WindowShape } from "@/desktop/window-shape";
 import { getWindowManager } from "@/wm/window-manager";
+import { placeFileWindow } from "./editor-placement";
 import { encodeFileRef, parseFileRef, sameRef, type FileRef } from "./file-ref";
 import { basename } from "./project/paths";
 
@@ -31,9 +32,10 @@ export function fileWindowTitle(path: string, dirty = false): string {
 
 /**
  * Opens a file in a window of `kind`. Reuses a window already showing that
- * file, then an empty window of that kind; otherwise creates one. New
- * windows go next to the Files window when a layout is active (or next to
- * `nearId`), else they cascade at the viewport center.
+ * file, then an empty window of that kind; otherwise creates one. When a
+ * layout is active the new window stacks under the focused editor (see
+ * `placeFileWindow`), falling back to the right of Files or `nearId`; else
+ * it cascades at the viewport center.
  */
 export function openFile(
   editor: Editor,
@@ -65,14 +67,20 @@ export function openFile(
     wm.focusWindow(empty.id);
     return empty.id;
   }
+  const focusedId = wm.getFocusedId();
   const id = createWindow(editor, { kind, content, title });
-  if (wm.root.get()) {
+  const root = wm.root.get();
+  if (root) {
     const anchor =
       nearId ?? windows(editor).find((w) => w.props.kind === "files")?.id;
-    wm.tileWindow(
-      id,
-      "right",
-      anchor && wm.isTiled(anchor) ? anchor : undefined
+    wm.setTree(
+      placeFileWindow(root, id, {
+        focusedId,
+        editorIds: windows(editor)
+          .filter((w) => w.props.kind === kind)
+          .map((w) => w.id),
+        anchorId: anchor ?? null,
+      })
     );
   }
   wm.focusWindow(id);

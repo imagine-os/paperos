@@ -13,7 +13,8 @@ export interface Command {
   /** Extra words that should match this command. */
   keywords?: string;
   shortcut?: string;
-  run: () => void | Promise<void>;
+  /** Commands registered by scripts and plugins may take arguments. */
+  run: (args?: Record<string, unknown>) => void | Promise<void>;
 }
 
 export type CommandSource = () => Command[];
@@ -48,10 +49,22 @@ export function getCommand(id: string): Command | undefined {
   return listCommands().find((c) => c.id === id);
 }
 
-export async function runCommand(id: string): Promise<boolean> {
+const runListeners = new Set<(id: string) => void>();
+
+/** Called with the command id whenever `runCommand` runs one (the Canvas API's `command.run` event). */
+export function onCommandRun(listener: (id: string) => void): () => void {
+  runListeners.add(listener);
+  return () => void runListeners.delete(listener);
+}
+
+export async function runCommand(
+  id: string,
+  args?: Record<string, unknown>
+): Promise<boolean> {
   const cmd = getCommand(id);
   if (!cmd) return false;
-  await cmd.run();
+  runListeners.forEach((l) => l(id));
+  await cmd.run(args);
   return true;
 }
 

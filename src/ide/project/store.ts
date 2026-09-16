@@ -23,6 +23,15 @@ interface StoredMeta extends ProjectMeta {
 
 export type Permission = "granted" | "prompt" | "denied";
 
+/** What changed on disk, for listeners that need more than a counter. */
+export interface FileChange {
+  project: string;
+  path: string;
+  kind: "write" | "mkdir" | "rename" | "delete";
+  /** New path, for renames. */
+  to?: string;
+}
+
 export interface ProjectsState {
   status: "loading" | "ready";
   projects: ProjectMeta[];
@@ -54,6 +63,8 @@ export class ProjectStore {
   });
   /** Bumps whenever a file's saved content changes (write, rename, delete). */
   readonly changes = signal(0);
+  /** The most recent file mutation (set right before `changes` bumps). */
+  readonly lastChange = signal<FileChange | null>(null);
   private sessions = new Map<string, ProjectSession>();
   private handles = new Map<string, FileSystemDirectoryHandle>();
   private initPromise: Promise<void> | null = null;
@@ -180,18 +191,24 @@ export class ProjectStore {
 
   // ----- writing -------------------------------------------------------------
 
-  private async mutate(id: string, fn: (b: ProjectBackend) => Promise<void>) {
+  private async mutate(
+    id: string,
+    change: Omit<FileChange, "project">,
+    fn: (b: ProjectBackend) => Promise<void>
+  ) {
     const s = await this.session(id);
     if (!s?.backend) throw new Error("Project is not accessible");
     if (!s.backend.writable) throw new Error("Project is read-only");
     await fn(s.backend);
     await this.refresh(id);
     await this.touch(id);
+    this.lastChange.set({ project: id, ...change });
     this.changes.update((n) => n + 1);
   }
 
   writeFile(id: string, path: string, text: string) {
-    return this.mutate(id, (b) => b.write(normalizePath(path), text));
+    const p = normalizePath(path);
+    return this.mutate(id, { path: p, kind: "write" }, (b) => b.write(p, text));
   }
 
   createFile(id: string, path: string, text = "") {
@@ -199,17 +216,21 @@ export class ProjectStore {
   }
 
   createFolder(id: string, path: string) {
-    return this.mutate(id, (b) => b.mkdir(normalizePath(path)));
+    const p = normalizePath(path);
+    return this.mutate(id, { path: p, kind: "mkdir" }, (b) => b.mkdir(p));
   }
 
   renameEntry(id: string, from: string, to: string) {
-    return this.mutate(id, (b) =>
-      b.rename(normalizePath(from), normalizePath(to))
+    const f = normalizePath(from);
+    const t = normalizePath(to);
+    return this.mutate(id, { path: f, to: t, kind: "rename" }, (b) =>
+      b.rename(f, t)
     );
   }
 
   deleteEntry(id: string, path: string) {
-    return this.mutate(id, (b) => b.remove(normalizePath(path)));
+    const p = normalizePath(path);
+    return this.mutate(id, { path: p, kind: "delete" }, (b) => b.remove(p));
   }
 
   // ----- projects ------------------------------------------------------------

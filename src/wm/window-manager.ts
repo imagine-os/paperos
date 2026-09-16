@@ -205,6 +205,15 @@ export class WindowManager {
     this.apply();
   }
 
+  /** Replaces the tree but keeps the region (unlike `applyTree`); the layout becomes a split tree. */
+  setTree(root: LayoutNode | null) {
+    this.editor.markHistoryStoppingPoint("wm tree");
+    if (root && !this.region.get()) this.region.set(this.viewportRegion());
+    this.root.set(root);
+    if (root) this.preset.set("split-tree");
+    this.apply();
+  }
+
   tileAll() {
     const preset = this.preset.get();
     this.applyPreset(preset === "free" ? "columns" : preset);

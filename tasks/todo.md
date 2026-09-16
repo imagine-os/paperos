@@ -73,6 +73,34 @@
       Review
 - [x] Validate: `npm run check`, `npm run build`, screenshots, e2e, push
 
+## M3 - Programmable
+
+- [ ] Plan written, foundation read (`src/ide/commands.ts`, `src/wm/window-manager.ts`,
+      `src/desktop/window-kinds.tsx`, `src/ide/project/store.ts`, `src/ide/docs.ts`,
+      `src/ide/open-file.ts`)
+- [ ] Canvas API (`src/api/`): tool schema (`schema.ts`), event bus, facade over a
+      `CanvasHost` interface (windows, layout, workspaces, projects, files,
+      preview, console, commands, canvas, events), browser host on tldraw + WM +
+      stores, `window.paperos`, `invokeTool` for object-style calls
+- [ ] `docs/CANVAS_API.md` generated from the schema (`npm run api:gen`) + sync test
+- [ ] Script console window kind (`script`): CodeMirror JS editor, output pane,
+      Run (Ctrl+Enter), snippets menu, text persisted in `content`
+- [ ] Plugins (`src/plugins/`): ES-module plugins with `activate(api)`, commands,
+      React-free window kinds, events; manager window kind (`plugins`); built-ins
+      `clock` and `auto-tile`; enabled set in localStorage
+- [ ] Agent bridge: protocol module, browser WebSocket client, top-bar toggle +
+      status, `?bridge=1`, `agent` transcript window with pause
+- [ ] MCP CLI in `tools/paperos-mcp/` (stdio MCP server + WebSocket bridge on
+      127.0.0.1:7331, tools generated from the schema), `npm run mcp`, `docs/MCP.md`
+- [ ] Fix (M2 review): new editors join the editor column instead of squeezing
+      the Files row; unit test
+- [ ] Tests: API facade (fake host), schema/tool generation, script runner,
+      plugin loader, bridge protocol; e2e `e2e/api.spec.ts`
+- [ ] Docs: README Programmability section, `docs/PLAN.md` (M3 done, decisions),
+      this file (Review)
+- [ ] Validate: `npm run check`, `npm run build`, screenshots, MCP end-to-end drive
+- [ ] Push to `main`, check CI
+
 ## Review (M2)
 
 ### What changed

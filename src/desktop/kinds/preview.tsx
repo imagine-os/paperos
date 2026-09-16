@@ -9,6 +9,7 @@ import {
 } from "@/ide/console-store";
 import { docsChanged, readLiveText } from "@/ide/docs";
 import { bundle, pickEntry } from "@/ide/preview/bundle";
+import { previewReload } from "@/ide/preview/preview-state";
 import { getProjectStore } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
 import type { WindowKindProps } from "../window-kinds";
@@ -25,6 +26,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
   const state = useSignal(store.state);
   const changes = useSignal(store.changes);
   const docTick = useSignal(docsChanged);
+  const reloadTick = useSignal(previewReload);
   const project = state.activeId;
   const iframe = useRef<HTMLIFrameElement>(null);
   const [srcdoc, setSrcdoc] = useState<string>("");
@@ -79,7 +81,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
   useEffect(() => {
     const t = setTimeout(() => void rebuild(), PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [rebuild, changes, docTick, version]);
+  }, [rebuild, changes, docTick, version, reloadTick]);
 
   // Console bridge: messages from this iframe go to the console store.
   useEffect(() => {

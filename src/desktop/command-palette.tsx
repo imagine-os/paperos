@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "tldraw";
-import { listCommands, searchCommands, type Command } from "@/ide/commands";
+import {
+  listCommands,
+  runCommand,
+  searchCommands,
+  type Command,
+} from "@/ide/commands";
 import { paletteOpen, togglePalette } from "@/ide/palette-state";
 import { useSignal } from "@/ide/use-signal";
 
@@ -52,7 +57,7 @@ function PaletteDialog({ onClose }: { onClose: () => void }) {
   const run = (cmd: Command | undefined) => {
     if (!cmd) return;
     onClose();
-    void cmd.run();
+    void runCommand(cmd.id);
   };
 
   return (
