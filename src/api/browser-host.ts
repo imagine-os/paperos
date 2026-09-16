@@ -15,7 +15,7 @@ import {
   pushConsole,
   type ConsoleLevel,
 } from "@/ide/console-store";
-import { closeFileDoc, getFileDoc, readLiveText } from "@/ide/docs";
+import { closeFileDoc, readLiveText, writeLiveText } from "@/ide/docs";
 import { openFile } from "@/ide/open-file";
 import { reloadPreviews } from "@/ide/preview/preview-state";
 import { getProjectStore } from "@/ide/project/store";
@@ -188,22 +188,7 @@ export function createBrowserHost(editor: Editor): CanvasHost {
         if (text === null) throw new Error(`Cannot read "${path}"`);
         return text;
       },
-      async write(p, path, text) {
-        const doc = getFileDoc(p, path, projects);
-        await doc.ready;
-        if (doc.error.get()) {
-          // A new file: create it first so the document has a backend to save to.
-          await projects.createFile(p, path, "");
-          await doc.reload();
-        }
-        if (doc.text.toString() !== text) {
-          doc.doc.transact(() => {
-            doc.text.delete(0, doc.text.length);
-            doc.text.insert(0, text);
-          });
-        }
-        await doc.save();
-      },
+      write: (p, path, text) => writeLiveText(p, path, text, projects),
       create: (p, path, text) => projects.createFile(p, path, text),
       async remove(p, path) {
         await projects.deleteEntry(p, path);

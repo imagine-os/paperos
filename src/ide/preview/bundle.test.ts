@@ -55,6 +55,25 @@ describe("bundle", () => {
     expect(out.html.startsWith('<script data-paperos="bridge">')).toBe(true);
   });
 
+  it("injects the data runtime with the tables when the project has a schema", async () => {
+    const withData: Record<string, string> = {
+      "index.html": `<html><head></head><body><ul data-source="roles"><li data-field="name"></li></ul></body></html>`,
+      "data/schema.json": `{"tables":[{"name":"roles","columns":[{"name":"id","type":"number"},"name"]}]}`,
+      "data/roles.json": `[{"id":1,"name":"Admin"}]`,
+    };
+    const out = await bundle("index.html", (p) => withData[p] ?? null);
+    expect(out.html).toContain('<script data-paperos="data">');
+    expect(out.html).toContain('"roles":[{"id":1,"name":"Admin"}]');
+    expect(out.html.indexOf('data-paperos="bridge"')).toBeLessThan(
+      out.html.indexOf('data-paperos="data"')
+    );
+    expect(out.deps).toEqual(
+      expect.arrayContaining(["data/schema.json", "data/roles.json"])
+    );
+    const without = await bundle("index.html", read);
+    expect(without.html).not.toContain('data-paperos="data"');
+  });
+
   it("explains a missing entry", async () => {
     const out = await bundle("index.html", () => null);
     expect(out.html).toContain("No such file: index.html");

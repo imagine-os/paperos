@@ -118,6 +118,36 @@
       page renders with the expected auth 404
 - [x] README Hosting section, PLAN decision 24
 
+## M4 - Data
+
+- [ ] Plan written, foundation read (`src/ide/project/`, `src/ide/docs.ts`,
+      `src/ide/preview/bundle.ts`, `src/desktop/window-kinds.tsx`, `src/api/`)
+- [ ] Data model (`src/data/`): schema types + parser, row validation
+      (types, required, unique, refs, defaults), in-memory query
+      (filter/sort/paginate), CSV/JSON import-export, schema diff + row
+      migration, `DataStore` over the project's files (through the Yjs docs)
+      with a `changed` signal; unit tests
+- [ ] Bindings (`src/data/bindings.ts`): scanner for `data-source` /
+      `data-field` attributes, `components/*.json` + `pages/*.json`
+      `bindings`, and `paperos.data.<table>` calls; index by table and by
+      source with file + line; unused tables and broken bindings; tests
+- [ ] Preview runtime (`src/data/runtime.ts`): `paperos.data` shim +
+      `data-source` hydration injected by the bundler with the tables embedded;
+      tests
+- [ ] Window kinds `data` (grid), `schema` (SVG ERD + editable form),
+      `connections` (graph + lists); editor "open at line"
+- [ ] Sample project: `data/schema.json`, `roles`, `users`, `menu_items`,
+      `pages`; `components/side-menu.json`, `components/mega-menu.json`,
+      `pages/home.json`; index.html with a role switcher, side menu and mega menu
+- [ ] Canvas API `data` namespace (schema, host, facade, fake host, tests),
+      `data.changed` event, `npm run api:gen`
+- [ ] Commands (open Data / Schema / Connections, connections for the current
+      file, open table), "Data" workspace preset
+- [ ] Docs: README Data section, `docs/PLAN.md` (M4 done, decisions),
+      `docs/CANVAS_API.md`, this Review
+- [ ] Tests: unit + `e2e/data.spec.ts`
+- [ ] Validate: `npm run check`, `npm run build`, screenshots, push, CI
+
 ## Review (M3)
 
 ### What changed

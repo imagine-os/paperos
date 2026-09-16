@@ -171,6 +171,31 @@ export async function readLiveText(
   }
 }
 
+/**
+ * Replaces a file's content through its shared document (open editors
+ * update) and saves it. Creates the file when it does not exist yet.
+ */
+export async function writeLiveText(
+  projectId: string,
+  path: string,
+  text: string,
+  store: ProjectStore = getProjectStore()
+): Promise<void> {
+  const doc = getFileDoc(projectId, path, store);
+  await doc.ready;
+  if (doc.error.get()) {
+    await store.createFile(projectId, path, "");
+    await doc.reload();
+  }
+  if (doc.text.toString() !== text) {
+    doc.doc.transact(() => {
+      doc.text.delete(0, doc.text.length);
+      doc.text.insert(0, text);
+    });
+  }
+  await doc.save();
+}
+
 /** Open documents of a project that have unsaved changes. */
 export function dirtyDocs(projectId?: string): FileDoc[] {
   return [...docs.values()].filter(

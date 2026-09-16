@@ -6,8 +6,12 @@
  * `<style>` / `<script>`; `url()` references inside CSS and `src` of images
  * pointing at project files become data URIs when the file is text (SVG);
  * everything external is left as is. A console bridge is injected first so
- * the Console window sees logs and errors and can run snippets.
+ * the Console window sees logs and errors and can run snippets, and when the
+ * project has `data/schema.json` the `paperos.data` runtime follows it with
+ * the tables embedded (see `src/data/runtime.ts`).
  */
+import { dataRuntimeScript } from "@/data/runtime";
+import { parseRows, parseSchema, SCHEMA_PATH, tablePath } from "@/data/schema";
 import { extname, resolveRelative } from "../project/paths";
 
 export type ReadFile = (path: string) => string | null | Promise<string | null>;
@@ -151,6 +155,38 @@ function toBase64(text: string): string {
   return btoa(bin);
 }
 
+/** The `paperos.data` runtime with the project's tables, or null without a schema. */
+async function dataScript(
+  read: ReadFile,
+  deps: string[]
+): Promise<string | null> {
+  const schemaText = await read(SCHEMA_PATH);
+  if (schemaText === null) return null;
+  deps.push(SCHEMA_PATH);
+  const { schema } = parseSchema(schemaText);
+  const tables: Record<string, Record<string, unknown>[]> = {};
+  for (const t of schema.tables) {
+    const text = await read(tablePath(t.name));
+    if (text !== null) deps.push(tablePath(t.name));
+    tables[t.name] = text === null ? [] : parseRows(text).rows;
+  }
+  return dataRuntimeScript({
+    schema: {
+      tables: schema.tables.map((t) => ({
+        name: t.name,
+        primaryKey: t.primaryKey,
+        display: t.display,
+        columns: t.columns.map((c) => ({
+          name: c.name,
+          type: c.type,
+          ref: c.ref,
+        })),
+      })),
+    },
+    tables,
+  });
+}
+
 /**
  * Produces the srcdoc for `entry`. `read` returns a file's current text (the
  * live editor buffer or the backend) or null when it does not exist.
@@ -232,7 +268,9 @@ export async function bundle(
     }
   );
 
-  const bridge = `<script data-paperos="bridge">${CONSOLE_BRIDGE}</script>`;
+  let bridge = `<script data-paperos="bridge">${CONSOLE_BRIDGE}</script>`;
+  const data = await dataScript(cached, deps);
+  if (data) bridge += `\n<script data-paperos="data">${data}</script>`;
   if (/<head[^>]*>/i.test(html))
     html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${bridge}`);
   else if (/<html[^>]*>/i.test(html))
