@@ -5,7 +5,7 @@
  * page's privileges: this is the user's own browser, like the devtools.
  */
 export interface ScriptLine {
-  level: "log" | "info" | "warn" | "error" | "debug" | "result";
+  level: "log" | "info" | "warn" | "error" | "debug" | "result" | "system";
   text: string;
 }
 

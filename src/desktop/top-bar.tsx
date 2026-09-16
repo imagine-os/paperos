@@ -20,7 +20,7 @@ import {
   openFolderProject,
   openSampleProject,
 } from "./project-actions";
-import { listWindowKinds } from "./window-kinds";
+import { listWindowKinds, windowKindsChanged } from "./window-kinds";
 import { getWorkspaceStore } from "./workspaces";
 
 const PRESET_SHORTCUTS: Partial<Record<LayoutPreset, string>> = {
@@ -127,6 +127,7 @@ function OpenMenu() {
 }
 
 function NewWindowMenu({ editor }: { editor: Editor }) {
+  useSignal(windowKindsChanged);
   return (
     <Dropdown label="New window" testId="new-window-menu">
       {listWindowKinds()

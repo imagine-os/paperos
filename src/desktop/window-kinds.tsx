@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { Editor } from "tldraw";
+import { signal } from "@/ide/signal";
 import type { WindowShape, WindowShapeProps } from "./window-shape";
 import { NoteWindow } from "./kinds/note";
 import { AboutWindow } from "./kinds/about";
@@ -8,6 +9,8 @@ import { EditorWindow } from "./kinds/editor";
 import { PreviewWindow } from "./kinds/preview";
 import { ConsoleWindow } from "./kinds/console";
 import { MarkdownWindow } from "./kinds/markdown";
+import { ScriptWindow } from "./kinds/script";
+import { PluginsWindow } from "./kinds/plugins";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -31,8 +34,16 @@ export interface WindowKind {
 
 const registry = new Map<string, WindowKind>();
 
+/** Bumps when kinds are registered or removed (plugins), so menus and windows re-render. */
+export const windowKindsChanged = signal(0);
+
 export function registerWindowKind(kind: WindowKind): void {
   registry.set(kind.id, kind);
+  windowKindsChanged.update((n) => n + 1);
+}
+
+export function unregisterWindowKind(id: string): void {
+  if (registry.delete(id)) windowKindsChanged.update((n) => n + 1);
 }
 
 export function getWindowKind(id: string): WindowKind | undefined {
@@ -87,6 +98,24 @@ registerWindowKind({
   icon: "\u{1F4C4}",
   defaultSize: { w: 520, h: 480 },
   Component: MarkdownWindow,
+});
+
+registerWindowKind({
+  id: "script",
+  label: "Script",
+  defaultTitle: "Script",
+  icon: "⚡",
+  defaultSize: { w: 560, h: 520 },
+  Component: ScriptWindow,
+});
+
+registerWindowKind({
+  id: "plugins",
+  label: "Plugins",
+  defaultTitle: "Plugins",
+  icon: "\u{1F9E9}",
+  defaultSize: { w: 460, h: 480 },
+  Component: PluginsWindow,
 });
 
 registerWindowKind({

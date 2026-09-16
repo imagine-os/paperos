@@ -83,5 +83,30 @@ A tiny HTML/CSS/JS site that ships with PaperOS so the IDE is never empty.
 Open your own code with **Open** in the top bar: a folder (Chromium), a ZIP,
 or a public GitHub repository URL.
 `,
+    "plugins/hello.js": `// A PaperOS plugin: an ES module exporting activate(api).
+// Enable it in New window -> Plugins. It runs in this page, like the devtools.
+export const name = "Hello plugin";
+export const description = "Adds a command and a window kind from the sample project.";
+
+export function activate(api) {
+  api.registerCommand({
+    id: "hello.greet",
+    title: "Hello plugin: greet",
+    group: "Plugin",
+    run: () => api.console.log("Hello from plugins/hello.js"),
+  });
+  api.registerWindowKind({
+    id: "hello",
+    label: "Hello",
+    icon: "\u{1F44B}",
+    html: (ctx) =>
+      "<div style='padding:16px;font:14px system-ui'>Hello, <b>" +
+      ctx.window.title +
+      "</b>. Windows: " +
+      api.windows.list().length +
+      "</div>",
+  });
+}
+`,
   };
 }

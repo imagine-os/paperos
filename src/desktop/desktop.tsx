@@ -27,6 +27,7 @@ import { initTheme, resolvedTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
 import { getWindowManager } from "@/wm/window-manager";
 import { installCanvasApi } from "@/api/install";
+import { installPlugins } from "@/plugins/install";
 import { CommandPalette } from "./command-palette";
 import { registerIdeCommands } from "./ide-commands";
 import {
@@ -121,6 +122,7 @@ export function Desktop() {
     if (!editor) return;
     const off = registerIdeCommands(editor);
     const installed = installCanvasApi(editor);
+    const offPlugins = installPlugins(installed.api, installed.events);
     // First run: open the sample project in the IDE arrangement.
     if (isFirstRun()) {
       markInitialized();
@@ -130,6 +132,7 @@ export function Desktop() {
       if (!hasWindows) void applyIdeWorkspace(editor);
     }
     return () => {
+      offPlugins();
       installed.dispose();
       off();
     };

@@ -235,6 +235,9 @@ export class WindowManager {
     if (this.isTiled(id) && !side) return;
     this.editor.markHistoryStoppingPoint("wm tile");
     if (!this.region.get()) this.region.set(this.viewportRegion());
+    // Tiling into an empty desktop starts a Columns layout.
+    if (!side && this.preset.get() === "free" && !this.root.get())
+      this.preset.set("columns");
     const preset = this.preset.get();
     const current = this.root.get();
     if (!side && isFlatPreset(preset)) {

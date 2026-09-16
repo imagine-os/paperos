@@ -18,7 +18,8 @@ import {
 } from "tldraw";
 import { DETACH_DISTANCE, getWindowManager } from "@/wm/window-manager";
 import { useWindowManager } from "./use-window-manager";
-import { getWindowKind } from "./window-kinds";
+import { getWindowKind, windowKindsChanged } from "./window-kinds";
+import { useSignal } from "@/ide/use-signal";
 import { WindowMenu } from "./window-menu";
 
 export interface WindowShapeProps {
@@ -195,6 +196,7 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
 function WindowFrame({ shape }: { shape: WindowShape }) {
   const editor = useEditor();
   const wm = useWindowManager();
+  useSignal(windowKindsChanged);
   const kind = getWindowKind(shape.props.kind);
   const focused = useValue(
     "window focused",
