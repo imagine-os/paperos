@@ -3,11 +3,24 @@
 import Link from "next/link";
 import { Fragment, useSyncExternalStore } from "react";
 import { useValue, type Editor } from "tldraw";
+import { togglePalette } from "@/ide/palette-state";
+import { resolvedTheme, toggleTheme } from "@/ide/theme";
+import { useSignal } from "@/ide/use-signal";
 import { PRESETS } from "@/wm/presets";
 import type { LayoutPreset } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
+import { IDE_WORKSPACE_ID } from "@/wm/workspace-store";
 import { createWindow } from "./create-window";
+import { applyIdeWorkspace } from "./ide-workspace";
 import { Dropdown, MenuHeading, MenuItem, MenuSeparator } from "./menu";
+import {
+  canOpenFolder,
+  importGithubProject,
+  importZipProject,
+  openFolderProject,
+  openSampleProject,
+} from "./project-actions";
+import { listWindowKinds } from "./window-kinds";
 import { getWorkspaceStore } from "./workspaces";
 
 const PRESET_SHORTCUTS: Partial<Record<LayoutPreset, string>> = {
@@ -19,6 +32,7 @@ const PRESET_SHORTCUTS: Partial<Record<LayoutPreset, string>> = {
 };
 
 export function TopBar({ editor }: { editor: Editor | null }) {
+  const theme = useSignal(resolvedTheme);
   return (
     <header className="pos-topbar" data-testid="topbar">
       <div className="pos-topbar__brand">
@@ -26,10 +40,12 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         <span className="pos-topbar__badge">v2 preview</span>
       </div>
       <div className="pos-topbar__actions">
+        <OpenMenu />
         {editor ? (
           <>
             <LayoutMenu editor={editor} />
             <WorkspacesMenu editor={editor} />
+            <NewWindowMenu editor={editor} />
           </>
         ) : (
           <>
@@ -39,15 +55,32 @@ export function TopBar({ editor }: { editor: Editor | null }) {
             <Dropdown label="Workspaces" disabled>
               {null}
             </Dropdown>
+            <Dropdown label="New window" disabled>
+              {null}
+            </Dropdown>
           </>
         )}
         <button
           type="button"
-          className="pos-button pos-button--primary"
+          className="pos-button pos-topbar__palette"
           disabled={!editor}
-          onClick={() => editor && createWindow(editor, { kind: "note" })}
+          title="Command palette (Ctrl+K)"
+          data-testid="palette-button"
+          onClick={() => togglePalette()}
         >
-          New window
+          Commands <span className="pos-menu__kbd">Ctrl+K</span>
+        </button>
+        <button
+          type="button"
+          className="pos-button pos-topbar__icon-button"
+          title={
+            theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+          }
+          aria-label="Toggle theme"
+          data-testid="theme-toggle"
+          onClick={() => toggleTheme()}
+        >
+          {theme === "dark" ? "\u2600" : "\u263D"}
         </button>
         <button
           type="button"
@@ -62,6 +95,52 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         </Link>
       </div>
     </header>
+  );
+}
+
+function OpenMenu() {
+  return (
+    <Dropdown label="Open" testId="open-menu">
+      <MenuItem
+        label="Open folder..."
+        disabled={!canOpenFolder()}
+        testId="open-folder"
+        onSelect={() => void openFolderProject()}
+      />
+      <MenuItem
+        label="Open sample project"
+        testId="open-sample"
+        onSelect={() => void openSampleProject()}
+      />
+      <MenuItem
+        label="Import ZIP..."
+        testId="open-zip"
+        onSelect={() => void importZipProject()}
+      />
+      <MenuItem
+        label="Import GitHub repo URL..."
+        testId="open-github"
+        onSelect={() => void importGithubProject()}
+      />
+    </Dropdown>
+  );
+}
+
+function NewWindowMenu({ editor }: { editor: Editor }) {
+  return (
+    <Dropdown label="New window" testId="new-window-menu">
+      {listWindowKinds()
+        .filter((k) => !k.hidden)
+        .map((k) => (
+          <MenuItem
+            key={k.id}
+            label={`${k.icon ?? ""} ${k.label}`.trim()}
+            testId={`new-window-${k.id}`}
+            shortcut={k.id === "note" ? "Alt+N" : undefined}
+            onSelect={() => createWindow(editor, { kind: k.id })}
+          />
+        ))}
+    </Dropdown>
   );
 }
 
@@ -123,6 +202,11 @@ function WorkspacesMenu({ editor }: { editor: Editor }) {
   const switchTo = (id: string) => {
     const ws = store.get(id);
     if (!ws) return;
+    if (id === IDE_WORKSPACE_ID && !ws.root) {
+      // Never saved yet: build the IDE arrangement (creates the windows).
+      void applyIdeWorkspace(editor);
+      return;
+    }
     store.setActive(id);
     wm.applyWorkspace(ws);
   };

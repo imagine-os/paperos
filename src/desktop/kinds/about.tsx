@@ -17,10 +17,18 @@ export function AboutWindow() {
         </li>
         <li>Drag the title bar to move. Drag the corners to resize.</li>
         <li>The canvas is saved in this browser and survives refresh.</li>
+        <li>
+          <strong>Open</strong> loads a project: a folder (Chromium), the sample
+          site, a ZIP or a public GitHub repository. Files, Editor, Preview,
+          Console and Markdown windows work on it.
+        </li>
+        <li>
+          <kbd>Ctrl+K</kbd> opens the command palette.
+        </li>
       </ul>
       <p className="pos-about__muted">
-        Coming next: a tiling engine, IDE tools inside windows, and a Canvas API
-        that makes the desktop programmable.
+        Coming next: a Canvas API that makes the desktop programmable, then
+        collaboration.
       </p>
     </div>
   );

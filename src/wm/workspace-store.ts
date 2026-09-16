@@ -34,7 +34,9 @@ export function newWorkspaceId(): string {
   return `ws_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** The two workspaces a fresh install starts with. */
+export const IDE_WORKSPACE_ID = "ws_ide";
+
+/** The workspaces a fresh install starts with. "IDE" is filled in by the desktop (src/desktop/ide-workspace.ts). */
 export function defaultWorkspaces(now = Date.now()): Workspace[] {
   const base = {
     root: null,
@@ -45,6 +47,7 @@ export function defaultWorkspaces(now = Date.now()): Workspace[] {
     updatedAt: now,
   };
   return [
+    { ...base, id: IDE_WORKSPACE_ID, name: "IDE", preset: "split-tree" },
     { ...base, id: "ws_desk", name: "Desk", preset: "free" },
     { ...base, id: "ws_grid", name: "Grid", preset: "grid" },
   ];

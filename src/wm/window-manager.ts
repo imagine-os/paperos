@@ -196,6 +196,15 @@ export class WindowManager {
     this.apply();
   }
 
+  /** Replaces the whole layout with `root` (a tree built elsewhere) inside the current viewport. */
+  applyTree(root: LayoutNode, preset: LayoutPreset = "split-tree") {
+    this.editor.markHistoryStoppingPoint("wm tree");
+    this.preset.set(preset);
+    this.region.set(this.viewportRegion());
+    this.root.set(root);
+    this.apply();
+  }
+
   tileAll() {
     const preset = this.preset.get();
     this.applyPreset(preset === "free" ? "columns" : preset);

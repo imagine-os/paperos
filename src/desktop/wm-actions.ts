@@ -2,6 +2,7 @@ import type { Editor, TLUiActionsContextType } from "tldraw";
 import type { LayoutPreset, Side } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
 import { createWindow } from "./create-window";
+import { togglePalette } from "@/ide/palette-state";
 
 /**
  * Window-manager keyboard shortcuts, registered as tldraw actions so they show
@@ -26,6 +27,7 @@ export const WM_ACTION_IDS = [
   "wm-toggle-tile",
   "wm-focus-mode",
   "wm-new-window",
+  "ide-command-palette",
 ] as const;
 
 const PRESET_KEYS: [string, LayoutPreset, string][] = [
@@ -117,6 +119,14 @@ export function wmActions(
     onSelect: () => {
       createWindow(editor, { kind: "note" });
     },
+  };
+
+  actions["ide-command-palette"] = {
+    id: "ide-command-palette",
+    label: "Command palette",
+    kbd: "$k",
+    readonlyOk: true,
+    onSelect: () => togglePalette(),
   };
 
   return actions;

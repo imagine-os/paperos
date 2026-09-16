@@ -17,13 +17,14 @@ const snapshot: WorkspaceSnapshot = {
 };
 
 describe("workspace store", () => {
-  it("creates Desk and Grid on first run", () => {
+  it("creates IDE, Desk and Grid on first run", () => {
     const store = createWorkspaceStore(
       memoryStorage(),
       WORKSPACES_KEY,
       () => 5
     );
     expect(store.list().map((w) => [w.name, w.preset])).toEqual([
+      ["IDE", "split-tree"],
       ["Desk", "free"],
       ["Grid", "grid"],
     ]);
@@ -58,6 +59,7 @@ describe("workspace store", () => {
     // Reload from the same storage.
     const again = createWorkspaceStore(storage, WORKSPACES_KEY, () => t);
     expect(again.list().map((w) => w.name)).toEqual([
+      "IDE",
       "Desk",
       "Grid",
       "Focus",
@@ -68,6 +70,7 @@ describe("workspace store", () => {
     again.remove(ws.id);
     expect(again.getActiveId()).toBeNull();
     expect(again.list().map((w) => w.name)).toEqual([
+      "IDE",
       "Desk",
       "Grid",
       "Focus copy",
@@ -88,9 +91,9 @@ describe("workspace store", () => {
   it("falls back to defaults when the stored value is corrupt", () => {
     const storage = memoryStorage();
     storage.setItem(WORKSPACES_KEY, "{not json");
-    expect(createWorkspaceStore(storage).list()).toHaveLength(2);
+    expect(createWorkspaceStore(storage).list()).toHaveLength(3);
     storage.setItem(WORKSPACES_KEY, JSON.stringify({ version: 99 }));
-    expect(createWorkspaceStore(storage).list()).toHaveLength(2);
+    expect(createWorkspaceStore(storage).list()).toHaveLength(3);
   });
 
   it("drops invalid items and keeps valid ones", () => {
