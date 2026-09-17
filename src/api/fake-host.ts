@@ -28,7 +28,17 @@ import {
   startTour,
   type TourState,
 } from "@/boards/tour";
+import {
+  buildLineage,
+  LINEAGE_BOARD,
+  lineageBoard,
+  lineageFocus,
+  lineageForPage,
+  lineagePageBoard,
+  type LineageInput,
+} from "@/lineage/model";
 import type {
+  BoardOpenRecord,
   CanvasHost,
   CommandRecord,
   FlowRecord,
@@ -63,6 +73,7 @@ export interface FakeHost extends CanvasHost {
     tour: { board: BoardDef; state: TourState } | null;
     /** Board name per section id, for boards drawn on the fake canvas. */
     boardOf: Map<string, string>;
+    lineageFocus: string | null;
   };
 }
 
@@ -141,6 +152,7 @@ export function fakeHost(): FakeHost {
     log: [],
     tour: null,
     boardOf: new Map(),
+    lineageFocus: null,
   };
 
   const win = (id: string) => state.windows.find((w) => w.id === id);
@@ -180,6 +192,111 @@ export function fakeHost(): FakeHost {
       dataStores.set(p, s);
     }
     return s;
+  };
+
+  /** Draws a board on the fake canvas (shared by boards.open and lineage.open). */
+  const drawBoard = (
+    board: BoardDef,
+    origin?: { x: number; y: number }
+  ): BoardOpenRecord => {
+        // Replace an earlier copy.
+        const old = [...state.boardOf.entries()]
+          .filter(([, b]) => b === board.name)
+          .map(([id]) => id);
+        for (const id of old) {
+          const sec = state.sections.find((s) => s.id === id);
+          if (sec) {
+            for (const w of sec.windowIds) host.windows.close(w);
+            state.sections = state.sections.filter((s) => s.id !== id);
+          }
+          state.boardOf.delete(id);
+        }
+        const layout = layoutBoard(board, { origin: origin ?? { x: 0, y: 0 } });
+        const ids = new Map<string, string>();
+        for (const s of layout.sections) {
+          const id = `shape:board${++counter}`;
+          ids.set(s.id, id);
+          state.boardOf.set(id, board.name);
+          state.sections.push({
+            id,
+            title: s.title,
+            x: s.x,
+            y: s.y,
+            w: s.w,
+            h: s.h,
+            windowIds: [],
+          });
+        }
+        for (const w of layout.windows) {
+          const spec = board.sections
+            .flatMap((s) => s.windows)
+            .find((x) => x.id === w.id)!;
+          const id = host.windows.create({
+            kind: spec.kind,
+            title: spec.title ?? spec.kind,
+            content:
+              typeof spec.content === "string"
+                ? spec.content
+                : JSON.stringify(spec.content ?? ""),
+            at: { x: w.x, y: w.y },
+            size: { w: w.w, h: w.h },
+          });
+          const sectionId = ids.get(w.section)!;
+          win(id)!.section = sectionId;
+          state.sections.find((s) => s.id === sectionId)!.windowIds.push(id);
+          ids.set(w.id, id);
+        }
+        let arrows = 0;
+        for (const a of board.arrows) {
+          const from = ids.get(a.from);
+          const to = ids.get(a.to);
+          if (!from || !to) continue;
+          state.flows.push({
+            id: `shape:board${++counter}`,
+            from,
+            to,
+            label: a.label ?? "",
+          });
+          arrows++;
+        }
+        state.camera = { x: -layout.bounds.x, y: -layout.bounds.y, z: 0.25 };
+        const ws = host.workspaces.save(`Board: ${board.title}`);
+        return {
+          name: board.name,
+          title: board.title,
+          sections: layout.sections.length,
+          windows: layout.windows.length,
+          arrows,
+          bounds: layout.bounds,
+          workspace: { id: ws.id, name: ws.name },
+        };
+        };
+
+  const lineageInput = async (p: string): Promise<LineageInput> => {
+    const all = [...files(p)].filter(([, t]) => t !== null) as [
+      string,
+      string,
+    ][];
+    const schema = await dataStore(p).schema();
+    const rowCounts: Record<string, number> = {};
+    for (const t of schema.tables)
+      rowCounts[t.name] = (await dataStore(p).rows(t.name)).length;
+    return {
+      schema,
+      rowCounts,
+      bindings: scanBindings(
+        all
+          .filter(([path]) => !path.startsWith("data/"))
+          .map(([path, text]) => ({ path, text })),
+        schema
+      ),
+      components: parseComponents(all.map(([path, text]) => ({ path, text })))
+        .components,
+      pages: all
+        .filter(([path]) => /^pages\/.*\.json$/.test(path))
+        .map(([path, text]) => parsePage(text, path).page)
+        .filter((pg): pg is NonNullable<typeof pg> => pg !== null),
+    };
   };
 
   const host: FakeHost = {
@@ -556,77 +673,7 @@ export function fakeHost(): FakeHost {
           throw new Error(`No board "${name}" (${boardPath(name)})`);
         const { board } = parseBoard(text, boardPath(name));
         if (!board) throw new Error(`Cannot read ${boardPath(name)}`);
-        // Replace an earlier copy.
-        const old = [...state.boardOf.entries()]
-          .filter(([, b]) => b === name)
-          .map(([id]) => id);
-        for (const id of old) {
-          const sec = state.sections.find((s) => s.id === id);
-          if (sec) {
-            for (const w of sec.windowIds) host.windows.close(w);
-            state.sections = state.sections.filter((s) => s.id !== id);
-          }
-          state.boardOf.delete(id);
-        }
-        const layout = layoutBoard(board, { origin: origin ?? { x: 0, y: 0 } });
-        const ids = new Map<string, string>();
-        for (const s of layout.sections) {
-          const id = `shape:board${++counter}`;
-          ids.set(s.id, id);
-          state.boardOf.set(id, name);
-          state.sections.push({
-            id,
-            title: s.title,
-            x: s.x,
-            y: s.y,
-            w: s.w,
-            h: s.h,
-            windowIds: [],
-          });
-        }
-        for (const w of layout.windows) {
-          const spec = board.sections
-            .flatMap((s) => s.windows)
-            .find((x) => x.id === w.id)!;
-          const id = host.windows.create({
-            kind: spec.kind,
-            title: spec.title ?? spec.kind,
-            content:
-              typeof spec.content === "string"
-                ? spec.content
-                : JSON.stringify(spec.content ?? ""),
-            at: { x: w.x, y: w.y },
-            size: { w: w.w, h: w.h },
-          });
-          const sectionId = ids.get(w.section)!;
-          win(id)!.section = sectionId;
-          state.sections.find((s) => s.id === sectionId)!.windowIds.push(id);
-          ids.set(w.id, id);
-        }
-        let arrows = 0;
-        for (const a of board.arrows) {
-          const from = ids.get(a.from);
-          const to = ids.get(a.to);
-          if (!from || !to) continue;
-          state.flows.push({
-            id: `shape:board${++counter}`,
-            from,
-            to,
-            label: a.label ?? "",
-          });
-          arrows++;
-        }
-        state.camera = { x: -layout.bounds.x, y: -layout.bounds.y, z: 0.25 };
-        const ws = host.workspaces.save(`Board: ${board.title}`);
-        return {
-          name: board.name,
-          title: board.title,
-          sections: layout.sections.length,
-          windows: layout.windows.length,
-          arrows,
-          bounds: layout.bounds,
-          workspace: { id: ws.id, name: ws.name },
-        };
+        return drawBoard(board, origin);
       },
       async save(p, name, title) {
         const board: BoardDef = {
@@ -702,6 +749,51 @@ export function fakeHost(): FakeHost {
           ? describeTourStep(state.tour.board, state.tour.state)
           : null,
     },
+    lineage: {
+      graph: async (p) => buildLineage(await lineageInput(p)),
+      async open(p, page) {
+        const graph = buildLineage(await lineageInput(p));
+        if (page && !graph.pages.some((x) => x.name === page))
+          throw new Error(`No page "${page}"`);
+        const board = page ? lineagePageBoard(graph, page) : lineageBoard(graph);
+        const result = drawBoard(board);
+        state.lineageFocus = null;
+        const sub = page ? lineageForPage(graph, page) : graph;
+        return {
+          ...result,
+          page,
+          tables: sub.tables.length,
+          components: sub.components.length,
+          pages: sub.pages.length,
+          edges: sub.edges.length,
+        };
+      },
+      async focus(p, page) {
+        if (![...state.boardOf.values()].includes(LINEAGE_BOARD))
+          throw new Error("The Data lineage board is not open");
+        const graph = buildLineage(await lineageInput(p));
+        if (page && !graph.pages.some((x) => x.name === page))
+          throw new Error(`No page "${page}"`);
+        const focus = lineageFocus(graph, page);
+        const cards = state.windows.filter((w) => w.kind === "card");
+        const keyOf = (id: string) =>
+          String(JSON.parse(win(id)?.content || "{}").key ?? "");
+        let dimmed = 0;
+        for (const c of cards) if (!focus.nodes.has(keyOf(c.id))) dimmed++;
+        for (const f of state.flows) {
+          if (!f.from || !f.to) continue;
+          const from = keyOf(f.from);
+          const to = keyOf(f.to);
+          if (!from || !to) continue;
+          if (![...focus.edges].some((k) => k.startsWith(`${from}>${to}>`)))
+            dimmed++;
+        }
+        state.lineageFocus = page;
+        state.log.push(`lineage:${page ?? "all"}`);
+        return { page, dimmed, kept: cards.length + state.flows.length - dimmed };
+      },
+    },
+
     preview: {
       reload() {
         state.previewReloads++;

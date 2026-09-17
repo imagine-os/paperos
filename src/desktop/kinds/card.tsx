@@ -3,6 +3,7 @@
 import { stopEventPropagation } from "tldraw";
 import { openFile } from "@/ide/open-file";
 import { getProjectStore } from "@/ide/project";
+import { focusLineage } from "@/lineage/open";
 import type { CardContent } from "@/map/model";
 import type { WindowKindProps } from "../window-kinds";
 import { openDataWindow, parseContent } from "./data-common";
@@ -19,7 +20,9 @@ const SECTION_TONES: Record<string, string> = {
 
 /** A light node for the project map: title, subtitle, a few facts, and a click that opens the real thing. */
 export function CardWindow({ shape, editor }: WindowKindProps) {
-  const content = parseContent<CardContent>(shape.props.content);
+  const content = parseContent<CardContent & { focusPage?: string }>(
+    shape.props.content
+  );
   const tone = SECTION_TONES[content.section ?? ""] ?? "plain";
 
   const open = () => {
@@ -74,15 +77,30 @@ export function CardWindow({ shape, editor }: WindowKindProps) {
           )}
         </div>
       </div>
-      {canOpen && (
-        <button
-          type="button"
-          className="pos-button pos-button--small pos-card__open"
-          data-testid="card-open"
-          onClick={open}
-        >
-          Open
-        </button>
+      {(canOpen || content.focusPage) && (
+        <div className="pos-card__actions">
+          {content.focusPage && (
+            <button
+              type="button"
+              className="pos-button pos-button--small pos-card__open"
+              data-testid="card-focus"
+              title="Dim everything that does not feed this page"
+              onClick={() => void focusLineage(editor, content.focusPage!)}
+            >
+              Focus
+            </button>
+          )}
+          {canOpen && (
+            <button
+              type="button"
+              className="pos-button pos-button--small pos-card__open"
+              data-testid="card-open"
+              onClick={open}
+            >
+              Open
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

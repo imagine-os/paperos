@@ -19,6 +19,7 @@ import {
   readBoard,
 } from "@/boards/build";
 import { getTourController } from "@/boards/tour-controller";
+import { lineagePages, openLineage } from "@/lineage/open";
 import { createWindow } from "./create-window";
 import { applyDataWorkspace } from "./data-workspace";
 import { applyDesignWorkspace } from "./design-workspace";
@@ -329,14 +330,19 @@ export function registerIdeCommands(editor: Editor): () => void {
 
   // Boards of the active project: open and play. The list is refreshed on demand.
   let boardNames: { name: string; title: string }[] = [];
+  let pageNames: { name: string; title: string }[] = [];
   const refreshBoards = () => {
     const project = getProjectStore().getActiveId();
     if (!project) {
       boardNames = [];
+      pageNames = [];
       return;
     }
     void listBoards(project, editor).then((list) => {
       boardNames = list.map((b) => ({ name: b.name, title: b.title }));
+    });
+    void lineagePages(project).then((list) => {
+      pageNames = list;
     });
   };
   refreshBoards();
@@ -377,6 +383,26 @@ export function registerIdeCommands(editor: Editor): () => void {
       group: "Boards",
       run: () => void getTourController(editor).stop(),
     },
+    {
+      id: "lineage.open",
+      title: "Data lineage",
+      group: "Boards",
+      keywords: "data lineage tables components pages sources bindings",
+      run: () => {
+        const project = getProjectStore().getActiveId();
+        if (project) void openLineage(editor, { project });
+      },
+    },
+    ...pageNames.map((p) => ({
+      id: `lineage.open.${p.name}`,
+      title: `Data lineage for ${p.title}`,
+      group: "Boards",
+      keywords: "data lineage page sources bindings",
+      run: () => {
+        const project = getProjectStore().getActiveId();
+        if (project) void openLineage(editor, { project, page: p.name });
+      },
+    })),
   ]);
 
   const offProjects = registerCommandSource(() =>

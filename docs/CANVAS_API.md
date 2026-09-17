@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 65 methods in 15 namespaces.
+API version: 1. 68 methods in 16 namespaces.
 
 ## Where to call it
 
@@ -827,6 +827,51 @@ paperos.boards.stop();
 Ends the tour and removes the highlight.
 
 Returns `{stopped: boolean}`. changes state · MCP tool `boards_stop`.
+
+### `lineage`
+
+#### `lineage.graph`
+
+```ts
+paperos.lineage.graph(page?: string)
+```
+
+Where every component on every page gets its data, as three columns: tables (data/schema.json, with columns), components that bind data (a design component used by a page block with a binding or a table prop, or a component declaration) and pages. Edges are labeled: table → component with the bound fields, filter and mode; component → page with the block ids; table → page for page-level bindings. With page, only what feeds that page.
+
+Returns `LineageGraph {tables: [{key, name, columns: [{name, type, ref?}], rows}], components: [{key, name, kind: 'design' | 'declared', path?, description?, tables, pages}], pages: [{key, name, title, route, components, tables}], edges: [{from, to, kind: 'table-component' | 'component-page' | 'table-page', label, fields, filter?, mode: 'read' | 'write', pages, blocks?}]}`. read-only · MCP tool `lineage_graph`.
+
+| Parameter | Required | Type     | Description                                          |
+| --------- | -------- | -------- | ---------------------------------------------------- |
+| `page`    | no       | `string` | Page name (pages/<name>.json) to reduce the graph to |
+
+#### `lineage.open`
+
+```ts
+paperos.lineage.open(options?: {page?: string})
+```
+
+Draws the lineage as a board named data-lineage: Tables → Components → Pages sections of cards, left to right, with arrows bound to the cards and labeled with the fields, plus a controls window to focus a page. With options.page, draws 'Data lineage for <page>' instead: the page's tables and components on the left and the real Page Builder and a Preview with the Data sources overlay on the right.
+
+Returns `LineageResult: BoardResult plus {page: string | null, tables, components, pages, edges}`. changes state · MCP tool `lineage_open` · object-style call passes the object itself.
+
+| Parameter      | Required | Type              | Description                                             |
+| -------------- | -------- | ----------------- | ------------------------------------------------------- |
+| `options`      | no       | `{page?: string}` | What to draw                                            |
+| `options.page` | no       | `string`          | One page's lineage next to its Page Builder and Preview |
+
+#### `lineage.focus`
+
+```ts
+paperos.lineage.focus(page?: string)
+```
+
+On the open Data lineage board, dims every card and arrow that does not feed the page; without a page everything is shown again.
+
+Returns `{page: string | null, dimmed, kept}`. changes state · MCP tool `lineage_focus`.
+
+| Parameter | Required | Type     | Description                           |
+| --------- | -------- | -------- | ------------------------------------- |
+| `page`    | no       | `string` | Page name; omit or null for all pages |
 
 ### `preview`
 

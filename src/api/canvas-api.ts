@@ -14,11 +14,14 @@ import { normalizePath } from "@/ide/project/paths";
 import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 import type { CanvasEvent, EventBus } from "./events";
+import { lineageForPage, type LineageGraph } from "@/lineage/model";
 import type {
   BoardOpenRecord,
   BoardRecord,
   CanvasHost,
   FlowRecord,
+  LineageFocusRecord,
+  LineageOpenRecord,
   MapRecord,
   SectionRecord,
   TourRecord,
@@ -162,6 +165,11 @@ export interface CanvasApi {
     step(delta?: number): TourRecord | null;
     stop(): { stopped: boolean };
   };
+  lineage: {
+    graph(page?: string | null): Promise<LineageGraph>;
+    open(options?: { page?: string | null }): Promise<LineageOpenRecord>;
+    focus(page?: string | null): Promise<LineageFocusRecord>;
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -277,6 +285,14 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
     return v as Record<string, unknown>;
   };
 
+  /** `pages/home.json`, `home.json` or `home` -> `home`. */
+  const expectPageName = (v: unknown): string => {
+    const s = expectString(v, "page")
+      .replace(/^pages\//, "")
+      .replace(/\.json$/, "");
+    if (!s) fail("page must not be empty");
+    return s;
+  };
   const expectBoardName = (v: unknown): string => {
     const n = expectString(v, "name")
       .replace(/^boards\//, "")
@@ -699,6 +715,40 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
         return host.boards.step(Math.trunc(expectNumber(delta, "delta")));
       },
       stop: () => ({ stopped: host.boards.stop() }),
+    },
+
+    lineage: {
+      async graph(page = null) {
+        const graph = await host.lineage.graph(requireProject());
+        if (page === null) return graph;
+        const n = expectPageName(page);
+        if (!graph.pages.some((p) => p.name === n))
+          fail(
+            `No page "${n}". Pages: ${graph.pages.map((p) => p.name).join(", ")}`
+          );
+        return lineageForPage(graph, n);
+      },
+      async open(options = {}) {
+        if (options === null || typeof options !== "object")
+          fail("options must be an object");
+        const page =
+          options.page === undefined || options.page === null
+            ? null
+            : expectPageName(options.page);
+        const result = await host.lineage.open(requireProject(), page);
+        events.emit("board.opened", {
+          name: result.name,
+          sections: result.sections,
+          windows: result.windows,
+        });
+        return result;
+      },
+      async focus(page = null) {
+        return host.lineage.focus(
+          requireProject(),
+          page === null ? null : expectPageName(page)
+        );
+      },
     },
 
     preview: {

@@ -18,6 +18,7 @@ import { ConnectionsWindow } from "./kinds/connections";
 import { DesignWindow } from "./kinds/design";
 import { PagesWindow } from "./kinds/pages";
 import { CardWindow } from "./kinds/card";
+import { LineageWindow } from "./kinds/lineage";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -195,6 +196,16 @@ registerWindowKind({
   defaultSize: { w: 240, h: 120 },
   hidden: true,
   Component: CardWindow,
+});
+
+registerWindowKind({
+  id: "lineage",
+  label: "Data lineage",
+  defaultTitle: "Data lineage",
+  icon: "\u{1F517}",
+  defaultSize: { w: 300, h: 260 },
+  hidden: true,
+  Component: LineageWindow,
 });
 
 registerWindowKind({

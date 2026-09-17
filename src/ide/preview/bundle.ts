@@ -47,6 +47,8 @@ export interface BundleOptions {
   context?: Record<string, string>;
   /** Force the document's color scheme (`<html data-theme>`). */
   theme?: "light" | "dark";
+  /** Turn the "Data sources" overlay on: a badge per bound block naming table.fields. */
+  sources?: boolean;
 }
 
 /** Splits `pages/home.json?tenant=2` into the path and its query as an object. */
@@ -412,6 +414,8 @@ export async function bundle(
     bridge += `\n<style data-paperos="tokens">${escapeClose("style", design.css)}</style>`;
   if (design.payload)
     bridge += `\n<script data-paperos="design">${designRuntimeScript(design.payload)}</script>`;
+  if (design.payload && options.sources)
+    bridge += `\n<script data-paperos="sources">paperos.design.showSources(true);</script>`;
   if (/<head[^>]*>/i.test(html))
     html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${bridge}`);
   else if (/<html[^>]*>/i.test(html))

@@ -17,6 +17,20 @@ interface ApiShape {
     step(delta?: number): { step: number; section: string } | null;
     stop(): { stopped: boolean };
   };
+  lineage: {
+    graph(page?: string): Promise<{
+      tables: unknown[];
+      components: unknown[];
+      pages: { name: string }[];
+      edges: unknown[];
+    }>;
+    open(options?: { page?: string }): Promise<{
+      sections: number;
+      windows: number;
+      arrows: number;
+    }>;
+    focus(page?: string | null): Promise<{ dimmed: number; kept: number }>;
+  };
   windows: { list(): (Rect & { id: string; kind: string })[] };
   sections: { list(): (Rect & { id: string; title: string })[] };
   flow: { list(): { id: string; label: string }[] };
@@ -155,5 +169,80 @@ test("playing a board steps the camera section by section with a caption and key
     await page.evaluate(() => (window as unknown as W).paperos.boards.stop())
   ).toEqual({
     stopped: false,
+  });
+});
+
+test("Data lineage: tables → components → pages with labeled arrows; focusing a page dims the rest; the overlay badges sources", async ({
+  page,
+}) => {
+  await skipFirstRun(page);
+  await waitForProject(page);
+  const graph = await page.evaluate(() =>
+    (window as unknown as W).paperos.lineage.graph()
+  );
+  expect(graph.tables).toHaveLength(4);
+  expect(graph.pages.map((p) => p.name).sort()).toEqual([
+    "admin",
+    "home",
+    "products",
+  ]);
+  expect(graph.components.length).toBeGreaterThan(2);
+  expect(graph.edges.length).toBeGreaterThan(graph.components.length);
+
+  // The Boards menu draws it.
+  await page.getByTestId("boards-menu").click();
+  await page.getByTestId("lineage-open").click();
+  await expect(page.getByTestId("lineage-window")).toBeVisible();
+  const titles = await page.evaluate(() =>
+    (window as unknown as W).paperos.sections.list().map((s) => s.title)
+  );
+  expect(titles.some((t) => t.startsWith("Tables"))).toBe(true);
+  expect(titles.some((t) => t.startsWith("Components"))).toBe(true);
+  expect(titles).toContain("Pages");
+  await expect(page.locator(".tl-shape[data-shape-type=arrow]")).toHaveCount(
+    graph.edges.length
+  );
+  await expect(page.locator(".pos-card").first()).toBeVisible();
+  const labels = await page.evaluate(() =>
+    (window as unknown as W).paperos.flow.list().map((f) => f.label)
+  );
+  expect(labels.some((l) => /name|title|all columns/.test(l))).toBe(true);
+
+  // Focusing a page from the dropdown dims what does not feed it.
+  await page.getByTestId("lineage-page").selectOption("home");
+  await expect(page.getByTestId("lineage-page")).toHaveValue("home");
+  const focused = await page.evaluate(() =>
+    (window as unknown as W).paperos.lineage.focus("home")
+  );
+  expect(focused.dimmed).toBeGreaterThan(0);
+  expect(focused.kept).toBeGreaterThan(0);
+  const dimmedShapes = await page
+    .locator('.tl-shape[style*="opacity: 0.12"]')
+    .count();
+  expect(dimmedShapes).toBe(focused.dimmed);
+  const all = await page.evaluate(() =>
+    (window as unknown as W).paperos.lineage.focus(null)
+  );
+  expect(all.dimmed).toBe(0);
+
+  // One page's lineage: its Page Builder and a Preview with the overlay on.
+  await page.getByTestId("lineage-page").selectOption("home");
+  await page.getByTestId("lineage-open-page").click();
+  const preview = page.locator(".pos-window", { hasText: "Preview: Home" });
+  await expect(preview).toBeVisible();
+  const frame = preview.frameLocator("iframe.pos-preview__frame");
+  await expect(frame.locator(".ds-src-badge").first()).toBeVisible({
+    timeout: 20000,
+  });
+  const badges = await frame.locator(".ds-src-badge").allTextContents();
+  expect(badges.some((b) => /[a-z_]+\.[a-z_]+/.test(b))).toBe(true);
+  // The Sources button of the Preview turns the overlay off and on.
+  await preview.getByTestId("preview-sources").click();
+  await expect(frame.locator(".ds-src-badge")).toHaveCount(0, {
+    timeout: 20000,
+  });
+  await preview.getByTestId("preview-sources").click();
+  await expect(frame.locator(".ds-src-badge").first()).toBeVisible({
+    timeout: 20000,
   });
 });

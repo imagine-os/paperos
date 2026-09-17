@@ -52,6 +52,8 @@ export interface PagesWindowContent {
   page?: string;
   block?: string;
   device?: "mobile" | "tablet" | "desktop";
+  /** The "Data sources" overlay in the device preview. */
+  sources?: boolean;
 }
 
 export function openDesignWindow(
@@ -73,10 +75,12 @@ export function openPagesWindow(
 /** Message the gallery / page preview iframes post to their window. */
 export interface DesignMessage {
   source: "paperos-design";
-  type: "select" | "block";
+  type: "select" | "block" | "hover-table";
   name?: string;
   variant?: string;
   id?: string;
+  /** hover-table: the table under the pointer, or null when it left. */
+  table?: string | null;
 }
 
 export function isDesignMessage(data: unknown): data is DesignMessage {

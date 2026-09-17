@@ -481,6 +481,17 @@ export const BASE_CSS = `
 .ds-ad__foot { display: flex; justify-content: space-between; align-items: center; gap: var(--ds-space-2); }
 .ds-ad__metrics { font-size: var(--ds-font-size-xs); color: var(--ds-color-muted); font-variant-numeric: tabular-nums; }
 
+/* ----- Data sources overlay (paperos.design.showSources) ----- */
+.ds-src-badge { position: absolute; top: 6px; left: 6px; z-index: 30; display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 12px); pointer-events: none; }
+.ds-src-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--ds-color-ink); color: var(--ds-color-bg); font-family: var(--ds-font-mono); font-size: 11px; line-height: 1.3; font-weight: 500; box-shadow: var(--ds-shadow-sm); pointer-events: all; cursor: help; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; transition: transform var(--ds-motion-fast) var(--ds-motion-ease); }
+.ds-src-chip:hover { transform: translateY(-1px); border-color: var(--ds-color-accent2); }
+.ds-src-chip b { color: var(--ds-color-accent2); font-weight: 700; }
+.ds-src-chip i { font-style: normal; opacity: 0.7; }
+.ds-src-chip--write { background: var(--ds-color-danger); color: #fff; }
+.ds-src-chip--write b { color: #fff; }
+.ds-page[data-sources] .ds-col { outline: 1px dashed color-mix(in srgb, var(--ds-color-primary) 45%, transparent); outline-offset: 2px; border-radius: var(--ds-radius-sm); }
+.ds-src-hot { outline: 2px solid var(--ds-color-primary) !important; outline-offset: 3px; border-radius: var(--ds-radius-sm); box-shadow: 0 0 0 6px color-mix(in srgb, var(--ds-color-primary) 18%, transparent); }
+
 /* ----- Section heading / text helpers used by pages ----- */
 .ds-heading { font-size: var(--ds-font-size-xl); font-weight: var(--ds-font-weight-semibold); }
 .ds-text { margin: 0; color: var(--ds-color-muted); }

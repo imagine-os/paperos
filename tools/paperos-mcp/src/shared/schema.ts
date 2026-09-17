@@ -104,6 +104,10 @@ const BOARD_INFO =
   "BoardInfo {name, title, path, description?, sections, windows, onCanvas}";
 const BOARD_RESULT =
   "BoardResult {name, title, sections, windows, arrows, bounds: {x, y, w, h}, workspace: {id, name} | null}";
+const LINEAGE_GRAPH =
+  "LineageGraph {tables: [{key, name, columns: [{name, type, ref?}], rows}], components: [{key, name, kind: 'design' | 'declared', path?, description?, tables, pages}], pages: [{key, name, title, route, components, tables}], edges: [{from, to, kind: 'table-component' | 'component-page' | 'table-page', label, fields, filter?, mode: 'read' | 'write', pages, blocks?}]}";
+const LINEAGE_RESULT =
+  "LineageResult: BoardResult plus {page: string | null, tables, components, pages, edges}";
 const TOUR_INFO =
   "TourInfo {board, title, step, total, section, sectionTitle, stepTitle, caption, first, last} or null when no tour is playing";
 const LAYOUT_STATE =
@@ -764,6 +768,48 @@ export const TOOLS: ToolSpec[] = [
     description: "Ends the tour and removes the highlight.",
     params: [],
     returns: "{stopped: boolean}",
+    mutates: true,
+  },
+
+  // ----- lineage (where every component on every page gets its data) -----
+  {
+    name: "lineage.graph",
+    description:
+      "Where every component on every page gets its data, as three columns: tables (data/schema.json, with columns), components that bind data (a design component used by a page block with a binding or a table prop, or a component declaration) and pages. Edges are labeled: table → component with the bound fields, filter and mode; component → page with the block ids; table → page for page-level bindings. With page, only what feeds that page.",
+    params: [
+      str("page", "Page name (pages/<name>.json) to reduce the graph to", false),
+    ],
+    returns: LINEAGE_GRAPH,
+  },
+  {
+    name: "lineage.open",
+    description:
+      "Draws the lineage as a board named data-lineage: Tables → Components → Pages sections of cards, left to right, with arrows bound to the cards and labeled with the fields, plus a controls window to focus a page. With options.page, draws 'Data lineage for <page>' instead: the page's tables and components on the left and the real Page Builder and a Preview with the Data sources overlay on the right.",
+    params: [
+      {
+        name: "options",
+        description: "What to draw",
+        schema: {
+          type: "object",
+          properties: {
+            page: {
+              type: "string",
+              description:
+                "One page's lineage next to its Page Builder and Preview",
+            },
+          },
+        },
+      },
+    ],
+    returns: LINEAGE_RESULT,
+    mutates: true,
+  },
+  {
+    name: "lineage.focus",
+    description:
+      "On the open Data lineage board, dims every card and arrow that does not feed the page; without a page everything is shown again.",
+    params: [str("page", "Page name; omit or null for all pages", false)],
+    returns: "{page: string | null, dimmed, kept}",
     mutates: true,
   },
 

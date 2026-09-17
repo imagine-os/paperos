@@ -13,6 +13,7 @@ import {
   type BoardInfo,
 } from "@/boards/build";
 import { getTourController } from "@/boards/tour-controller";
+import { lineagePages, openLineage } from "@/lineage/open";
 import { docsChanged } from "@/ide/docs";
 import { getProjectStore } from "@/ide/project";
 import { togglePalette } from "@/ide/palette-state";
@@ -261,17 +262,22 @@ function BoardsMenu({ editor }: { editor: Editor }) {
   const docTick = useSignal(docsChanged);
   const project = state.activeId;
   const [boards, setBoards] = useState<BoardInfo[]>([]);
+  const [pages, setPages] = useState<{ name: string; title: string }[]>([]);
   const tour = getTourController(editor);
   const playing = useValue(tour.state);
   useEffect(() => {
     let cancelled = false;
     if (!project) {
       setBoards([]);
+      setPages([]);
       return;
     }
     const t = setTimeout(() => {
       void listBoards(project, editor).then((list) => {
         if (!cancelled) setBoards(list);
+      });
+      void lineagePages(project).then((list) => {
+        if (!cancelled) setPages(list);
       });
     }, 150);
     return () => {
@@ -336,6 +342,24 @@ function BoardsMenu({ editor }: { editor: Editor }) {
           {project ? "No boards/*.json in this project" : "No project open"}
         </div>
       )}
+      <MenuSeparator />
+      <MenuHeading>Data lineage</MenuHeading>
+      <MenuItem
+        label="Data lineage: tables → components → pages"
+        disabled={!project}
+        testId="lineage-open"
+        onSelect={() => project && void openLineage(editor, { project })}
+      />
+      {pages.map((p) => (
+        <MenuItem
+          key={`lineage-${p.name}`}
+          label={`Data lineage for ${p.title}`}
+          testId={`lineage-open-${p.name}`}
+          onSelect={() =>
+            project && void openLineage(editor, { project, page: p.name })
+          }
+        />
+      ))}
       <MenuSeparator />
       <MenuItem
         label="Stop tour"

@@ -32,6 +32,7 @@ import {
   type TourRuntime,
 } from "@/boards/tour-controller";
 import { listCommands, runCommand } from "@/ide/commands";
+import { focusLineage, gatherLineage, openLineage } from "@/lineage/open";
 import {
   clearConsole,
   pushConsole,
@@ -345,6 +346,12 @@ export function createBrowserHost(editor: Editor): CanvasHost {
       step: (delta) => tourRecord(getTourController(editor).step(delta)),
       stop: () => getTourController(editor).stop(),
       current: () => tourRecord(getTourController(editor).current),
+    },
+
+    lineage: {
+      graph: (p) => gatherLineage(p, projects),
+      open: (p, page) => openLineage(editor, { page, project: p }),
+      focus: (p, page) => focusLineage(editor, page, p),
     },
 
     preview: {

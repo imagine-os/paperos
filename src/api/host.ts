@@ -4,6 +4,7 @@
  * tests use a fake. Everything here speaks in plain values (no tldraw
  * records, no atoms), which is what keeps the facade testable in Node.
  */
+import type { LineageGraph } from "@/lineage/model";
 import type { BindingIndex } from "@/data/bindings";
 import type { Renames } from "@/data/migrate";
 import type { QueryOptions, QueryResult } from "@/data/query";
@@ -92,6 +93,21 @@ export interface BoardOpenRecord {
   arrows: number;
   bounds: Rect;
   workspace: { id: string; name: string } | null;
+}
+
+export interface LineageOpenRecord extends BoardOpenRecord {
+  /** The focused page of a single-page lineage, null for the whole project. */
+  page: string | null;
+  tables: number;
+  components: number;
+  pages: number;
+  edges: number;
+}
+
+export interface LineageFocusRecord {
+  page: string | null;
+  dimmed: number;
+  kept: number;
 }
 
 export interface TourRecord {
@@ -239,6 +255,14 @@ export interface CanvasHost {
     step(delta: number): TourRecord | null;
     stop(): boolean;
     current(): TourRecord | null;
+  };
+  lineage: {
+    /** Tables → Components → Pages of a project, with labeled edges. */
+    graph(project: string): Promise<LineageGraph>;
+    /** Draws the lineage board, or one page's lineage next to its Page Builder. */
+    open(project: string, page: string | null): Promise<LineageOpenRecord>;
+    /** Dims what does not feed `page` on the open lineage board (null: everything). */
+    focus(project: string, page: string | null): Promise<LineageFocusRecord>;
   };
   preview: {
     reload(): number;

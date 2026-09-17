@@ -13,7 +13,25 @@ import { bundle, pickEntry, splitEntry } from "@/ide/preview/bundle";
 import { previewReload } from "@/ide/preview/preview-state";
 import { getProjectStore } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
+import { hintTable } from "@/lineage/open";
 import type { WindowKindProps } from "../window-kinds";
+import { isDesignMessage } from "./design-common";
+
+/** `pages/x.json?tenant=2` with `sources=1` added or removed. */
+export function withQueryFlag(
+  content: string,
+  key: string,
+  on: boolean
+): string {
+  const { path, query } = splitEntry(content);
+  const next = { ...query };
+  if (on) next[key] = "1";
+  else delete next[key];
+  const q = Object.entries(next)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
+  return q ? `${path}?${q}` : path;
+}
 
 export const PREVIEW_DEBOUNCE_MS = 300;
 
@@ -23,7 +41,7 @@ export const PREVIEW_DEBOUNCE_MS = 300;
  * 300 ms after the last change. `content` holds an entry path override; a
  * `pages/<name>.json` entry renders that composed page.
  */
-export function PreviewWindow({ shape, update }: WindowKindProps) {
+export function PreviewWindow({ shape, editor, update }: WindowKindProps) {
   const store = getProjectStore();
   const state = useSignal(store.state);
   const changes = useSignal(store.changes);
@@ -46,6 +64,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
     override && override.includes("?")
       ? override.slice(override.indexOf("?"))
       : "";
+  const sourcesOn = query.sources === "1";
 
   // Files of the active project (for picking the entry).
   useEffect(() => {
@@ -87,6 +106,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
     const out = await bundle(entry, (p) => readLiveText(project, p, store), {
       list: () => paths,
       context: query,
+      sources: sourcesOn,
     });
     setSrcdoc(out.html);
     setMissing(out.missing);
@@ -102,11 +122,13 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
   // Console bridge: messages from this iframe go to the console store.
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (
-        e.source !== iframe.current?.contentWindow ||
-        !isPreviewMessage(e.data)
-      )
+      if (e.source !== iframe.current?.contentWindow) return;
+      // A hovered "Data sources" badge outlines the table's card on the canvas.
+      if (isDesignMessage(e.data) && e.data.type === "hover-table") {
+        hintTable(editor, e.data.table ?? null);
         return;
+      }
+      if (!isPreviewMessage(e.data)) return;
       if (e.data.type === "console" && e.data.level) {
         pushConsole(e.data.level, (e.data.args ?? []).join(" "));
       }
@@ -118,7 +140,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [paths, update, queryText]);
+  }, [paths, update, queryText, editor]);
 
   // This window runs Console snippets (the latest preview wins).
   useEffect(() => {
@@ -175,6 +197,26 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
             if (e.key === "Escape") setDraft(null);
           }}
         />
+        {entry && isPagePath(entry) && (
+          <button
+            type="button"
+            className={`pos-button pos-button--small${sourcesOn ? " pos-button--primary" : ""}`}
+            title="Data sources: badge every block with the table and fields it binds"
+            aria-pressed={sourcesOn}
+            data-testid="preview-sources"
+            onClick={() =>
+              update({
+                content: withQueryFlag(
+                  `${entry}${queryText}`,
+                  "sources",
+                  !sourcesOn
+                ),
+              })
+            }
+          >
+            Sources
+          </button>
+        )}
         <datalist id={`entries-${shape.id}`}>
           {paths
             .filter((p) => /\.html?$/i.test(p) || isPagePath(p))

@@ -1122,6 +1122,122 @@ export function designRuntime(
     grid.innerHTML = html;
   };
 
+  // ----- data sources overlay: a badge per bound block naming table.fields -----
+  let sourcesOn = false;
+  const hasSourceAncestor = (el: any): boolean => {
+    let p = el.parentElement;
+    while (p) {
+      if (p.hasAttribute && p.hasAttribute("data-source")) return true;
+      p = p.parentElement;
+    }
+    return false;
+  };
+  const postHover = (table: string | null) => {
+    try {
+      win.parent.postMessage(
+        { source: "paperos-design", type: "hover-table", table },
+        "*"
+      );
+    } catch {
+      /* not in a frame */
+    }
+  };
+  const setHot = (table: string | null) => {
+    for (const el of qsa(doc, ".ds-src-hot")) el.classList.remove("ds-src-hot");
+    if (!table) return;
+    for (const el of qsa(doc, "[data-source],[data-count],[data-table]")) {
+      const t =
+        el.getAttribute("data-source") ||
+        el.getAttribute("data-count") ||
+        el.getAttribute("data-table");
+      if (t === table && el.classList) el.classList.add("ds-src-hot");
+    }
+  };
+  const applySources = (root?: any) => {
+    const r = root || doc;
+    if (!r || !r.querySelectorAll) return;
+    for (const b of qsa(r, ".ds-src-badge")) b.parentNode && b.parentNode.removeChild(b);
+    if (doc && doc.body) {
+      if (sourcesOn) doc.body.setAttribute("data-sources", "on");
+      else doc.body.removeAttribute("data-sources");
+    }
+    if (!sourcesOn) return;
+    const perHost = new Map<any, { table: string; fields: string[]; filter: string; mode: string }[]>();
+    for (const el of qsa(r, "[data-source],[data-count],[data-chart][data-table],[data-calendar][data-table]")) {
+      if (el.hasAttribute("data-set-context")) continue;
+      if (hasSourceAncestor(el)) continue;
+      const table =
+        el.getAttribute("data-source") ||
+        el.getAttribute("data-count") ||
+        el.getAttribute("data-table");
+      if (!table) continue;
+      const fields: string[] = [];
+      for (const f of qsa(el, "[data-field]")) {
+        const name = f.getAttribute("data-field");
+        if (name && name.charAt(0) !== "$" && fields.indexOf(name) === -1) fields.push(name);
+      }
+      const x = el.getAttribute("data-x");
+      const y = el.getAttribute("data-y");
+      const d = el.getAttribute("data-date");
+      const tt = el.getAttribute("data-title");
+      for (const extra of [x, y, d, tt]) if (extra && fields.indexOf(extra) === -1) fields.push(extra);
+      const host = (el.closest && el.closest(".ds-col")) || el.parentElement || el;
+      const list = perHost.get(host) || [];
+      const mode = el.tagName && String(el.tagName).toLowerCase() === "form" ? "write" : "read";
+      if (!list.some((s) => s.table === table && s.fields.join() === fields.join()))
+        list.push({ table, fields, filter: el.getAttribute("data-filter") || "", mode });
+      perHost.set(host, list);
+    }
+    for (const form of qsa(r, "form[data-table]")) {
+      const table = form.getAttribute("data-table");
+      if (!table) continue;
+      const host = (form.closest && form.closest(".ds-col")) || form.parentElement || form;
+      const list = perHost.get(host) || [];
+      const fields = qsa(form, "[name]").map((i) => i.getAttribute("name")).filter(Boolean);
+      list.push({ table, fields, filter: "", mode: "write" });
+      perHost.set(host, list);
+    }
+    perHost.forEach((list, host) => {
+      if (!host || !host.appendChild) return;
+      try {
+        if (win.getComputedStyle && win.getComputedStyle(host).position === "static")
+          host.style.position = "relative";
+      } catch {
+        /* no styles */
+      }
+      const badge = doc.createElement("span");
+      badge.className = "ds-src-badge";
+      badge.setAttribute("data-sources-badge", "");
+      for (const s of list) {
+        const chip = doc.createElement("span");
+        chip.className = "ds-src-chip" + (s.mode === "write" ? " ds-src-chip--write" : "");
+        chip.setAttribute("data-table", s.table);
+        chip.innerHTML =
+          "<b>" +
+          api.escape(s.table) +
+          "</b>" +
+          (s.fields.length ? "." + api.escape(s.fields.slice(0, 5).join(", .")) + (s.fields.length > 5 ? " +" + (s.fields.length - 5) : "") : "") +
+          (s.filter ? ' <i>where ' + api.escape(s.filter) + "</i>" : "") +
+          (s.mode === "write" ? " <i>write</i>" : "");
+        chip.addEventListener("mouseenter", () => {
+          setHot(s.table);
+          postHover(s.table);
+        });
+        chip.addEventListener("mouseleave", () => {
+          setHot(null);
+          postHover(null);
+        });
+        badge.appendChild(chip);
+      }
+      host.appendChild(badge);
+    });
+  };
+  const showSources = (on?: boolean): boolean => {
+    sourcesOn = on === undefined ? !sourcesOn : !!on;
+    applySources();
+    return sourcesOn;
+  };
+
   /** Draws what templates cannot: icons, initials, charts, calendars, gates. Safe to run again. */
   const enhance = (root?: any): void => {
     const r = root || doc;
@@ -1133,6 +1249,7 @@ export function designRuntime(
       for (const el of qsa(r, "[data-calendar]")) drawCalendar(el);
       applyGates(r);
       syncSelects(r);
+      if (sourcesOn) applySources(r);
     } catch (e) {
       try {
         if (win.console && win.console.warn)
@@ -1177,6 +1294,8 @@ export function designRuntime(
     setContext,
     context: ctxOf,
     setTheme,
+    showSources,
+    sources: () => sourcesOn,
     initials: initialsOf,
     navigate,
     autoHydrate: true,

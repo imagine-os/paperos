@@ -30,6 +30,7 @@ import { readLiveText } from "@/ide/docs";
 import { openFile } from "@/ide/open-file";
 import { bundle } from "@/ide/preview/bundle";
 import { getProjectStore } from "@/ide/project";
+import { hintTable } from "@/lineage/open";
 import type { WindowKindProps } from "../window-kinds";
 import { Dropdown, MenuItem } from "../menu";
 import { parseContent } from "./data-common";
@@ -142,8 +143,11 @@ export function PagesWindow({ shape, editor, update }: WindowKindProps) {
               design={design}
               selectedBlock={content.block}
               device={content.device ?? page.device ?? "desktop"}
+              sources={content.sources === true}
               onSelectBlock={(block) => set({ block })}
               onDevice={(device) => set({ device })}
+              onSources={(sources) => set({ sources })}
+              onHoverTable={(table) => hintTable(editor, table)}
               onSave={save}
               onOpenFile={() =>
                 openFile(
@@ -175,8 +179,11 @@ function PageEditor({
   design,
   selectedBlock,
   device,
+  sources,
   onSelectBlock,
   onDevice,
+  onSources,
+  onHoverTable,
   onSave,
   onOpenFile,
   onOpenDesign,
@@ -186,8 +193,11 @@ function PageEditor({
   design: DesignModel;
   selectedBlock?: string;
   device: Device;
+  sources: boolean;
   onSelectBlock: (id: string | undefined) => void;
   onDevice: (device: Device) => void;
+  onSources: (on: boolean) => void;
+  onHoverTable: (table: string | null) => void;
   onSave: (page: PageDef) => void;
   onOpenFile: () => void;
   onOpenDesign: (component: string) => void;
@@ -317,13 +327,25 @@ function PageEditor({
           <span className="pos-toolbar__status">
             {DEVICES[device].width} × {DEVICES[device].height}
           </span>
+          <button
+            type="button"
+            className={`pos-button pos-button--small${sources ? " pos-button--primary" : ""}`}
+            title="Data sources: badge every block with the table and fields it binds; hover a badge to outline its table on the canvas"
+            aria-pressed={sources}
+            data-testid="pages-sources"
+            onClick={() => onSources(!sources)}
+          >
+            Data sources
+          </button>
         </div>
         <DevicePreview
           project={project}
           page={page}
           device={device}
+          sources={sources}
           selected={selectedBlock}
           onSelectBlock={onSelectBlock}
+          onHoverTable={onHoverTable}
         />
       </div>
       <aside
@@ -1043,14 +1065,18 @@ function DevicePreview({
   project,
   page,
   device,
+  sources,
   selected,
   onSelectBlock,
+  onHoverTable,
 }: {
   project: string;
   page: PageDef;
   device: Device;
+  sources: boolean;
   selected?: string;
   onSelectBlock: (id: string) => void;
+  onHoverTable: (table: string | null) => void;
 }) {
   const store = getProjectStore();
   const iframe = useRef<HTMLIFrameElement>(null);
@@ -1073,7 +1099,7 @@ function DevicePreview({
       const out = await bundle(
         entry,
         (p) => (p === entry ? pageText : readLiveText(project, p, store)),
-        { list: () => paths, markBlocks: true }
+        { list: () => paths, markBlocks: true, sources }
       );
       if (!cancelled) setSrcdoc(out.html);
     }, PREVIEW_DEBOUNCE_MS);
@@ -1081,7 +1107,7 @@ function DevicePreview({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [project, page.name, pageText, store]);
+  }, [project, page.name, pageText, store, sources]);
 
   useEffect(() => {
     const el = host.current;
@@ -1101,10 +1127,11 @@ function DevicePreview({
       )
         return;
       if (e.data.type === "block" && e.data.id) onSelectBlock(e.data.id);
+      if (e.data.type === "hover-table") onHoverTable(e.data.table ?? null);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [onSelectBlock]);
+  }, [onSelectBlock, onHoverTable]);
 
   // Highlight the selected block inside the frame (a style tag is the only thing we can reach).
   const highlighted = useMemo(

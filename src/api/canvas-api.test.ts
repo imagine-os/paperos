@@ -641,3 +641,127 @@ describe("schema and invokeTool", () => {
     expect(await invokeTool(api, "windows.list", undefined)).toHaveLength(1);
   });
 });
+
+describe("lineage", () => {
+  const seed = (files: Map<string, string | null>) => {
+    // The fake project ships a menu declaration; this test wants a known graph.
+    files.delete("components/menu.json");
+    files.set(
+      "data/schema.json",
+      JSON.stringify({
+        tables: [
+          {
+            name: "users",
+            columns: [
+              { name: "id", type: "number" },
+              { name: "name", type: "string" },
+            ],
+          },
+          { name: "orphan", columns: [{ name: "id", type: "number" }] },
+        ],
+      })
+    );
+    files.set("data/users.json", JSON.stringify([{ id: 1, name: "Ada" }]));
+    files.set(
+      "design/components/Table.json",
+      JSON.stringify({
+        name: "Table",
+        props: [{ name: "table", type: "table" }],
+        template: "<table></table>",
+      })
+    );
+    files.set(
+      "pages/admin.json",
+      JSON.stringify({
+        name: "admin",
+        title: "Admin",
+        route: "/admin",
+        components: [
+          {
+            id: "users-table",
+            name: "Table",
+            bindings: [{ table: "users", fields: ["name"] }],
+          },
+        ],
+      })
+    );
+    files.set(
+      "pages/home.json",
+      JSON.stringify({
+        name: "home",
+        title: "Home",
+        route: "/",
+        components: [{ id: "hero", name: "Hero" }],
+      })
+    );
+  };
+
+  it("builds the graph, draws it as a board and focuses a page", async () => {
+    const { api, host, events } = setup();
+    seed(host.state.files.get("prj_1")!);
+    const graph = await api.lineage.graph();
+    isPlainJson(graph);
+    expect(graph.tables.map((t) => t.name)).toEqual(["users", "orphan"]);
+    expect(graph.tables[0].rows).toBe(1);
+    expect(graph.components.map((c) => c.name)).toEqual(["Table"]);
+    expect(graph.pages.map((p) => p.name)).toEqual(["admin", "home"]);
+    expect(graph.edges.map((e) => `${e.from}>${e.to}:${e.label}`)).toEqual([
+      "table:users>component:Table:name",
+      "component:Table>page:admin:users-table",
+    ]);
+    const forHome = await api.lineage.graph("pages/home.json");
+    expect(forHome.tables).toEqual([]);
+    expect(forHome.pages).toHaveLength(1);
+    await expect(api.lineage.graph("nope")).rejects.toThrow(/No page "nope"/);
+
+    const seen: string[] = [];
+    events.on("board.opened", (e) => seen.push(String(e.payload.name)));
+    const opened = await api.lineage.open();
+    isPlainJson(opened);
+    expect(opened).toMatchObject({
+      name: "data-lineage",
+      page: null,
+      sections: 4,
+      windows: 1 + 2 + 1 + 2,
+      arrows: 2,
+      tables: 2,
+      components: 1,
+      pages: 2,
+      edges: 2,
+    });
+    expect(seen).toEqual(["data-lineage"]);
+    expect(api.sections.list().map((s) => s.title)).toEqual([
+      "Data lineage",
+      "Tables (data/schema.json)",
+      "Components that bind data",
+      "Pages",
+    ]);
+    // Focusing home keeps the page card and dims the rest; null restores all.
+    expect(await api.lineage.focus("home")).toEqual({
+      page: "home",
+      dimmed: 4 + 2,
+      kept: 1,
+    });
+    expect(host.state.lineageFocus).toBe("home");
+    expect(await api.lineage.focus()).toEqual({ page: null, dimmed: 0, kept: 7 });
+    await expect(api.lineage.focus("nope")).rejects.toThrow(/No page/);
+
+    // One page's lineage puts the Page Builder and a Preview with the overlay on the right.
+    const single = await api.lineage.open({ page: "admin" });
+    expect(single).toMatchObject({
+      name: "data-lineage-admin",
+      page: "admin",
+      tables: 1,
+      components: 1,
+      pages: 1,
+      edges: 2,
+    });
+    const kinds = api.windows.list().map((w) => w.kind);
+    expect(kinds).toContain("pages");
+    expect(kinds).toContain("preview");
+    expect(
+      api.windows.list().find((w) => w.kind === "preview")?.content
+    ).toBe("pages/admin.json?sources=1");
+    await expect(api.lineage.open({ page: "nope" })).rejects.toThrow(/No page/);
+  });
+});
