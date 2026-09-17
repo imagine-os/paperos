@@ -8,13 +8,39 @@
  * everything external is left as is. A console bridge is injected first so
  * the Console window sees logs and errors and can run snippets, and when the
  * project has `data/schema.json` the `paperos.data` runtime follows it with
- * the tables embedded (see `src/data/runtime.ts`).
+ * the tables embedded (see `src/data/runtime.ts`). A project with
+ * `design/tokens.json` gets its token CSS (`--ds-*`) and the base component
+ * styles, one with `design/components/*.json` the `paperos.design` runtime
+ * (see `src/design/render.ts`), and an entry `pages/<name>.json` is rendered
+ * from its blocks (see `src/design/pages.ts`).
  */
 import { dataRuntimeScript } from "@/data/runtime";
-import { parseRows, parseSchema, SCHEMA_PATH, tablePath } from "@/data/schema";
+import {
+  parseRows,
+  parseSchema,
+  SCHEMA_PATH,
+  tablePath,
+  type DataSchema,
+} from "@/data/schema";
+import { BASE_CSS } from "@/design/base-css";
+import { componentFromPath, parseComponents } from "@/design/components";
+import { isPagePath, parsePage, renderPage } from "@/design/pages";
+import {
+  designCore,
+  designRuntimeScript,
+  type RenderPayload,
+} from "@/design/render";
+import { parseTokens, tokensToCss, TOKENS_PATH } from "@/design/tokens";
 import { extname, resolveRelative } from "../project/paths";
 
 export type ReadFile = (path: string) => string | null | Promise<string | null>;
+
+export interface BundleOptions {
+  /** Every file path of the project (needed to find components and pages). */
+  list?: () => string[] | Promise<string[]>;
+  /** Mark page blocks with `data-block` (the Page Builder's preview). */
+  markBlocks?: boolean;
+}
 
 export interface BundleResult {
   html: string;
@@ -155,36 +181,92 @@ function toBase64(text: string): string {
   return btoa(bin);
 }
 
-/** The `paperos.data` runtime with the project's tables, or null without a schema. */
-async function dataScript(
+async function loadSchema(
   read: ReadFile,
   deps: string[]
-): Promise<string | null> {
+): Promise<DataSchema | null> {
   const schemaText = await read(SCHEMA_PATH);
   if (schemaText === null) return null;
   deps.push(SCHEMA_PATH);
-  const { schema } = parseSchema(schemaText);
+  return parseSchema(schemaText).schema;
+}
+
+function runtimeSchema(schema: DataSchema) {
+  return {
+    tables: schema.tables.map((t) => ({
+      name: t.name,
+      primaryKey: t.primaryKey,
+      display: t.display,
+      columns: t.columns.map((c) => ({
+        name: c.name,
+        type: c.type,
+        ref: c.ref,
+      })),
+    })),
+  };
+}
+
+/** The `paperos.data` runtime with the project's tables, or null without a schema. */
+async function dataScript(
+  read: ReadFile,
+  deps: string[],
+  schema: DataSchema | null
+): Promise<string | null> {
+  if (!schema) return null;
   const tables: Record<string, Record<string, unknown>[]> = {};
   for (const t of schema.tables) {
     const text = await read(tablePath(t.name));
     if (text !== null) deps.push(tablePath(t.name));
     tables[t.name] = text === null ? [] : parseRows(text).rows;
   }
-  return dataRuntimeScript({
-    schema: {
-      tables: schema.tables.map((t) => ({
-        name: t.name,
-        primaryKey: t.primaryKey,
-        display: t.display,
-        columns: t.columns.map((c) => ({
-          name: c.name,
-          type: c.type,
-          ref: c.ref,
-        })),
-      })),
-    },
-    tables,
-  });
+  return dataRuntimeScript({ schema: runtimeSchema(schema), tables });
+}
+
+interface DesignAssets {
+  /** Token variables + base component styles, or null without tokens.json. */
+  css: string | null;
+  /** The renderer payload (components, schema, routes), or null without components. */
+  payload: RenderPayload | null;
+}
+
+/** Everything the design system contributes to a document. */
+async function designAssets(
+  read: ReadFile,
+  list: BundleOptions["list"],
+  schema: DataSchema | null,
+  deps: string[]
+): Promise<DesignAssets> {
+  let css: string | null = null;
+  const tokensText = await read(TOKENS_PATH);
+  if (tokensText !== null) {
+    deps.push(TOKENS_PATH);
+    css = tokensToCss(parseTokens(tokensText).tokens) + BASE_CSS;
+  }
+  let payload: RenderPayload | null = null;
+  const paths = list ? await list() : [];
+  const componentPaths = paths.filter((p) => componentFromPath(p));
+  if (componentPaths.length) {
+    const files: { path: string; text: string }[] = [];
+    for (const p of componentPaths) {
+      const text = await read(p);
+      if (text === null) continue;
+      deps.push(p);
+      files.push({ path: p, text });
+    }
+    const routes: Record<string, string> = {};
+    for (const p of paths.filter(isPagePath)) {
+      const text = await read(p);
+      if (text === null) continue;
+      const { page } = parsePage(text, p);
+      if (page) routes[page.route] = page.name;
+    }
+    payload = {
+      components: parseComponents(files).components,
+      ...(schema ? { schema: runtimeSchema(schema) } : {}),
+      routes,
+    };
+  }
+  return { css, payload };
 }
 
 /**
@@ -193,7 +275,8 @@ async function dataScript(
  */
 export async function bundle(
   entry: string,
-  read: ReadFile
+  read: ReadFile,
+  options: BundleOptions = {}
 ): Promise<BundleResult> {
   const deps: string[] = [entry];
   const missing: string[] = [];
@@ -204,8 +287,32 @@ export async function bundle(
   };
   syncCache.set(cached, cache);
 
-  let html =
-    (await cached(entry)) ?? `<!doctype html><p>No such file: ${entry}</p>`;
+  const schema = await loadSchema(cached, deps);
+  const design = await designAssets(cached, options.list, schema, deps);
+
+  let html: string;
+  if (isPagePath(entry)) {
+    const text = await cached(entry);
+    const { page, errors } =
+      text === null ? { page: null, errors: [] } : parsePage(text, entry);
+    if (!page) {
+      html = `<!doctype html><p>${text === null ? `No such page: ${entry}` : `Cannot render ${entry}: ${errors.join("; ")}`}</p>`;
+    } else {
+      const core = designCore(
+        design.payload ?? {
+          components: [],
+          ...(schema ? { schema: runtimeSchema(schema) } : {}),
+        }
+      );
+      html = renderPage(page, core, {
+        css: design.css ?? BASE_CSS,
+        markBlocks: options.markBlocks,
+      });
+    }
+  } else {
+    html =
+      (await cached(entry)) ?? `<!doctype html><p>No such file: ${entry}</p>`;
+  }
 
   // Preload every relative asset once so the CSS pass can resolve url() synchronously.
   const assetRe = /(?:href|src)\s*=\s*["']([^"']+)["']/gi;
@@ -269,8 +376,12 @@ export async function bundle(
   );
 
   let bridge = `<script data-paperos="bridge">${CONSOLE_BRIDGE}</script>`;
-  const data = await dataScript(cached, deps);
+  const data = await dataScript(cached, deps, schema);
   if (data) bridge += `\n<script data-paperos="data">${data}</script>`;
+  if (design.css && !isPagePath(entry))
+    bridge += `\n<style data-paperos="tokens">${escapeClose("style", design.css)}</style>`;
+  if (design.payload)
+    bridge += `\n<script data-paperos="design">${designRuntimeScript(design.payload)}</script>`;
   if (/<head[^>]*>/i.test(html))
     html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${bridge}`);
   else if (/<html[^>]*>/i.test(html))

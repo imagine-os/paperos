@@ -18,6 +18,7 @@
  * the value (text, or `src` on images, `href` on links, `data-attr` to
  * choose, `data-as="html|icon"`, `data-display` for the display value of a
  * ref). `data-filter`, `data-order` and `data-group="col"` shape the list;
+ * `[data-count="table"]` shows how many rows match its `data-filter`;
  * `{col}` in a nested list's filter refers to the enclosing row and
  * `{$group}` to the current group. `data-empty` is shown when nothing matches.
  */
@@ -358,6 +359,26 @@ export function dataRuntime(win: any, payload: RuntimePayload): any {
       el.textContent = el.getAttribute("data-empty");
   };
 
+  // [data-count="table"] (+ optional data-filter): the number of matching rows.
+  const hydrateCounts = (r: any) => {
+    const list: any[] = Array.prototype.slice.call(
+      r.querySelectorAll("[data-count]")
+    );
+    for (const el of list) {
+      const tableName = el.getAttribute("data-count");
+      let rows = (tables[tableName] || []).slice();
+      const filter = el.getAttribute("data-filter");
+      if (filter) {
+        const terms = parseFilter(resolvePlaceholders(filter, {}));
+        rows = rows.filter((row) => terms.every((t) => matchesTerm(row, t)));
+      }
+      const visible = api.options && api.options.visible;
+      if (typeof visible === "function")
+        rows = rows.filter((row) => visible(tableName, row) !== false);
+      el.textContent = String(rows.length);
+    }
+  };
+
   api.hydrate = (root?: any, options?: Row) => {
     const doc = win.document;
     const r = root || doc;
@@ -365,6 +386,7 @@ export function dataRuntime(win: any, payload: RuntimePayload): any {
     if (!r || !r.querySelectorAll) return 0;
     const list = topLevelSources(r);
     for (const el of list) hydrateElement(el, {});
+    hydrateCounts(r);
     return list.length;
   };
 

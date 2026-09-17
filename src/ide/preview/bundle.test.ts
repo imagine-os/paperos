@@ -78,4 +78,51 @@ describe("bundle", () => {
     const out = await bundle("index.html", () => null);
     expect(out.html).toContain("No such file: index.html");
   });
+
+  const designFiles: Record<string, string> = {
+    "index.html": `<html><head></head><body><ds-component name="Badge"></ds-component></body></html>`,
+    "design/tokens.json": `{"color":{"primary":"#ff0000"}}`,
+    "design/components/Badge.json": `{"name":"Badge","props":[{"name":"text","default":"New"}],"template":"<span class=\\"ds-badge\\">{text}</span>"}`,
+    "pages/home.json": `{"title":"Home","route":"/","components":[{"id":"b","name":"Badge","span":6,"props":{"text":"Hi"}}]}`,
+    "pages/about.json": `{"title":"About","route":"/about"}`,
+  };
+  const designRead = (p: string) => designFiles[p] ?? null;
+  const list = () => Object.keys(designFiles);
+
+  it("injects the token CSS and the design runtime when the project has a design system", async () => {
+    const out = await bundle("index.html", designRead, { list });
+    expect(out.html).toContain('<style data-paperos="tokens">');
+    expect(out.html).toContain("--ds-color-primary: #ff0000;");
+    expect(out.html).toContain(".ds-button {");
+    expect(out.html).toContain('<script data-paperos="design">');
+    expect(out.html).toContain('"routes":{"/":"home","/about":"about"}');
+    expect(out.deps).toEqual(
+      expect.arrayContaining([
+        "design/tokens.json",
+        "design/components/Badge.json",
+      ])
+    );
+    // Without a file list the components cannot be found, but tokens still apply.
+    const noList = await bundle("index.html", designRead);
+    expect(noList.html).toContain('data-paperos="tokens"');
+    expect(noList.html).not.toContain('data-paperos="design"');
+  });
+
+  it("renders a pages/*.json entry from its blocks", async () => {
+    const out = await bundle("pages/home.json", designRead, {
+      list,
+      markBlocks: true,
+    });
+    expect(out.html).toContain("<title>Home</title>");
+    expect(out.html).toContain('data-block="b"');
+    expect(out.html).toContain('<span class="ds-badge">Hi</span>');
+    expect(out.html).toContain("--ds-color-primary: #ff0000;");
+    // The bridge and runtimes are injected into the generated head, the token style only once.
+    expect(out.html).toContain('data-paperos="bridge"');
+    expect(out.html).toContain('data-paperos="design"');
+    expect(out.html.match(/--ds-color-primary: #ff0000;/g)).toHaveLength(1);
+    expect(out.deps).toContain("pages/home.json");
+    const missing = await bundle("pages/nope.json", designRead, { list });
+    expect(missing.html).toContain("No such page: pages/nope.json");
+  });
 });

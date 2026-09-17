@@ -113,6 +113,36 @@ describe("scanJson", () => {
       name: "bad",
     });
   });
+
+  it("reads page blocks (M5): nested component names and their bindings", () => {
+    const page = scanJson(
+      "pages/admin.json",
+      `{
+  "name": "admin",
+  "components": [
+    { "id": "g", "name": "Grid", "children": [
+      { "id": "t", "name": "Table", "bindings": [{ "table": "users", "fields": ["name"] }] },
+      { "id": "b", "name": "Badge" }
+    ] },
+    { "id": "f", "name": "Form", "bindings": [{ "table": "users", "mode": "write" }] }
+  ],
+  "bindings": [{ "table": "roles" }]
+}`
+    );
+    expect(page.components).toEqual(["Grid", "Table", "Badge", "Form"]);
+    expect(page.bindings.map((b) => [b.table, b.mode, b.line])).toEqual([
+      ["users", "read", 5],
+      ["users", "write", 8],
+      ["roles", "read", 10],
+    ]);
+    // Component definitions with template placeholders are not bindings.
+    expect(
+      scanJson(
+        "design/components/Table.json",
+        `{"name": "Table", "bindings": [{"table": "{table}"}]}`
+      ).bindings
+    ).toEqual([]);
+  });
 });
 
 describe("scanBindings", () => {

@@ -150,6 +150,51 @@
 - [x] Tests: unit + `e2e/data.spec.ts`
 - [x] Validate: `npm run check`, `npm run build`, screenshots, push, CI
 
+## M5 - Design system, pages and flowcharting
+
+- [ ] Plan written, foundation read (`src/data/`, `src/desktop/kinds/*`,
+      `src/desktop/window-shape.tsx`, `src/wm/window-manager.ts`,
+      `src/ide/preview/bundle.ts`, `src/api/`, tldraw arrow/frame APIs)
+- [ ] Design tokens (`src/design/tokens.ts`): `design/tokens.json` types,
+      defaults, tolerant parser, `--ds-*` CSS generation (light + dark), base
+      component CSS; injected by the bundler when the file exists
+- [ ] Components (`src/design/components.ts`, `render.ts`):
+      `design/components/*.json` (name, props typed with defaults, slots,
+      template with `{prop}` / `{@html}` / `{#each}` / `{#if}`, variants,
+      bindings); self-contained renderer shared by the bundler and the
+      preview runtime (`<ds-component>` / `data-component` hydrate); starter
+      library (Button, Card, Table, Form, Nav, MegaMenu, Hero, Stat, List,
+      Grid, Tabs, Modal, Badge, Avatar)
+- [ ] Pages (`src/design/pages.ts`): `pages/*.json` schema (title, route,
+      12-column layout, component blocks with props / bindings / children,
+      links, device), validation, HTML rendering; the preview renders a page
+      when the entry is `pages/<name>.json`
+- [ ] Design window kind (`design`): Tokens (swatches, type scale, spacing,
+      radius, shadows, light/dark toggle, live preview, writes tokens.json),
+      Components (gallery with variants, inspector, Insert into page),
+      Guidelines (`design/README.md`)
+- [ ] Page Builder window kind (`pages`): page list, block list in the grid,
+      move / reorder / add from library, props panel, table and field
+      dropdowns from the schema, device toggle (390 / 820 / 1280) with an
+      embedded preview, writes `pages/*.json`
+- [ ] Flowcharting: arrows bind to windows (connect handle on the title bar),
+      sections as frames (group selected, section from workspace), tiling
+      inside the focused section, `card` window kind, project map generator
+      (`map.generate` / `map.regenerate`, layered layout, keeps positions),
+      "Map" workspace
+- [ ] Canvas API: `map.generate`, `map.regenerate`, `flow.connect`,
+      `flow.disconnect`, `flow.list`, `sections.create`, `sections.list`
+      (schema, host, facade, fake host, tests, `npm run api:gen`)
+- [ ] Sample project: `design/tokens.json`, `design/components/*.json`,
+      `design/README.md`, pages `home`, `products`, `admin` bound to the M4
+      tables with links between them
+- [ ] Tests: unit (tokens, renderer, pages, map layout, flow API) and
+      `e2e/design.spec.ts`
+- [ ] Docs: README (Design system, Pages, Flowcharting), `docs/PLAN.md`
+      (M5 done, decisions), `docs/CANVAS_API.md`, this Review
+- [ ] Validate: `npm run check`, `npm run build`, `npm run build:static`,
+      screenshots, push, CI
+
 ## Review (M4)
 
 ### What changed

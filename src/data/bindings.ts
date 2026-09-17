@@ -5,9 +5,11 @@
  *  1. HTML: `data-source="table"` on a list element, `data-field="col"` on
  *     the parts of its first child (the row template); optional
  *     `data-filter`, `data-order`, `data-group` (see runtime.ts).
- *  2. `components/*.json` and `pages/*.json`:
+ *  2. `components/*.json`, `design/components/*.json` and `pages/*.json`:
  *     `{"name": ..., "bindings": [{"table", "fields", "mode": "read" | "write"}]}`;
- *     pages may also list `"components": ["side-menu"]`.
+ *     pages also list `"components"`: names (M4) or blocks
+ *     `{"name", "props", "bindings", "children"}` (M5) whose bindings count
+ *     as the page's.
  *  3. JavaScript: `paperos.data.<table>.list()` and friends in the preview.
  *
  * The scanner is pure text processing (regular expressions + JSON.parse),
@@ -240,33 +242,52 @@ export function scanJson(
     return { bindings: [], components: [], name };
   const source = typeof decl.name === "string" && decl.name ? decl.name : name;
   const bindings: Binding[] = [];
-  const list = Array.isArray(decl.bindings) ? decl.bindings : [];
   let cursor = 0;
-  for (const raw of list) {
-    if (typeof raw !== "object" || raw === null) continue;
-    const b = raw as Record<string, unknown>;
-    if (typeof b.table !== "string" || !b.table) continue;
-    const at = text.indexOf(`"table"`, cursor);
-    const idx = at === -1 ? 0 : at;
-    cursor = at === -1 ? cursor : at + 7;
-    const binding: Binding = {
-      table: b.table,
-      fields: Array.isArray(b.fields)
-        ? b.fields.filter((f): f is string => typeof f === "string")
-        : [],
-      mode: b.mode === "write" ? "write" : "read",
-      kind,
-      path,
-      line: lineOf(text, idx),
-      source,
-    };
-    if (typeof b.filter === "string") binding.filter = b.filter;
-    if (typeof b.order === "string") binding.order = b.order;
-    bindings.push(binding);
-  }
-  const components = Array.isArray(decl.components)
-    ? decl.components.filter((c): c is string => typeof c === "string")
-    : [];
+  const addBindings = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const raw of list) {
+      if (typeof raw !== "object" || raw === null) continue;
+      const b = raw as Record<string, unknown>;
+      // Templates in component definitions ("{table}") are not bindings.
+      if (typeof b.table !== "string" || !b.table || b.table.includes("{"))
+        continue;
+      const at = text.indexOf(`"table"`, cursor);
+      const idx = at === -1 ? 0 : at;
+      cursor = at === -1 ? cursor : at + 7;
+      const binding: Binding = {
+        table: b.table,
+        fields: Array.isArray(b.fields)
+          ? b.fields.filter((f): f is string => typeof f === "string")
+          : [],
+        mode: b.mode === "write" ? "write" : "read",
+        kind,
+        path,
+        line: lineOf(text, idx),
+        source,
+      };
+      if (typeof b.filter === "string") binding.filter = b.filter;
+      if (typeof b.order === "string") binding.order = b.order;
+      bindings.push(binding);
+    }
+  };
+  // Pages list components by name (M4) or as blocks {name, props, bindings, children} (M5).
+  const components: string[] = [];
+  const addBlocks = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const c of list) {
+      if (typeof c === "string") {
+        if (!components.includes(c)) components.push(c);
+      } else if (typeof c === "object" && c !== null) {
+        const block = c as Record<string, unknown>;
+        if (typeof block.name === "string" && !components.includes(block.name))
+          components.push(block.name);
+        addBindings(block.bindings);
+        addBlocks(block.children);
+      }
+    }
+  };
+  addBlocks(decl.components);
+  addBindings(decl.bindings);
   return { bindings, components, name: source };
 }
 
