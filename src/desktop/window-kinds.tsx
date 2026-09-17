@@ -15,6 +15,9 @@ import { AgentWindow } from "./kinds/agent";
 import { DataWindow } from "./kinds/data";
 import { SchemaWindow } from "./kinds/schema";
 import { ConnectionsWindow } from "./kinds/connections";
+import { DesignWindow } from "./kinds/design";
+import { PagesWindow } from "./kinds/pages";
+import { CardWindow } from "./kinds/card";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -132,6 +135,24 @@ registerWindowKind({
 });
 
 registerWindowKind({
+  id: "design",
+  label: "Design",
+  defaultTitle: "Design system",
+  icon: "\u{1F3A8}",
+  defaultSize: { w: 900, h: 560 },
+  Component: DesignWindow,
+});
+
+registerWindowKind({
+  id: "pages",
+  label: "Page Builder",
+  defaultTitle: "Page Builder",
+  icon: "\u{1F4D0}",
+  defaultSize: { w: 1080, h: 620 },
+  Component: PagesWindow,
+});
+
+registerWindowKind({
   id: "script",
   label: "Script",
   defaultTitle: "Script",
@@ -164,6 +185,16 @@ registerWindowKind({
   defaultTitle: "Note",
   icon: "\u{1F5D2}",
   Component: NoteWindow,
+});
+
+registerWindowKind({
+  id: "card",
+  label: "Card",
+  defaultTitle: "Card",
+  icon: "\u{25A3}",
+  defaultSize: { w: 240, h: 120 },
+  hidden: true,
+  Component: CardWindow,
 });
 
 registerWindowKind({

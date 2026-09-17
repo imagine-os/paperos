@@ -8,6 +8,7 @@ import {
   pushConsole,
 } from "@/ide/console-store";
 import { docsChanged, readLiveText } from "@/ide/docs";
+import { isPagePath, pagePath } from "@/design/pages";
 import { bundle, pickEntry } from "@/ide/preview/bundle";
 import { previewReload } from "@/ide/preview/preview-state";
 import { getProjectStore } from "@/ide/project";
@@ -19,7 +20,8 @@ export const PREVIEW_DEBOUNCE_MS = 300;
 /**
  * Live preview of the active project's web entry in a sandboxed iframe.
  * The document is rebuilt from the live buffers (unsaved edits included)
- * 300 ms after the last change. `content` holds an entry path override.
+ * 300 ms after the last change. `content` holds an entry path override; a
+ * `pages/<name>.json` entry renders that composed page.
  */
 export function PreviewWindow({ shape, update }: WindowKindProps) {
   const store = getProjectStore();
@@ -72,10 +74,12 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
       setSrcdoc("");
       return;
     }
-    const out = await bundle(entry, (p) => readLiveText(project, p, store));
+    const out = await bundle(entry, (p) => readLiveText(project, p, store), {
+      list: () => paths,
+    });
     setSrcdoc(out.html);
     setMissing(out.missing);
-  }, [project, entry, store]);
+  }, [project, entry, store, paths]);
 
   // Debounced rebuild on any document or file change.
   useEffect(() => {
@@ -94,10 +98,15 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
       if (e.data.type === "console" && e.data.level) {
         pushConsole(e.data.level, (e.data.args ?? []).join(" "));
       }
+      // A link to another page (href="#/route") switches the entry.
+      if (e.data.type === "navigate" && e.data.page) {
+        const target = pagePath(e.data.page);
+        if (paths.includes(target)) update({ content: target });
+      }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [paths, update]);
 
   // This window runs Console snippets (the latest preview wins).
   useEffect(() => {
@@ -154,7 +163,7 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
         />
         <datalist id={`entries-${shape.id}`}>
           {paths
-            .filter((p) => /\.html?$/i.test(p))
+            .filter((p) => /\.html?$/i.test(p) || isPagePath(p))
             .map((p) => (
               <option key={p} value={`/${p}`} />
             ))}

@@ -35,9 +35,12 @@ export function clearConsole(): void {
 /** Message shape the preview bridge posts to the parent window. */
 export interface PreviewMessage {
   source: "paperos-preview";
-  type: "console" | "ready";
+  type: "console" | "ready" | "navigate";
   level?: ConsoleLevel;
   args?: string[];
+  /** navigate: the `#/route` a link pointed at and the page it names, if any. */
+  route?: string;
+  page?: string | null;
 }
 
 export function isPreviewMessage(data: unknown): data is PreviewMessage {
