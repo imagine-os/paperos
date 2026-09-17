@@ -22,6 +22,28 @@ return rows.map((r) => r.label);
 `,
   },
   {
+    id: "map",
+    title: "Generate the project map",
+    code: `// Sections (Data, Code, Design, Components, Pages, UX flows) as frames of cards,
+// arrows from the bindings, component usage, page links and tokens. Saved as the "Map" workspace.
+const map = await paperos.map.generate();
+console.log(map.sections + " sections, " + map.nodes + " nodes, " + map.edges + " arrows");
+// paperos.map.regenerate() keeps the cards you moved; paperos.flow.list() lists the arrows.
+return map;
+`,
+  },
+  {
+    id: "flow",
+    title: "Connect two windows and group them",
+    code: `// Draw a labeled arrow between two windows, then frame them as a section.
+const [a, b] = paperos.windows.list();
+if (!a || !b) return "Open two windows first";
+const arrow = paperos.flow.connect(a.id, b.id, "depends on");
+const section = paperos.sections.create("Pipeline", [a.id, b.id]);
+return { arrow, section };
+`,
+  },
+  {
     id: "grid",
     title: "Tile everything in a grid",
     code: `// Tile every window in a grid and zoom to fit.

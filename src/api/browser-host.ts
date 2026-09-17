@@ -15,7 +15,10 @@ import { describeStep } from "@/data/migrate";
 import { getDataStore, scanProjectBindings } from "@/data/project-fs";
 import { listWindowKinds } from "@/desktop/window-kinds";
 import type { WindowShape } from "@/desktop/window-shape";
+import { connectWindows, disconnectWindows, listFlows } from "@/desktop/flow";
+import { createSection, getSection, listSections } from "@/desktop/sections";
 import { getWorkspaceStore } from "@/desktop/workspaces";
+import { generateMap } from "@/map/generate";
 import { listCommands, runCommand } from "@/ide/commands";
 import {
   clearConsole,
@@ -31,17 +34,20 @@ import { swapWindows } from "@/wm/operations";
 import { getWindowManager } from "@/wm/window-manager";
 import type { CanvasHost, ProjectRecord, WindowRecord } from "./host";
 
-function record(s: WindowShape): WindowRecord {
+/** Windows inside a section (frame) have parent-relative x/y; the API speaks page space. */
+function record(editor: Editor, s: WindowShape): WindowRecord {
+  const b = editor.getShapePageBounds(s.id);
   return {
     id: s.id,
     kind: s.props.kind,
     title: s.props.title,
     content: s.props.content,
-    x: s.x,
-    y: s.y,
+    x: b ? b.x : s.x,
+    y: b ? b.y : s.y,
     w: s.props.w,
     h: s.props.h,
     tiled: s.props.tiled,
+    section: s.parentId.startsWith("shape:") ? s.parentId : null,
   };
 }
 
@@ -78,10 +84,10 @@ export function createBrowserHost(editor: Editor): CanvasHost {
         editor
           .getCurrentPageShapesSorted()
           .filter((s): s is WindowShape => s.type === "window")
-          .map(record),
+          .map((s) => record(editor, s)),
       get(id) {
         const w = wm.getWindow(sid(id));
-        return w ? record(w) : undefined;
+        return w ? record(editor, w) : undefined;
       },
       kinds: () => listWindowKinds().map((k) => k.id),
       create(options) {
@@ -102,11 +108,20 @@ export function createBrowserHost(editor: Editor): CanvasHost {
       },
       update(id, patch) {
         const { x, y, ...props } = patch;
+        const shape = wm.getWindow(sid(id));
+        let position: { x?: number; y?: number } = {};
+        if (shape && (x !== undefined || y !== undefined)) {
+          const page = wm.pageRect(shape);
+          const local = editor.getPointInParentSpace(shape.id, {
+            x: x ?? page.x,
+            y: y ?? page.y,
+          });
+          position = { x: local.x, y: local.y };
+        }
         editor.updateShape<WindowShape>({
           id: sid(id),
           type: "window",
-          ...(x !== undefined ? { x } : {}),
-          ...(y !== undefined ? { y } : {}),
+          ...position,
           props,
         });
       },
@@ -235,6 +250,35 @@ export function createBrowserHost(editor: Editor): CanvasHost {
           return openConnectionsWindow(editor, table ? { table } : {});
         return openDataWindow(editor, table ? { table } : {});
       },
+    },
+
+    flow: {
+      connect(from, to, label) {
+        const id = connectWindows(editor, sid(from), sid(to), { label });
+        return (
+          listFlows(editor).find((f) => f.id === id) ?? {
+            id,
+            from,
+            to,
+            label: label ?? "",
+          }
+        );
+      },
+      disconnect: (a, b) =>
+        disconnectWindows(editor, sid(a), b ? sid(b) : undefined),
+      list: () => listFlows(editor),
+    },
+
+    sections: {
+      create(title, windowIds) {
+        const id = createSection(editor, title, windowIds.map(sid));
+        return getSection(editor, id)!;
+      },
+      list: () => listSections(editor),
+    },
+
+    map: {
+      generate: (_project, regenerate) => generateMap(editor, { regenerate }),
     },
 
     preview: {

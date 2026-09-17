@@ -9,10 +9,17 @@ import { buildPreset } from "@/wm/presets";
 import { insertWindow, removeWindow, swapWindows } from "@/wm/operations";
 import { collectWindowIds, findLeaf } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect } from "@/wm/types";
+import { parseComponents } from "@/design/components";
+import { parsePage } from "@/design/pages";
+import { parseTokens } from "@/design/tokens";
+import { layoutMap } from "@/map/layout";
+import { buildProjectMap } from "@/map/model";
 import type {
   CanvasHost,
   CommandRecord,
+  FlowRecord,
   ProjectRecord,
+  SectionRecord,
   WindowRecord,
   WorkspaceRecord,
 } from "./host";
@@ -36,6 +43,8 @@ export interface FakeHost extends CanvasHost {
     previewReloads: number;
     previewEntry: string | null;
     opened: { project: string; path: string; kind: string }[];
+    flows: FlowRecord[];
+    sections: SectionRecord[];
     log: string[];
   };
 }
@@ -110,6 +119,8 @@ export function fakeHost(): FakeHost {
     previewReloads: 0,
     previewEntry: null,
     opened: [],
+    flows: [],
+    sections: [],
     log: [],
   };
 
@@ -166,6 +177,9 @@ export function fakeHost(): FakeHost {
         "data",
         "schema",
         "connections",
+        "card",
+        "design",
+        "pages",
       ],
       create(o) {
         const id = `shape:w${++counter}`;
@@ -190,6 +204,9 @@ export function fakeHost(): FakeHost {
         state.windows = state.windows.filter((w) => w.id !== id);
         state.root = removeWindow(state.root, id);
         if (state.focused === id) state.focused = null;
+        state.flows = state.flows.filter((f) => f.from !== id && f.to !== id);
+        for (const s of state.sections)
+          s.windowIds = s.windowIds.filter((w) => w !== id);
         applyTiled();
       },
       focus(id) {
@@ -364,6 +381,136 @@ export function fakeHost(): FakeHost {
           title: table ?? kind,
           content: table ?? "",
         });
+      },
+    },
+    flow: {
+      connect(from, to, label) {
+        const f: FlowRecord = {
+          id: `shape:arrow${++counter}`,
+          from,
+          to,
+          label: label ?? "",
+        };
+        state.flows.push(f);
+        return f;
+      },
+      disconnect(a, b) {
+        const before = state.flows.length;
+        state.flows = state.flows.filter((f) =>
+          b
+            ? !((f.from === a && f.to === b) || (f.from === b && f.to === a))
+            : f.id !== a
+        );
+        return before - state.flows.length;
+      },
+      list: () => [...state.flows],
+    },
+    sections: {
+      create(title, windowIds) {
+        const ws = windowIds.map((id) => win(id)!);
+        const x = Math.min(...ws.map((w) => w.x)) - 24;
+        const y = Math.min(...ws.map((w) => w.y)) - 40;
+        const s: SectionRecord = {
+          id: `shape:frame${++counter}`,
+          title,
+          x,
+          y,
+          w: Math.max(...ws.map((w) => w.x + w.w)) + 24 - x,
+          h: Math.max(...ws.map((w) => w.y + w.h)) + 24 - y,
+          windowIds: [...windowIds],
+        };
+        for (const w of ws) w.section = s.id;
+        state.sections.push(s);
+        return s;
+      },
+      list: () => state.sections.map((s) => ({ ...s })),
+    },
+    map: {
+      async generate(p, regenerate) {
+        const all = [...files(p)].filter(([, t]) => t !== null) as [
+          string,
+          string,
+        ][];
+        const schema = await dataStore(p).schema();
+        const rowCounts: Record<string, number> = {};
+        for (const t of schema.tables)
+          rowCounts[t.name] = (await dataStore(p).rows(t.name)).length;
+        const tokensText = files(p).get("design/tokens.json");
+        const graph = buildProjectMap({
+          files: all.map(([path]) => path),
+          schema,
+          rowCounts,
+          bindings: scanBindings(
+            all
+              .filter(([path]) => !path.startsWith("data/"))
+              .map(([path, text]) => ({ path, text })),
+            schema
+          ),
+          components: parseComponents(
+            all.map(([path, text]) => ({ path, text }))
+          ).components,
+          pages: all
+            .filter(([path]) => /^pages\/.*\.json$/.test(path))
+            .map(([path, text]) => parsePage(text, path).page)
+            .filter((pg): pg is NonNullable<typeof pg> => pg !== null),
+          tokens: tokensText ? parseTokens(tokensText).tokens : null,
+        });
+        const cards = state.windows.filter((w) => w.kind === "card");
+        const keep: Record<string, { x: number; y: number }> = {};
+        if (regenerate)
+          for (const c of cards)
+            keep[JSON.parse(c.content).key] = { x: c.x, y: c.y };
+        state.windows = state.windows.filter((w) => w.kind !== "card");
+        state.flows = state.flows.filter((f) => !f.id.startsWith("shape:map"));
+        state.sections = state.sections.filter(
+          (s) => !s.id.startsWith("shape:map")
+        );
+        const layout = layoutMap(graph, keep);
+        const ids = new Map<string, string>();
+        for (const n of layout.nodes) {
+          const node = graph.nodes.find((g) => g.key === n.key)!;
+          const id = `shape:map${++counter}`;
+          ids.set(n.key, id);
+          state.windows.push({
+            id,
+            kind: "card",
+            title: node.title,
+            content: JSON.stringify({ key: node.key, target: node.target }),
+            x: n.x,
+            y: n.y,
+            w: n.w,
+            h: n.h,
+            tiled: false,
+          });
+        }
+        for (const s of layout.sections)
+          state.sections.push({
+            id: `shape:map${++counter}`,
+            title: s.title,
+            x: s.x,
+            y: s.y,
+            w: s.w,
+            h: s.h,
+            windowIds: layout.nodes
+              .filter((n) => n.section === s.id)
+              .map((n) => ids.get(n.key)!),
+          });
+        for (const e of graph.edges)
+          state.flows.push({
+            id: `shape:map${++counter}`,
+            from: ids.get(e.from)!,
+            to: ids.get(e.to)!,
+            label: e.label ?? "",
+          });
+        const ws = host.workspaces.save("Map");
+        return {
+          sections: layout.sections.length,
+          nodes: layout.nodes.length,
+          edges: graph.edges.length,
+          kept: Object.keys(keep).length,
+          bounds: layout.bounds,
+          workspace: { id: ws.id, name: ws.name },
+        };
       },
     },
     preview: {

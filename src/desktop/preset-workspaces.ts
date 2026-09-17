@@ -1,6 +1,11 @@
 import type { Editor } from "tldraw";
-import { DATA_WORKSPACE_ID, IDE_WORKSPACE_ID } from "@/wm/workspace-store";
+import {
+  DATA_WORKSPACE_ID,
+  DESIGN_WORKSPACE_ID,
+  IDE_WORKSPACE_ID,
+} from "@/wm/workspace-store";
 import { applyDataWorkspace } from "./data-workspace";
+import { applyDesignWorkspace } from "./design-workspace";
 import { applyIdeWorkspace } from "./ide-workspace";
 import { getWorkspaceStore } from "./workspaces";
 
@@ -11,6 +16,7 @@ export const PRESET_WORKSPACES: Record<
 > = {
   [IDE_WORKSPACE_ID]: { name: "IDE", apply: applyIdeWorkspace },
   [DATA_WORKSPACE_ID]: { name: "Data", apply: applyDataWorkspace },
+  [DESIGN_WORKSPACE_ID]: { name: "Design", apply: applyDesignWorkspace },
 };
 
 /**

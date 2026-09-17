@@ -14,7 +14,13 @@ import { normalizePath } from "@/ide/project/paths";
 import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 import type { CanvasEvent, EventBus } from "./events";
-import type { CanvasHost, WindowRecord } from "./host";
+import type {
+  CanvasHost,
+  FlowRecord,
+  MapRecord,
+  SectionRecord,
+  WindowRecord,
+} from "./host";
 import { LAYOUT_PRESETS, SIDES, type EventName } from "./schema";
 
 export interface WindowInfo extends WindowRecord {
@@ -124,6 +130,23 @@ export interface CanvasApi {
       Pick<BindingIndex, "bindings" | "sources" | "unusedTables" | "broken">
     >;
     open(table?: string, kind?: "data" | "schema" | "connections"): WindowInfo;
+  };
+  flow: {
+    connect(
+      fromWindowId: string,
+      toWindowId: string,
+      label?: string
+    ): FlowRecord;
+    disconnect(id: string, toWindowId?: string): { removed: number };
+    list(): FlowRecord[];
+  };
+  sections: {
+    create(title: string, windowIds: string[]): SectionRecord;
+    list(): SectionRecord[];
+  };
+  map: {
+    generate(): Promise<MapRecord>;
+    regenerate(): Promise<MapRecord>;
   };
   preview: {
     reload(): { reloaded: number };
@@ -563,6 +586,52 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
           table === undefined ? undefined : expectString(table, "table");
         const id = host.data.open(requireProject(), t, kind);
         return info(requireWindow(id));
+      },
+    },
+
+    flow: {
+      connect(fromWindowId, toWindowId, label) {
+        const from = requireWindow(fromWindowId);
+        const to = requireWindow(toWindowId);
+        if (from.id === to.id) fail("A window cannot be connected to itself");
+        if (label !== undefined && typeof label !== "string")
+          fail("label must be a string");
+        return host.flow.connect(from.id, to.id, label);
+      },
+      disconnect(id, toWindowId) {
+        const a = expectString(id, "id");
+        const first = a.startsWith("shape:") ? a : `shape:${a}`;
+        if (toWindowId === undefined)
+          return { removed: host.flow.disconnect(first) };
+        return {
+          removed: host.flow.disconnect(
+            requireWindow(first).id,
+            requireWindow(toWindowId).id
+          ),
+        };
+      },
+      list: () => host.flow.list(),
+    },
+
+    sections: {
+      create(title, windowIds) {
+        const t = expectString(title, "title").trim();
+        if (!Array.isArray(windowIds) || windowIds.length === 0)
+          fail("windowIds must be a non-empty array of window ids");
+        return host.sections.create(
+          t,
+          windowIds.map((id) => requireWindow(id).id)
+        );
+      },
+      list: () => host.sections.list(),
+    },
+
+    map: {
+      async generate() {
+        return host.map.generate(requireProject(), false);
+      },
+      async regenerate() {
+        return host.map.generate(requireProject(), true);
       },
     },
 

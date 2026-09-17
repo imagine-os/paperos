@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 52 methods in 11 namespaces.
+API version: 1. 59 methods in 14 namespaces.
 
 ## Where to call it
 
@@ -99,7 +99,7 @@ paperos.windows.list();
 
 Every window on the current page, in z-order (bottom first).
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}[]`. read-only · MCP tool `windows_list`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}[]`. read-only · MCP tool `windows_list`.
 
 #### `windows.get`
 
@@ -109,7 +109,7 @@ paperos.windows.get(id: string)
 
 One window by id.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused} or null`. read-only · MCP tool `windows_get`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section} or null`. read-only · MCP tool `windows_get`.
 
 | Parameter | Required | Type     | Description                             |
 | --------- | -------- | -------- | --------------------------------------- |
@@ -121,9 +121,9 @@ Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused} or nu
 paperos.windows.create(options: {kind: string, title?: string, content?: string, rect?: {x?: number, y?: number, w?: number, h?: number}, tiled?: boolean})
 ```
 
-Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.
+Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_create` · object-style call passes the object itself.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_create` · object-style call passes the object itself.
 
 | Parameter         | Required | Type                                                                                                                         | Description                                                                                                                   |
 | ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -142,7 +142,7 @@ paperos.windows.update(id: string, patch: {title?: string, content?: string})
 
 Changes a window's title and/or content.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_update`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_update`.
 
 | Parameter       | Required | Type                                 | Description                             |
 | --------------- | -------- | ------------------------------------ | --------------------------------------- |
@@ -173,7 +173,7 @@ paperos.windows.focus(id: string)
 
 Focuses a window and brings it to the front of its layer.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_focus`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_focus`.
 
 | Parameter | Required | Type     | Description                             |
 | --------- | -------- | -------- | --------------------------------------- |
@@ -187,7 +187,7 @@ paperos.windows.move(id: string, x: number, y: number)
 
 Moves a window to a page position. A tiled window leaves the layout first.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_move`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_move`.
 
 | Parameter | Required | Type     | Description                             |
 | --------- | -------- | -------- | --------------------------------------- |
@@ -203,7 +203,7 @@ paperos.windows.resize(id: string, w: number, h: number)
 
 Resizes a window (minimum 240 x 160). A tiled window leaves the layout first.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_resize`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_resize`.
 
 | Parameter | Required | Type     | Description                             |
 | --------- | -------- | -------- | --------------------------------------- |
@@ -494,7 +494,7 @@ paperos.files.open(path: string, kind?: 'editor' | 'markdown')
 
 Opens a file in an editor (or markdown) window, reusing a window that already shows it.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `files_open`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `files_open`.
 
 | Parameter | Required | Type                     | Description                  |
 | --------- | -------- | ------------------------ | ---------------------------- |
@@ -647,12 +647,104 @@ paperos.data.open(table?: string, kind?: 'data' | 'schema' | 'connections')
 
 Opens a Data window on a table (reusing one when open), or a Schema / Connections window.
 
-Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `data_open`.
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `data_open`.
 
 | Parameter | Required | Type                                  | Description                                         |
 | --------- | -------- | ------------------------------------- | --------------------------------------------------- |
 | `table`   | no       | `string`                              | Table to show (optional for schema and connections) |
 | `kind`    | no       | `'data' \| 'schema' \| 'connections'` | Window kind (default data)                          |
+
+### `flow`
+
+#### `flow.connect`
+
+```ts
+paperos.flow.connect(fromWindowId: string, toWindowId: string, label?: string)
+```
+
+Draws an arrow from one window to another (bound to both, so it follows them), with an optional label. Arrows can also be drawn by hand with the arrow tool or the connect handle in a title bar.
+
+Returns `FlowInfo {id, from, to, label}`. changes state · MCP tool `flow_connect`.
+
+| Parameter      | Required | Type     | Description                |
+| -------------- | -------- | -------- | -------------------------- |
+| `fromWindowId` | yes      | `string` | Window the arrow starts at |
+| `toWindowId`   | yes      | `string` | Window the arrow points at |
+| `label`        | no       | `string` | Text on the arrow          |
+
+#### `flow.disconnect`
+
+```ts
+paperos.flow.disconnect(id: string, toWindowId?: string)
+```
+
+Removes an arrow by id, or every arrow between two windows when a second window id is given.
+
+Returns `{removed: number}`. changes state · MCP tool `flow_disconnect`.
+
+| Parameter    | Required | Type     | Description                                           |
+| ------------ | -------- | -------- | ----------------------------------------------------- |
+| `id`         | yes      | `string` | Arrow id, or the first window id                      |
+| `toWindowId` | no       | `string` | The other window (removes the arrows between the two) |
+
+#### `flow.list`
+
+```ts
+paperos.flow.list();
+```
+
+Every arrow on the page that touches a window: its ends (window ids or null for a loose end) and label.
+
+Returns `FlowInfo {id, from, to, label}[]`. read-only · MCP tool `flow_list`.
+
+### `sections`
+
+#### `sections.create`
+
+```ts
+paperos.sections.create(title: string, windowIds: string[])
+```
+
+Groups windows into a titled section (a frame): the windows move with it and layouts applied while one of them is focused tile inside it.
+
+Returns `SectionInfo {id, title, x, y, w, h, windowIds}`. changes state · MCP tool `sections_create`.
+
+| Parameter   | Required | Type       | Description                                                |
+| ----------- | -------- | ---------- | ---------------------------------------------------------- |
+| `title`     | yes      | `string`   | Section title                                              |
+| `windowIds` | yes      | `string[]` | Windows to put in the section (the frame fits around them) |
+
+#### `sections.list`
+
+```ts
+paperos.sections.list();
+```
+
+Every section on the page with its bounds and the windows inside.
+
+Returns `SectionInfo {id, title, x, y, w, h, windowIds}[]`. read-only · MCP tool `sections_list`.
+
+### `map`
+
+#### `map.generate`
+
+```ts
+paperos.map.generate();
+```
+
+Builds the project map: sections Data, Code, Design, Components, Pages and UX flows (plus Growth / Ops when those folders exist) as frames of Card windows, with arrows from the bindings, component usage, page links and tokens. Replaces an existing map and saves the 'Map' workspace.
+
+Returns `MapResult {sections, nodes, edges, kept, bounds: {x, y, w, h}, workspace: {id, name} | null}`. changes state · MCP tool `map_generate`.
+
+#### `map.regenerate`
+
+```ts
+paperos.map.regenerate();
+```
+
+Rebuilds the project map from the current project, keeping the position of every card that still has a subject; new cards take free slots, gone ones are removed, arrows are redrawn.
+
+Returns `MapResult {sections, nodes, edges, kept, bounds: {x, y, w, h}, workspace: {id, name} | null}`. changes state · MCP tool `map_regenerate`.
 
 ### `preview`
 

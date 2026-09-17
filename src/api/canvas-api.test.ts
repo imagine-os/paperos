@@ -325,6 +325,90 @@ describe("data", () => {
   });
 });
 
+describe("flow, sections and map", () => {
+  it("connects windows with labeled arrows, lists and disconnects them", () => {
+    const { api, host } = setup();
+    const a = api.windows.create({ kind: "note", title: "A" });
+    const b = api.windows.create({ kind: "note", title: "B" });
+    const f = api.flow.connect(a.id, b.id, "reads");
+    expect(f).toMatchObject({ from: a.id, to: b.id, label: "reads" });
+    isPlainJson(f);
+    expect(api.flow.list()).toHaveLength(1);
+    // The shape: prefix is optional.
+    api.flow.connect(a.id.slice(6), b.id);
+    expect(api.flow.list()).toHaveLength(2);
+    expect(() => api.flow.connect(a.id, a.id)).toThrow(/itself/);
+    expect(() => api.flow.connect(a.id, "shape:nope")).toThrow(/No window/);
+    expect(api.flow.disconnect(a.id, b.id)).toEqual({ removed: 2 });
+    const g = api.flow.connect(b.id, a.id);
+    expect(api.flow.disconnect(g.id)).toEqual({ removed: 1 });
+    expect(host.state.flows).toEqual([]);
+    // Closing a window drops its arrows.
+    api.flow.connect(a.id, b.id);
+    api.windows.close(b.id);
+    expect(api.flow.list()).toEqual([]);
+  });
+
+  it("groups windows into sections", () => {
+    const { api } = setup();
+    const a = api.windows.create({
+      kind: "note",
+      rect: { x: 100, y: 100, w: 300, h: 200 },
+    });
+    const b = api.windows.create({
+      kind: "note",
+      rect: { x: 500, y: 150, w: 300, h: 200 },
+    });
+    const s = api.sections.create("Backend", [a.id, b.id]);
+    expect(s).toMatchObject({ title: "Backend", windowIds: [a.id, b.id] });
+    expect(s.x).toBeLessThan(100);
+    expect(s.x + s.w).toBeGreaterThan(800);
+    expect(api.sections.list()).toHaveLength(1);
+    expect(api.windows.get(a.id)?.section).toBe(s.id);
+    expect(() => api.sections.create("", [a.id])).toThrow(/title/);
+    expect(() => api.sections.create("Empty", [])).toThrow(/windowIds/);
+  });
+
+  it("generates and regenerates the project map from the project's content", async () => {
+    const { api, host } = setup();
+    const r = await api.map.generate();
+    isPlainJson(r);
+    // Two tables, two code files (index.html, app.js, docs/README.md) and one component declaration.
+    expect(r.sections).toBe(3);
+    expect(r.nodes).toBe(6);
+    expect(r.edges).toBe(1);
+    expect(r.workspace?.name).toBe("Map");
+    expect(api.windows.list().filter((w) => w.kind === "card")).toHaveLength(6);
+    expect(api.sections.list().map((s) => s.title)).toEqual([
+      "Data",
+      "Code",
+      "Components",
+    ]);
+    expect(api.flow.list()).toHaveLength(1);
+    // Move a card, add a table, regenerate: the moved card stays, the new table appears.
+    const card = api.windows.list().find((w) => w.title === "roles")!;
+    api.windows.move(card.id, 5000, 5000);
+    host.state.files.get("prj_1")!.set(
+      "data/schema.json",
+      JSON.stringify({
+        tables: [
+          { name: "roles", columns: [{ name: "id", type: "number" }] },
+          { name: "menu_items", columns: [{ name: "id", type: "number" }] },
+          { name: "orders", columns: [{ name: "id", type: "number" }] },
+        ],
+      })
+    );
+    const again = await api.map.regenerate();
+    expect(again.nodes).toBe(7);
+    expect(again.kept).toBe(6);
+    const moved = api.windows.list().find((w) => w.title === "roles")!;
+    expect([moved.x, moved.y]).toEqual([5000, 5000]);
+    expect(api.windows.list().some((w) => w.title === "orders")).toBe(true);
+    host.state.activeProject = null;
+    await expect(api.map.generate()).rejects.toThrow(/No project/);
+  });
+});
+
 describe("preview, console, commands, canvas", () => {
   it("covers the small namespaces", async () => {
     const { api, host } = setup();

@@ -21,6 +21,8 @@ export interface WindowRecord {
   w: number;
   h: number;
   tiled: boolean;
+  /** The section (frame) the window is in, or null. */
+  section?: string | null;
 }
 
 export interface CameraRecord {
@@ -53,6 +55,32 @@ export interface CommandRecord {
   title: string;
   group: string;
   shortcut?: string;
+}
+
+export interface FlowRecord {
+  id: string;
+  from: string | null;
+  to: string | null;
+  label: string;
+}
+
+export interface SectionRecord {
+  id: string;
+  title: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  windowIds: string[];
+}
+
+export interface MapRecord {
+  sections: number;
+  nodes: number;
+  edges: number;
+  kept: number;
+  bounds: Rect;
+  workspace: { id: string; name: string } | null;
 }
 
 export interface CanvasHost {
@@ -147,6 +175,19 @@ export interface CanvasHost {
       table: string | undefined,
       kind: "data" | "schema" | "connections"
     ): string;
+  };
+  flow: {
+    connect(from: string, to: string, label?: string): FlowRecord;
+    /** Removes an arrow by id, or the arrows between two windows; returns how many. */
+    disconnect(id: string, to?: string): number;
+    list(): FlowRecord[];
+  };
+  sections: {
+    create(title: string, windowIds: string[]): SectionRecord;
+    list(): SectionRecord[];
+  };
+  map: {
+    generate(project: string, regenerate: boolean): Promise<MapRecord>;
   };
   preview: {
     reload(): number;

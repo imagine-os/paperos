@@ -11,8 +11,11 @@ import { toggleTheme } from "@/ide/theme";
 import { PRESETS } from "@/wm/presets";
 import type { Side } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
+import { generateMap } from "@/map/generate";
 import { createWindow } from "./create-window";
 import { applyDataWorkspace } from "./data-workspace";
+import { applyDesignWorkspace } from "./design-workspace";
+import { createSection } from "./sections";
 import { applyIdeWorkspace } from "./ide-workspace";
 import { openConnectionsWindow, parseContent } from "./kinds/data-common";
 import { applyPresetWorkspace } from "./preset-workspaces";
@@ -95,6 +98,13 @@ export function registerIdeCommands(editor: Editor): () => void {
       group: "Layout",
       keywords: "tables schema connections",
       run: () => void applyDataWorkspace(editor),
+    },
+    {
+      id: "layout.design",
+      title: "Apply Design workspace",
+      group: "Layout",
+      keywords: "tokens components pages builder",
+      run: () => void applyDesignWorkspace(editor),
     }
   );
 
@@ -120,6 +130,70 @@ export function registerIdeCommands(editor: Editor): () => void {
       openConnectionsWindow(editor, {});
     },
   });
+
+  list.push(
+    {
+      id: "map.generate",
+      title: "Generate project map",
+      group: "Map",
+      keywords: "flowchart overview sections arrows board",
+      run: () => void generateMap(editor),
+    },
+    {
+      id: "map.regenerate",
+      title: "Regenerate project map (keep positions)",
+      group: "Map",
+      keywords: "flowchart refresh update",
+      run: () => void generateMap(editor, { regenerate: true }),
+    },
+    {
+      id: "section.from-selection",
+      title: "Group selected windows into a section",
+      group: "Map",
+      keywords: "frame group flowchart",
+      run: () => {
+        const ids = editor
+          .getSelectedShapes()
+          .filter((s) => s.type === "window")
+          .map((s) => s.id);
+        const focused = wm().getFocusedId();
+        const members = ids.length ? ids : focused ? [focused] : [];
+        if (!members.length) {
+          window.alert("Select one or more windows first.");
+          return;
+        }
+        const title = window.prompt("Section title:", "Section");
+        if (!title) return;
+        const id = createSection(editor, title.trim(), members);
+        editor.select(id);
+      },
+    },
+    {
+      id: "section.from-workspace",
+      title: "Section from workspace (frame the tiled windows)",
+      group: "Map",
+      keywords: "frame layout region",
+      run: () => {
+        const ids = wm().getTiledIds();
+        if (!ids.length) {
+          window.alert("No tiled windows: apply a layout first.");
+          return;
+        }
+        const active = wm().activeWorkspaceId.get();
+        const name = active ? getWorkspaceStore().get(active)?.name : undefined;
+        const title = window.prompt("Section title:", name ?? "Workspace");
+        if (!title) return;
+        const region = wm().region.get();
+        const id = createSection(
+          editor,
+          title.trim(),
+          ids,
+          region ?? undefined
+        );
+        editor.select(id);
+      },
+    }
+  );
 
   for (const [side, name] of SIDES) {
     list.push(

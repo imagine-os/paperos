@@ -93,7 +93,11 @@ const num = (name: string, description: string, required = true) => ({
 });
 
 const WINDOW_INFO =
-  "WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}";
+  "WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}";
+const FLOW_INFO = "FlowInfo {id, from, to, label}";
+const SECTION_INFO = "SectionInfo {id, title, x, y, w, h, windowIds}";
+const MAP_RESULT =
+  "MapResult {sections, nodes, edges, kept, bounds: {x, y, w, h}, workspace: {id, name} | null}";
 const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
@@ -147,7 +151,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "windows.create",
     description:
-      "Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.",
+      "Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.",
     params: [
       {
         name: "options",
@@ -591,6 +595,80 @@ export const TOOLS: ToolSpec[] = [
       },
     ],
     returns: WINDOW_INFO,
+    mutates: true,
+  },
+
+  // ----- flow (arrows between windows) -----
+  {
+    name: "flow.connect",
+    description:
+      "Draws an arrow from one window to another (bound to both, so it follows them), with an optional label. Arrows can also be drawn by hand with the arrow tool or the connect handle in a title bar.",
+    params: [
+      str("fromWindowId", "Window the arrow starts at"),
+      str("toWindowId", "Window the arrow points at"),
+      str("label", "Text on the arrow", false),
+    ],
+    returns: FLOW_INFO,
+    mutates: true,
+  },
+  {
+    name: "flow.disconnect",
+    description:
+      "Removes an arrow by id, or every arrow between two windows when a second window id is given.",
+    params: [
+      str("id", "Arrow id, or the first window id"),
+      str("toWindowId", "The other window (removes the arrows between the two)", false),
+    ],
+    returns: "{removed: number}",
+    mutates: true,
+  },
+  {
+    name: "flow.list",
+    description:
+      "Every arrow on the page that touches a window: its ends (window ids or null for a loose end) and label.",
+    params: [],
+    returns: `${FLOW_INFO}[]`,
+  },
+
+  // ----- sections (frames grouping windows) -----
+  {
+    name: "sections.create",
+    description:
+      "Groups windows into a titled section (a frame): the windows move with it and layouts applied while one of them is focused tile inside it.",
+    params: [
+      str("title", "Section title"),
+      {
+        name: "windowIds",
+        description: "Windows to put in the section (the frame fits around them)",
+        required: true,
+        schema: { type: "array", items: { type: "string" } },
+      },
+    ],
+    returns: SECTION_INFO,
+    mutates: true,
+  },
+  {
+    name: "sections.list",
+    description: "Every section on the page with its bounds and the windows inside.",
+    params: [],
+    returns: `${SECTION_INFO}[]`,
+  },
+
+  // ----- map (the project flowchart) -----
+  {
+    name: "map.generate",
+    description:
+      "Builds the project map: sections Data, Code, Design, Components, Pages and UX flows (plus Growth / Ops when those folders exist) as frames of Card windows, with arrows from the bindings, component usage, page links and tokens. Replaces an existing map and saves the 'Map' workspace.",
+    params: [],
+    returns: MAP_RESULT,
+    mutates: true,
+  },
+  {
+    name: "map.regenerate",
+    description:
+      "Rebuilds the project map from the current project, keeping the position of every card that still has a subject; new cards take free slots, gone ones are removed, arrows are redrawn.",
+    params: [],
+    returns: MAP_RESULT,
     mutates: true,
   },
 
