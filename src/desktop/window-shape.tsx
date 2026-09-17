@@ -227,11 +227,63 @@ export class WindowShapeUtil extends BaseBoxShapeUtil<WindowShape> {
   }
 }
 
+/**
+ * Viewport culling for heavy kinds: far off screen (more than 3/4 of a
+ * viewport away) or below 10% zoom the body is a placeholder; it renders
+ * again within 1/4 of a viewport and above 14% zoom. The gap between the two
+ * thresholds keeps a window from flickering while panning or zooming.
+ */
+export const CULL_ZOOM_OUT = 0.1;
+export const CULL_ZOOM_IN = 0.14;
+
+function useCulled(
+  editor: ReturnType<typeof useEditor>,
+  shape: WindowShape,
+  heavy: boolean
+) {
+  const [culled, setCulled] = useState(false);
+  const zone = useValue(
+    "window cull zone",
+    (): "far" | "near" | "between" | null => {
+      if (!heavy) return null;
+      const zoom = editor.getZoomLevel();
+      const vb = editor.getViewportPageBounds();
+      const b = editor.getShapePageBounds(shape.id);
+      if (!b) return null;
+      const reach = Math.max(vb.w, vb.h);
+      if (
+        zoom < CULL_ZOOM_OUT ||
+        !vb
+          .clone()
+          .expandBy(reach * 0.75)
+          .collides(b)
+      )
+        return "far";
+      if (
+        zoom > CULL_ZOOM_IN &&
+        vb
+          .clone()
+          .expandBy(reach * 0.25)
+          .collides(b)
+      )
+        return "near";
+      return "between";
+    },
+    [editor, shape.id, heavy]
+  );
+  useEffect(() => {
+    if (zone === "far") setCulled(true);
+    else if (zone === "near" || zone === null) setCulled(false);
+  }, [zone]);
+  return heavy && culled;
+}
+
 function WindowFrame({ shape }: { shape: WindowShape }) {
   const editor = useEditor();
   const wm = useWindowManager();
   useSignal(windowKindsChanged);
   const kind = getWindowKind(shape.props.kind);
+  const culled = useCulled(editor, shape, kind?.heavy === true);
   const focused = useValue(
     "window focused",
     () => wm.focusedId.get() === shape.id,
@@ -377,7 +429,18 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
           </div>
         </div>
         <div className="pos-window__body">
-          {kind ? (
+          {culled ? (
+            <div
+              className="pos-window__placeholder"
+              data-testid="window-placeholder"
+            >
+              <span className="pos-window__placeholder-icon" aria-hidden="true">
+                {kind?.icon}
+              </span>
+              <strong>{shape.props.title}</strong>
+              <small>Zoom in to render</small>
+            </div>
+          ) : kind ? (
             <kind.Component shape={shape} editor={editor} update={update} />
           ) : (
             <div className="pos-about pos-about__muted">

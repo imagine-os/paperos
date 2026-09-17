@@ -383,13 +383,13 @@ Returns `ProjectInfo {id, name, source, backend, active}[]`. read-only · MCP to
 paperos.projects.open(source: string)
 ```
 
-Makes a project active: 'sample' creates the sample site, a github.com/owner/repo URL imports a public repository, anything else is the id or name of a known project.
+Makes a project active: 'sample' creates the sample site, 'saas' the Small Business SaaS sample (five tenants, customer app, admin, site, growth pages, the showcase board), a github.com/owner/repo URL imports a public repository, anything else is the id or name of a known project.
 
 Returns `ProjectInfo {id, name, source, backend, active}`. changes state · MCP tool `projects_open`.
 
-| Parameter | Required | Type     | Description                                  |
-| --------- | -------- | -------- | -------------------------------------------- |
-| `source`  | yes      | `string` | 'sample', a GitHub URL, or a project id/name |
+| Parameter | Required | Type     | Description                                          |
+| --------- | -------- | -------- | ---------------------------------------------------- |
+| `source`  | yes      | `string` | 'sample', 'saas', a GitHub URL, or a project id/name |
 
 #### `projects.current`
 

@@ -246,3 +246,120 @@ test("Data lineage: tables → components → pages with labeled arrows; focusin
     timeout: 20000,
   });
 });
+
+/** Fits the camera to a section (the tour does the same with animation). */
+async function fitSection(page: Page, prefix: string) {
+  await page.evaluate((prefix) => {
+    const sec = (window as unknown as W).paperos.sections
+      .list()
+      .find((s) => s.title.startsWith(prefix))!;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight - 44;
+    const pad = 60;
+    const z = Math.min(vw / (sec.w + pad * 2), vh / (sec.h + pad * 2));
+    (
+      window as unknown as {
+        paperos: {
+          canvas: { setCamera(c: { x: number; y: number; z: number }): void };
+        };
+      }
+    ).paperos.canvas.setCamera({
+      x: -sec.x + (vw / z - sec.w) / 2,
+      y: -sec.y + (vh / z - sec.h) / 2 + 44 / z,
+      z,
+    });
+  }, prefix);
+}
+
+test("the Small Business SaaS sample: showcase previews, placeholders when zoomed out, tenant and role switches change theme and content", async ({
+  page,
+}) => {
+  await skipFirstRun(page);
+  await waitForProject(page);
+  await page.getByTestId("open-menu").click();
+  await page.getByTestId("open-saas").click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              paperos: { projects: { current(): { name: string } | null } };
+            }
+          ).paperos.projects.current()?.name
+      )
+    )
+    .toBe("Small Business SaaS");
+  const opened = await page.evaluate(() =>
+    (window as unknown as W).paperos.boards.open("showcase")
+  );
+  expect(opened).toMatchObject({ sections: 4, windows: 17, arrows: 11 });
+
+  // Zoomed far out, every heavy window is a placeholder; zoomed in on a section, its previews render.
+  await page.evaluate(() =>
+    (
+      window as unknown as {
+        paperos: { canvas: { setCamera(c: object): void } };
+      }
+    ).paperos.canvas.setCamera({ x: 0, y: 0, z: 0.05 })
+  );
+  await expect(page.getByTestId("window-placeholder")).toHaveCount(17);
+  await fitSection(page, "2.");
+  const bloom = page.locator(".pos-window", {
+    hasText: "Customer app (Bloom Salon)",
+  });
+  const frame = bloom.frameLocator("iframe.pos-preview__frame");
+  await expect(frame.locator(".ds-hero__title")).toHaveText(
+    "Book in two taps",
+    {
+      timeout: 30000,
+    }
+  );
+  expect(await page.getByTestId("window-placeholder").count()).toBeLessThan(17);
+
+  // Each tenant paints the app in its own colors; the admin menu is gated by role.
+  const primary = (title: string) =>
+    page
+      .locator(".pos-window", { hasText: title })
+      .frameLocator("iframe.pos-preview__frame")
+      .locator("html")
+      .evaluate((el) => el.style.getPropertyValue("--ds-color-primary"));
+  await expect
+    .poll(() => primary("Customer app (Bloom Salon)"))
+    .toBe("#b8336a");
+  await expect
+    .poll(() => primary("Customer app (Ember & Oak)"))
+    .toBe("#9a3412");
+  const admin = page
+    .locator(".pos-window", { hasText: "Admin: dashboard (manager)" })
+    .frameLocator("iframe.pos-preview__frame");
+  await expect(admin.locator(".ds-sidebar__link")).toHaveCount(9, {
+    timeout: 30000,
+  });
+  await admin
+    .locator("select[data-set-context=role]")
+    .selectOption({ label: "owner" });
+  await expect(admin.locator(".ds-sidebar__link")).toHaveCount(11);
+
+  // Switching the tenant inside the customer app recolors it and swaps the services.
+  const firstService = frame.locator(".ds-list__item strong").first();
+  await expect(firstService).toHaveText("Haircut");
+  await frame
+    .locator("select[data-set-context=tenant]")
+    .selectOption({ label: "Northline Contracting" });
+  await expect
+    .poll(() => primary("Customer app (Bloom Salon)"))
+    .toBe("#1d4ed8");
+  await expect(firstService).not.toHaveText("Haircut");
+  await expect(frame.locator(".ds-list__item strong").first()).toHaveText(
+    "Site visit"
+  );
+
+  // The tour walks the four sections.
+  const tour = await page.evaluate(() =>
+    (window as unknown as W).paperos.boards.play("showcase")
+  );
+  expect(tour).toMatchObject({ step: 0, section: "acquisition" });
+  await expect(page.getByTestId("tour-caption")).toContainText("1 / 4");
+  await page.keyboard.press("Escape");
+});

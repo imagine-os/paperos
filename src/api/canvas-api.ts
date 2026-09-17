@@ -11,6 +11,7 @@ import type { QueryOptions, QueryResult } from "@/data/query";
 import type { DataSchema, Row, RowId } from "@/data/schema";
 import type { TableInfo } from "@/data/store";
 import { normalizePath } from "@/ide/project/paths";
+import { isSampleTemplate } from "@/ide/project/types";
 import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 import type { CanvasEvent, EventBus } from "./events";
@@ -477,8 +478,8 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
       list: () => host.projects.list().map((p) => projectInfo(p.id)),
       async open(source) {
         const s = expectString(source, "source").trim();
-        if (s === "sample") {
-          const meta = await host.projects.openSample();
+        if (isSampleTemplate(s)) {
+          const meta = await host.projects.openSample(s);
           return projectInfo(meta.id);
         }
         if (/github\.com\//i.test(s)) {
@@ -491,7 +492,7 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
             .list()
             .find((p) => p.name.toLowerCase() === s.toLowerCase()) ??
           fail(
-            `No project "${s}". Use 'sample', a github.com URL, or one of: ${host.projects
+            `No project "${s}". Use 'sample', 'saas', a github.com URL, or one of: ${host.projects
               .list()
               .map((p) => p.name)
               .join(", ")}`

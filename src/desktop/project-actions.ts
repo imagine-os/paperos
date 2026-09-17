@@ -5,6 +5,7 @@ import {
   supportsFileSystemAccess,
   type ProjectMeta,
 } from "@/ide/project";
+import type { SampleTemplate } from "@/ide/project/types";
 import { pushConsole } from "@/ide/console-store";
 
 /**
@@ -38,8 +39,10 @@ export async function openFolderProject(): Promise<ProjectMeta | null> {
   }
 }
 
-export async function openSampleProject(): Promise<ProjectMeta> {
-  const meta = await getProjectStore().createSampleProject();
+export async function openSampleProject(
+  template: SampleTemplate = "sample"
+): Promise<ProjectMeta> {
+  const meta = await getProjectStore().createSampleProject(template);
   done(meta);
   return meta;
 }

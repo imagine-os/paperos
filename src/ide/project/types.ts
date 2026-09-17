@@ -4,7 +4,7 @@ export interface ProjectMeta {
   id: string;
   name: string;
   backend: BackendKind;
-  /** Where the project came from, for display: "sample", "zip", "github:owner/repo", "folder", "drop". */
+  /** Where the project came from, for display: "sample", "saas", "zip", "github:owner/repo", "folder", "drop". */
   source: string;
   createdAt: number;
   updatedAt: number;
@@ -42,3 +42,11 @@ export interface ProjectBackend {
 
 /** Files handed to the memory backend on import: path -> text. */
 export type FileMap = Record<string, string>;
+
+/** The built-in sample projects: the small site and the multi-tenant SaaS. */
+export const SAMPLE_TEMPLATES = ["sample", "saas"] as const;
+export type SampleTemplate = (typeof SAMPLE_TEMPLATES)[number];
+
+export function isSampleTemplate(v: unknown): v is SampleTemplate {
+  return (SAMPLE_TEMPLATES as readonly unknown[]).includes(v);
+}

@@ -178,6 +178,11 @@ function OpenMenu() {
         onSelect={() => void openSampleProject()}
       />
       <MenuItem
+        label="Open sample: Small Business SaaS"
+        testId="open-saas"
+        onSelect={() => void openSampleProject("saas")}
+      />
+      <MenuItem
         label="Import ZIP..."
         testId="open-zip"
         onSelect={() => void importZipProject()}

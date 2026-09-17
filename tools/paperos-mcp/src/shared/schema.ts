@@ -375,8 +375,10 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "projects.open",
     description:
-      "Makes a project active: 'sample' creates the sample site, a github.com/owner/repo URL imports a public repository, anything else is the id or name of a known project.",
-    params: [str("source", "'sample', a GitHub URL, or a project id/name")],
+      "Makes a project active: 'sample' creates the sample site, 'saas' the Small Business SaaS sample (five tenants, customer app, admin, site, growth pages, the showcase board), a github.com/owner/repo URL imports a public repository, anything else is the id or name of a known project.",
+    params: [
+      str("source", "'sample', 'saas', a GitHub URL, or a project id/name"),
+    ],
     returns: PROJECT_INFO,
     mutates: true,
   },
@@ -777,7 +779,11 @@ export const TOOLS: ToolSpec[] = [
     description:
       "Where every component on every page gets its data, as three columns: tables (data/schema.json, with columns), components that bind data (a design component used by a page block with a binding or a table prop, or a component declaration) and pages. Edges are labeled: table → component with the bound fields, filter and mode; component → page with the block ids; table → page for page-level bindings. With page, only what feeds that page.",
     params: [
-      str("page", "Page name (pages/<name>.json) to reduce the graph to", false),
+      str(
+        "page",
+        "Page name (pages/<name>.json) to reduce the graph to",
+        false
+      ),
     ],
     returns: LINEAGE_GRAPH,
   },

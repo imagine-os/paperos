@@ -199,78 +199,78 @@ export function fakeHost(): FakeHost {
     board: BoardDef,
     origin?: { x: number; y: number }
   ): BoardOpenRecord => {
-        // Replace an earlier copy.
-        const old = [...state.boardOf.entries()]
-          .filter(([, b]) => b === board.name)
-          .map(([id]) => id);
-        for (const id of old) {
-          const sec = state.sections.find((s) => s.id === id);
-          if (sec) {
-            for (const w of sec.windowIds) host.windows.close(w);
-            state.sections = state.sections.filter((s) => s.id !== id);
-          }
-          state.boardOf.delete(id);
-        }
-        const layout = layoutBoard(board, { origin: origin ?? { x: 0, y: 0 } });
-        const ids = new Map<string, string>();
-        for (const s of layout.sections) {
-          const id = `shape:board${++counter}`;
-          ids.set(s.id, id);
-          state.boardOf.set(id, board.name);
-          state.sections.push({
-            id,
-            title: s.title,
-            x: s.x,
-            y: s.y,
-            w: s.w,
-            h: s.h,
-            windowIds: [],
-          });
-        }
-        for (const w of layout.windows) {
-          const spec = board.sections
-            .flatMap((s) => s.windows)
-            .find((x) => x.id === w.id)!;
-          const id = host.windows.create({
-            kind: spec.kind,
-            title: spec.title ?? spec.kind,
-            content:
-              typeof spec.content === "string"
-                ? spec.content
-                : JSON.stringify(spec.content ?? ""),
-            at: { x: w.x, y: w.y },
-            size: { w: w.w, h: w.h },
-          });
-          const sectionId = ids.get(w.section)!;
-          win(id)!.section = sectionId;
-          state.sections.find((s) => s.id === sectionId)!.windowIds.push(id);
-          ids.set(w.id, id);
-        }
-        let arrows = 0;
-        for (const a of board.arrows) {
-          const from = ids.get(a.from);
-          const to = ids.get(a.to);
-          if (!from || !to) continue;
-          state.flows.push({
-            id: `shape:board${++counter}`,
-            from,
-            to,
-            label: a.label ?? "",
-          });
-          arrows++;
-        }
-        state.camera = { x: -layout.bounds.x, y: -layout.bounds.y, z: 0.25 };
-        const ws = host.workspaces.save(`Board: ${board.title}`);
-        return {
-          name: board.name,
-          title: board.title,
-          sections: layout.sections.length,
-          windows: layout.windows.length,
-          arrows,
-          bounds: layout.bounds,
-          workspace: { id: ws.id, name: ws.name },
-        };
-        };
+    // Replace an earlier copy.
+    const old = [...state.boardOf.entries()]
+      .filter(([, b]) => b === board.name)
+      .map(([id]) => id);
+    for (const id of old) {
+      const sec = state.sections.find((s) => s.id === id);
+      if (sec) {
+        for (const w of sec.windowIds) host.windows.close(w);
+        state.sections = state.sections.filter((s) => s.id !== id);
+      }
+      state.boardOf.delete(id);
+    }
+    const layout = layoutBoard(board, { origin: origin ?? { x: 0, y: 0 } });
+    const ids = new Map<string, string>();
+    for (const s of layout.sections) {
+      const id = `shape:board${++counter}`;
+      ids.set(s.id, id);
+      state.boardOf.set(id, board.name);
+      state.sections.push({
+        id,
+        title: s.title,
+        x: s.x,
+        y: s.y,
+        w: s.w,
+        h: s.h,
+        windowIds: [],
+      });
+    }
+    for (const w of layout.windows) {
+      const spec = board.sections
+        .flatMap((s) => s.windows)
+        .find((x) => x.id === w.id)!;
+      const id = host.windows.create({
+        kind: spec.kind,
+        title: spec.title ?? spec.kind,
+        content:
+          typeof spec.content === "string"
+            ? spec.content
+            : JSON.stringify(spec.content ?? ""),
+        at: { x: w.x, y: w.y },
+        size: { w: w.w, h: w.h },
+      });
+      const sectionId = ids.get(w.section)!;
+      win(id)!.section = sectionId;
+      state.sections.find((s) => s.id === sectionId)!.windowIds.push(id);
+      ids.set(w.id, id);
+    }
+    let arrows = 0;
+    for (const a of board.arrows) {
+      const from = ids.get(a.from);
+      const to = ids.get(a.to);
+      if (!from || !to) continue;
+      state.flows.push({
+        id: `shape:board${++counter}`,
+        from,
+        to,
+        label: a.label ?? "",
+      });
+      arrows++;
+    }
+    state.camera = { x: -layout.bounds.x, y: -layout.bounds.y, z: 0.25 };
+    const ws = host.workspaces.save(`Board: ${board.title}`);
+    return {
+      name: board.name,
+      title: board.title,
+      sections: layout.sections.length,
+      windows: layout.windows.length,
+      arrows,
+      bounds: layout.bounds,
+      workspace: { id: ws.id, name: ws.name },
+    };
+  };
 
   const lineageInput = async (p: string): Promise<LineageInput> => {
     const all = [...files(p)].filter(([, t]) => t !== null) as [
@@ -429,11 +429,11 @@ export function fakeHost(): FakeHost {
       async setActive(id) {
         state.activeProject = id;
       },
-      async openSample() {
+      async openSample(template) {
         const p = {
           id: `prj_n${++counter}`,
-          name: "Sample site",
-          source: "sample",
+          name: template === "saas" ? "Small Business SaaS" : "Sample site",
+          source: template,
           backend: "memory",
         };
         state.projects.push(p);
@@ -755,7 +755,9 @@ export function fakeHost(): FakeHost {
         const graph = buildLineage(await lineageInput(p));
         if (page && !graph.pages.some((x) => x.name === page))
           throw new Error(`No page "${page}"`);
-        const board = page ? lineagePageBoard(graph, page) : lineageBoard(graph);
+        const board = page
+          ? lineagePageBoard(graph, page)
+          : lineageBoard(graph);
         const result = drawBoard(board);
         state.lineageFocus = null;
         const sub = page ? lineageForPage(graph, page) : graph;
@@ -790,7 +792,11 @@ export function fakeHost(): FakeHost {
         }
         state.lineageFocus = page;
         state.log.push(`lineage:${page ?? "all"}`);
-        return { page, dimmed, kept: cards.length + state.flows.length - dimmed };
+        return {
+          page,
+          dimmed,
+          kept: cards.length + state.flows.length - dimmed,
+        };
       },
     },
 

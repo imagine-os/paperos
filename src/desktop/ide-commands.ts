@@ -270,6 +270,13 @@ export function registerIdeCommands(editor: Editor): () => void {
       run: () => void openSampleProject(),
     },
     {
+      id: "project.open-saas",
+      title: "Open sample: Small Business SaaS",
+      group: "Project",
+      keywords: "template tenant multi-tenant showcase",
+      run: () => void openSampleProject("saas"),
+    },
+    {
       id: "project.import-zip",
       title: "Import ZIP...",
       group: "Project",

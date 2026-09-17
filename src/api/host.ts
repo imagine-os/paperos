@@ -4,6 +4,7 @@
  * tests use a fake. Everything here speaks in plain values (no tldraw
  * records, no atoms), which is what keeps the facade testable in Node.
  */
+import type { SampleTemplate } from "@/ide/project/types";
 import type { LineageGraph } from "@/lineage/model";
 import type { BindingIndex } from "@/data/bindings";
 import type { Renames } from "@/data/migrate";
@@ -177,7 +178,8 @@ export interface CanvasHost {
     list(): ProjectRecord[];
     activeId(): string | null;
     setActive(id: string): Promise<void>;
-    openSample(): Promise<ProjectRecord>;
+    /** Creates one of the built-in samples: the site or the Small Business SaaS. */
+    openSample(template: SampleTemplate): Promise<ProjectRecord>;
     importGithub(url: string): Promise<ProjectRecord>;
   };
   files: {

@@ -224,7 +224,8 @@ export function createBrowserHost(editor: Editor): CanvasHost {
       list: () => projects.list().map(project),
       activeId: () => projects.getActiveId(),
       setActive: (id) => projects.setActive(id),
-      openSample: async () => project(await projects.createSampleProject()),
+      openSample: async (template) =>
+        project(await projects.createSampleProject(template)),
       importGithub: async (url) =>
         project((await projects.importGithub(url)).meta),
     },

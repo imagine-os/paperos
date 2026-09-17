@@ -163,6 +163,8 @@ describe("workspaces, projects and files", () => {
   it("opens projects by 'sample', GitHub URL or name", async () => {
     const { api } = setup();
     expect(api.projects.current()?.name).toBe("Sample site");
+    const saas = await api.projects.open("saas");
+    expect(saas).toMatchObject({ name: "Small Business SaaS", active: true });
     const sample = await api.projects.open("sample");
     expect(sample.active).toBe(true);
     const gh = await api.projects.open("https://github.com/o/r");
@@ -743,7 +745,11 @@ describe("lineage", () => {
       kept: 1,
     });
     expect(host.state.lineageFocus).toBe("home");
-    expect(await api.lineage.focus()).toEqual({ page: null, dimmed: 0, kept: 7 });
+    expect(await api.lineage.focus()).toEqual({
+      page: null,
+      dimmed: 0,
+      kept: 7,
+    });
     await expect(api.lineage.focus("nope")).rejects.toThrow(/No page/);
 
     // One page's lineage puts the Page Builder and a Preview with the overlay on the right.
@@ -759,9 +765,9 @@ describe("lineage", () => {
     const kinds = api.windows.list().map((w) => w.kind);
     expect(kinds).toContain("pages");
     expect(kinds).toContain("preview");
-    expect(
-      api.windows.list().find((w) => w.kind === "preview")?.content
-    ).toBe("pages/admin.json?sources=1");
+    expect(api.windows.list().find((w) => w.kind === "preview")?.content).toBe(
+      "pages/admin.json?sources=1"
+    );
     await expect(api.lineage.open({ page: "nope" })).rejects.toThrow(/No page/);
   });
 });

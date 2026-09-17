@@ -37,6 +37,11 @@ export interface WindowKind {
   defaultSize?: { w: number; h: number };
   /** Hidden from "New window" menus (opened through other means). */
   hidden?: boolean;
+  /**
+   * Expensive to render (iframes, CodeMirror, big grids): the window shows a
+   * placeholder while it is far off screen or the canvas is zoomed far out.
+   */
+  heavy?: boolean;
   Component: ComponentType<WindowKindProps>;
 }
 
@@ -74,6 +79,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "editor",
+  heavy: true,
   label: "Editor",
   defaultTitle: "Editor",
   icon: "✎",
@@ -83,6 +89,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "preview",
+  heavy: true,
   label: "Preview",
   defaultTitle: "Preview",
   icon: "▶",
@@ -101,6 +108,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "markdown",
+  heavy: true,
   label: "Markdown",
   defaultTitle: "Markdown",
   icon: "\u{1F4C4}",
@@ -110,6 +118,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "data",
+  heavy: true,
   label: "Data",
   defaultTitle: "Data",
   icon: "\u{1F5C3}",
@@ -119,6 +128,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "schema",
+  heavy: true,
   label: "Schema",
   defaultTitle: "Schema",
   icon: "\u{1F5FA}",
@@ -128,6 +138,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "connections",
+  heavy: true,
   label: "Connections",
   defaultTitle: "Connections",
   icon: "\u{1F517}",
@@ -137,6 +148,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "design",
+  heavy: true,
   label: "Design",
   defaultTitle: "Design system",
   icon: "\u{1F3A8}",
@@ -146,6 +158,7 @@ registerWindowKind({
 
 registerWindowKind({
   id: "pages",
+  heavy: true,
   label: "Page Builder",
   defaultTitle: "Page Builder",
   icon: "\u{1F4D0}",

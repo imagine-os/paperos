@@ -172,6 +172,33 @@
   color: #fff;
 }
 
+/* Heavy windows far off screen or zoomed far out render this instead of their body. */
+.pos-window__placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  color: var(--pos-text-muted);
+  background:
+    radial-gradient(var(--pos-border) 1px, transparent 1px) 0 0 / 16px 16px,
+    var(--pos-surface-2);
+}
+.pos-window__placeholder-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.pos-window__placeholder strong {
+  color: var(--pos-text);
+  font-size: 14px;
+}
+.pos-window__placeholder small {
+  font-size: 11px;
+}
+
 .pos-window__body {
   flex: 1;
   min-height: 0;

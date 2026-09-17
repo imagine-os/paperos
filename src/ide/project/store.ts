@@ -10,7 +10,14 @@ import { browserKv, type KvStore } from "./kv";
 import { MemoryBackend } from "./memory-backend";
 import { normalizePath } from "./paths";
 import { SAMPLE_NAME, sampleProjectFiles } from "./sample";
-import type { FileEntry, FileMap, ProjectBackend, ProjectMeta } from "./types";
+import { SAAS_NAME, saasProjectFiles } from "./saas";
+import type {
+  FileEntry,
+  FileMap,
+  ProjectBackend,
+  ProjectMeta,
+  SampleTemplate,
+} from "./types";
 import { readZip } from "./zip";
 
 const META_PREFIX = "p/";
@@ -297,7 +304,12 @@ export class ProjectStore {
     return meta;
   }
 
-  async createSampleProject(): Promise<ProjectMeta> {
+  /** The sample site, or the "Small Business SaaS" template. */
+  async createSampleProject(
+    template: SampleTemplate = "sample"
+  ): Promise<ProjectMeta> {
+    if (template === "saas")
+      return this.createMemoryProject(SAAS_NAME, saasProjectFiles(), "saas");
     return this.createMemoryProject(
       SAMPLE_NAME,
       sampleProjectFiles(),
