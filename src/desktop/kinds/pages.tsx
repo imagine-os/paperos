@@ -106,6 +106,7 @@ export function PagesWindow({ shape, editor, update }: WindowKindProps) {
           <aside
             className="pos-data__tables pos-pages__list"
             data-testid="page-list"
+            aria-label="Pages"
           >
             <div className="pos-data__heading">Pages</div>
             {pages.map((p) => (
@@ -1030,6 +1031,7 @@ function PageSettings({
             <select
               className="pos-select"
               value={l.to}
+              aria-label="Link to page"
               onChange={(e) => setLink(i, { to: e.target.value })}
             >
               {!others.some((p) => p.name === l.to || p.route === l.to) && (
@@ -1053,6 +1055,7 @@ function PageSettings({
               className="pos-select"
               value={l.from ?? ""}
               title="From block"
+              aria-label="From block"
               onChange={(e) =>
                 setLink(i, { from: e.target.value || undefined })
               }

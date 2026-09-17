@@ -111,7 +111,8 @@ export function defaultTokens(): DesignTokens {
       primary: c("#e85d2f", "#ff7a45"),
       accent: c("#e14b78", "#ff5c8a"),
       accent2: c("#f0a24a", "#ffc26b"),
-      accentInk: c("#ffffff", "#1a0d08"),
+      // Ink on the ember and rose accents: white fails AA (3.5:1) on both.
+      accentInk: c("#1a0d08", "#1a0d08"),
       ok: c("#2f9e6a", "#5cd39a"),
       warn: c("#d97706", "#fbbf24"),
       danger: c("#c8322b", "#ff6b6b"),

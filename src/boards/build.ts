@@ -22,6 +22,7 @@ import {
 import type { WindowShape } from "@/desktop/window-shape";
 import { getWorkspaceStore } from "@/desktop/workspaces";
 import { encodeFileRef, parseFileRef } from "@/ide/file-ref";
+import { cameraAnimation } from "@/lib/motion";
 import { readLiveText, writeLiveText } from "@/ide/docs";
 import { fileWindowTitle } from "@/ide/open-file";
 import { getProjectStore, type ProjectStore } from "@/ide/project/store";
@@ -265,7 +266,7 @@ export function openBoard(
   editor.selectNone();
   editor.zoomToBounds(layout.bounds, {
     inset: 64,
-    animation: { duration: 400 },
+    animation: cameraAnimation(400),
   });
   const cam = editor.getCamera();
   const workspaces = getWorkspaceStore();

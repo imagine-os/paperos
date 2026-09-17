@@ -42,7 +42,11 @@ import { getWorkspaceStore } from "./workspaces";
 export function TopBar({ editor }: { editor: Editor | null }) {
   const theme = useSignal(resolvedTheme);
   return (
-    <header className="pos-topbar" data-testid="topbar">
+    <header
+      className="pos-topbar"
+      data-testid="topbar"
+      aria-label="PaperOS top bar"
+    >
       <div className="pos-topbar__brand">
         <span className="pos-topbar__name">PaperOS</span>
         <span className="pos-topbar__badge">v2 preview</span>

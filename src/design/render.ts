@@ -886,12 +886,23 @@ export function designRuntime(
     const id = "dsc" + ++chartSeq;
     const kind = el.getAttribute("data-chart") === "line" ? "line" : "bars";
     const esc = api.escape;
+    const chartLabel =
+      el.getAttribute("aria-label") ||
+      el.getAttribute("data-title") ||
+      (kind === "line" ? "Line chart" : "Bar chart") +
+        " of " +
+        series.length +
+        " values";
     let svg =
       '<svg class="ds-chart__svg" viewBox="0 0 ' +
       W +
       " " +
       H +
-      '" role="img"><defs>' +
+      '" role="img" aria-label="' +
+      esc(chartLabel) +
+      '"><title>' +
+      esc(chartLabel) +
+      "</title><defs>" +
       '<linearGradient id="' +
       id +
       '-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: var(--ds-color-primary)"/><stop offset="1" style="stop-color: var(--ds-color-accent)"/></linearGradient>' +
@@ -1156,14 +1167,21 @@ export function designRuntime(
   const applySources = (root?: any) => {
     const r = root || doc;
     if (!r || !r.querySelectorAll) return;
-    for (const b of qsa(r, ".ds-src-badge")) b.parentNode && b.parentNode.removeChild(b);
+    for (const b of qsa(r, ".ds-src-badge"))
+      b.parentNode && b.parentNode.removeChild(b);
     if (doc && doc.body) {
       if (sourcesOn) doc.body.setAttribute("data-sources", "on");
       else doc.body.removeAttribute("data-sources");
     }
     if (!sourcesOn) return;
-    const perHost = new Map<any, { table: string; fields: string[]; filter: string; mode: string }[]>();
-    for (const el of qsa(r, "[data-source],[data-count],[data-chart][data-table],[data-calendar][data-table]")) {
+    const perHost = new Map<
+      any,
+      { table: string; fields: string[]; filter: string; mode: string }[]
+    >();
+    for (const el of qsa(
+      r,
+      "[data-source],[data-count],[data-chart][data-table],[data-calendar][data-table]"
+    )) {
       if (el.hasAttribute("data-set-context")) continue;
       if (hasSourceAncestor(el)) continue;
       const table =
@@ -1174,33 +1192,54 @@ export function designRuntime(
       const fields: string[] = [];
       for (const f of qsa(el, "[data-field]")) {
         const name = f.getAttribute("data-field");
-        if (name && name.charAt(0) !== "$" && fields.indexOf(name) === -1) fields.push(name);
+        if (name && name.charAt(0) !== "$" && fields.indexOf(name) === -1)
+          fields.push(name);
       }
       const x = el.getAttribute("data-x");
       const y = el.getAttribute("data-y");
       const d = el.getAttribute("data-date");
       const tt = el.getAttribute("data-title");
-      for (const extra of [x, y, d, tt]) if (extra && fields.indexOf(extra) === -1) fields.push(extra);
-      const host = (el.closest && el.closest(".ds-col")) || el.parentElement || el;
+      for (const extra of [x, y, d, tt])
+        if (extra && fields.indexOf(extra) === -1) fields.push(extra);
+      const host =
+        (el.closest && el.closest(".ds-col")) || el.parentElement || el;
       const list = perHost.get(host) || [];
-      const mode = el.tagName && String(el.tagName).toLowerCase() === "form" ? "write" : "read";
-      if (!list.some((s) => s.table === table && s.fields.join() === fields.join()))
-        list.push({ table, fields, filter: el.getAttribute("data-filter") || "", mode });
+      const mode =
+        el.tagName && String(el.tagName).toLowerCase() === "form"
+          ? "write"
+          : "read";
+      if (
+        !list.some(
+          (s) => s.table === table && s.fields.join() === fields.join()
+        )
+      )
+        list.push({
+          table,
+          fields,
+          filter: el.getAttribute("data-filter") || "",
+          mode,
+        });
       perHost.set(host, list);
     }
     for (const form of qsa(r, "form[data-table]")) {
       const table = form.getAttribute("data-table");
       if (!table) continue;
-      const host = (form.closest && form.closest(".ds-col")) || form.parentElement || form;
+      const host =
+        (form.closest && form.closest(".ds-col")) || form.parentElement || form;
       const list = perHost.get(host) || [];
-      const fields = qsa(form, "[name]").map((i) => i.getAttribute("name")).filter(Boolean);
+      const fields = qsa(form, "[name]")
+        .map((i) => i.getAttribute("name"))
+        .filter(Boolean);
       list.push({ table, fields, filter: "", mode: "write" });
       perHost.set(host, list);
     }
     perHost.forEach((list, host) => {
       if (!host || !host.appendChild) return;
       try {
-        if (win.getComputedStyle && win.getComputedStyle(host).position === "static")
+        if (
+          win.getComputedStyle &&
+          win.getComputedStyle(host).position === "static"
+        )
           host.style.position = "relative";
       } catch {
         /* no styles */
@@ -1210,14 +1249,19 @@ export function designRuntime(
       badge.setAttribute("data-sources-badge", "");
       for (const s of list) {
         const chip = doc.createElement("span");
-        chip.className = "ds-src-chip" + (s.mode === "write" ? " ds-src-chip--write" : "");
+        chip.className =
+          "ds-src-chip" + (s.mode === "write" ? " ds-src-chip--write" : "");
         chip.setAttribute("data-table", s.table);
         chip.innerHTML =
           "<b>" +
           api.escape(s.table) +
           "</b>" +
-          (s.fields.length ? "." + api.escape(s.fields.slice(0, 5).join(", .")) + (s.fields.length > 5 ? " +" + (s.fields.length - 5) : "") : "") +
-          (s.filter ? ' <i>where ' + api.escape(s.filter) + "</i>" : "") +
+          (s.fields.length
+            ? "." +
+              api.escape(s.fields.slice(0, 5).join(", .")) +
+              (s.fields.length > 5 ? " +" + (s.fields.length - 5) : "")
+            : "") +
+          (s.filter ? " <i>where " + api.escape(s.filter) + "</i>" : "") +
           (s.mode === "write" ? " <i>write</i>" : "");
         chip.addEventListener("mouseenter", () => {
           setHot(s.table);

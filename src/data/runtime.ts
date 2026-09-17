@@ -355,8 +355,16 @@ export function dataRuntime(win: any, payload: RuntimePayload): any {
         el.appendChild(clone);
       }
     }
-    if (!rows.length && el.hasAttribute("data-empty"))
-      el.textContent = el.getAttribute("data-empty");
+    if (!rows.length && el.hasAttribute("data-empty")) {
+      const tag = String(el.tagName || "").toUpperCase();
+      if ((tag === "UL" || tag === "OL") && el.ownerDocument) {
+        // Lists may only hold items: the empty text goes in one.
+        const item = el.ownerDocument.createElement("li");
+        item.setAttribute("data-empty-item", "");
+        item.textContent = el.getAttribute("data-empty");
+        el.appendChild(item);
+      } else el.textContent = el.getAttribute("data-empty");
+    }
   };
 
   // [data-count="table"] (+ optional data-filter): the number of matching rows.

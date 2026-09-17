@@ -8,6 +8,7 @@ import {
 } from "tldraw";
 import { sectionOf, SECTION_HEADER, SECTION_PADDING } from "@/desktop/sections";
 import type { WindowShape } from "@/desktop/window-shape";
+import { cameraAnimation } from "@/lib/motion";
 import { dropZone, findNeighbor, readingOrder, zoneRect } from "./geometry";
 import { DEFAULT_LAYOUT_OPTIONS, layout } from "./layout-engine";
 import {
@@ -469,7 +470,7 @@ export class WindowManager {
     this.focusWindow(id);
     this.editor.zoomToBounds(bounds, {
       inset: 32,
-      animation: { duration: 260 },
+      animation: cameraAnimation(260),
     });
   }
 
@@ -479,7 +480,7 @@ export class WindowManager {
     if (!region || !this.root.get()) return;
     this.editor.zoomToBounds(region, {
       inset: 0,
-      animation: { duration: 260 },
+      animation: cameraAnimation(260),
     });
   }
 

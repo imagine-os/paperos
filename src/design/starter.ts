@@ -447,7 +447,7 @@ export const STARTER_COMPONENTS: ComponentDef[] = [
     ],
     slots: [],
     template:
-      '<div class="ds-kanban">{#each stages}<section class="ds-kanban__col"><header class="ds-kanban__head"><span>{.}</span><span class="ds-kanban__count" data-count="{table}" data-filter=\'{filter} {stageField}="{.}"\'>0</span></header><ul class="ds-kanban__list" data-source="{table}" data-filter=\'{filter} {stageField}="{.}"\' data-order="{order}" data-empty="{empty}"><li class="ds-kanban__card"><span class="ds-kanban__title" data-field="{titleField}"></span>{#if subtitleField}<span class="ds-kanban__sub" data-field="{subtitleField}"></span>{/if}{#if metaField}<div class="ds-kanban__meta"><span data-field="{metaField}"></span></div>{/if}</li></ul></section>{/each}</div>',
+      '<div class="ds-kanban" tabindex="0" aria-label="Board">{#each stages}<section class="ds-kanban__col"><header class="ds-kanban__head"><span>{.}</span><span class="ds-kanban__count" data-count="{table}" data-filter=\'{filter} {stageField}="{.}"\'>0</span></header><ul class="ds-kanban__list" data-source="{table}" data-filter=\'{filter} {stageField}="{.}"\' data-order="{order}" data-empty="{empty}"><li class="ds-kanban__card"><span class="ds-kanban__title" data-field="{titleField}"></span>{#if subtitleField}<span class="ds-kanban__sub" data-field="{subtitleField}"></span>{/if}{#if metaField}<div class="ds-kanban__meta"><span data-field="{metaField}"></span></div>{/if}</li></ul></section>{/each}</div>',
     variants: [],
   },
   {
@@ -1054,7 +1054,7 @@ export const STARTER_COMPONENTS: ComponentDef[] = [
     ],
     slots: ["children"],
     template:
-      '<div class="ds-modal ds-modal--{variant}" data-open="{open}"><div class="ds-modal__backdrop"></div><div class="ds-modal__dialog" role="dialog" aria-modal="true"><header class="ds-modal__header"><h3>{title}</h3><button class="ds-modal__close" type="button" aria-label="Close" data-close>×</button></header><div class="ds-modal__body">{@body}{@children}</div><footer class="ds-modal__footer"><button class="ds-button ds-button--ghost" type="button" data-close>{cancelLabel}</button><button class="ds-button ds-button--primary" type="button" data-close>{confirmLabel}</button></footer></div></div>',
+      '<div class="ds-modal ds-modal--{variant}" data-open="{open}"><div class="ds-modal__backdrop"></div><div class="ds-modal__dialog" role="dialog" aria-modal="true" aria-label="{title}"><header class="ds-modal__header"><h3>{title}</h3><button class="ds-modal__close" type="button" aria-label="Close" data-close>×</button></header><div class="ds-modal__body">{@body}{@children}</div><footer class="ds-modal__footer"><button class="ds-button ds-button--ghost" type="button" data-close>{cancelLabel}</button><button class="ds-button ds-button--primary" type="button" data-close>{confirmLabel}</button></footer></div></div>',
     variants: [{ name: "overlay", props: { variant: "overlay" } }],
   },
   {

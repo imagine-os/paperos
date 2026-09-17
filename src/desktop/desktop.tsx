@@ -42,6 +42,7 @@ import { importDroppedItems, isProjectDrop } from "./project-actions";
 import { TopBar } from "./top-bar";
 import { WM_ACTION_IDS, wmActions } from "./wm-actions";
 import { ProblemToast } from "./problem-toast";
+import { openBoardFromUrl } from "./board-link";
 import { StartHere } from "./start-here";
 import { zoomBand, type ZoomBand } from "./zoom-band";
 import { TourOverlay } from "./tour-overlay";
@@ -145,16 +146,22 @@ export function Desktop() {
     // First run: open the sample project in the IDE arrangement, then the
     // welcome tour (once per browser; links with a room or board skip it).
     const tourWanted = !joining && !welcomeSeen() && !urlHasIntent();
+    const boardLink = new URLSearchParams(window.location.search).get("board");
     if (isFirstRun()) {
       markInitialized();
       const hasWindows = editor
         .getCurrentPageShapes()
         .some((s) => s.type === "window");
-      if (!hasWindows && !joining)
+      if (boardLink && !joining) {
+        // A deep link to a board: open it instead of the IDE arrangement.
+        void openBoardFromUrl(editor, boardLink);
+      } else if (!hasWindows && !joining)
         void applyIdeWorkspace(editor).then(() => {
           if (tourWanted) void startWelcomeTour(editor);
         });
       else if (tourWanted) void startWelcomeTour(editor);
+    } else if (boardLink && !joining) {
+      void openBoardFromUrl(editor, boardLink);
     } else if (tourWanted) {
       void startWelcomeTour(editor);
     }

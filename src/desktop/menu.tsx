@@ -22,15 +22,49 @@ export function Dropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const id = useId();
+
+  const items = () =>
+    Array.from(
+      ref.current?.querySelectorAll<HTMLButtonElement>(
+        "[role=menuitem]:not(:disabled),[role=menuitemradio]:not(:disabled)"
+      ) ?? []
+    );
 
   useEffect(() => {
     if (!open) return;
+    // Keyboard: focus lands on the first item; arrows move; Escape closes
+    // and returns focus to the button.
+    const opened = document.activeElement;
+    items()[0]?.focus();
     const onPointerDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+        if (opened instanceof HTMLElement) opened.focus();
+        return;
+      }
+      if (!ref.current?.contains(e.target as Node)) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const list = items();
+        const i = list.indexOf(document.activeElement as HTMLButtonElement);
+        const next =
+          e.key === "ArrowDown"
+            ? list[(i + 1) % list.length]
+            : list[(i - 1 + list.length) % list.length];
+        next?.focus();
+      } else if (e.key === "Home" || e.key === "End") {
+        e.preventDefault();
+        const list = items();
+        (e.key === "Home" ? list[0] : list[list.length - 1])?.focus();
+      } else if (e.key === "Tab") {
+        setOpen(false);
+      }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKey, true);
@@ -45,6 +79,7 @@ export function Dropdown({
   return (
     <div className="pos-dropdown" ref={ref}>
       <button
+        ref={button}
         type="button"
         className={`pos-button pos-dropdown__button${small ? " pos-button--small" : ""}`}
         aria-haspopup="menu"

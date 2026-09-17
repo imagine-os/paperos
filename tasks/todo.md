@@ -39,12 +39,12 @@ each pushed on its own.
 
 ## Commit 3 - Accessibility and landing refresh
 
-- [ ] axe-core via Playwright on /, /app, a board, Data, Share; fix
+- [x] axe-core via Playwright on /, /app, a board, Data, Share; fix
       serious/critical; focus order and rings; aria labels on icon buttons;
       reduced motion; preset token contrast.
-- [ ] Landing: screenshot carousel from `public/shots/` (`npm run shots`),
+- [x] Landing: screenshot carousel from `public/shots/` (`npm run shots`),
       "What's inside" grid, Status from the plan, deep links (`?board=`).
-- [ ] README, PLAN (M9 done, decisions), todo Review, CLAUDE.md folder map.
+- [x] README, PLAN (M9 done, decisions), todo Review, CLAUDE.md folder map.
 
 # M8 - Collaboration
 
@@ -68,7 +68,7 @@ each pushed on its own.
 - [x] Docs: docs/COLLAB.md, README Share section, PLAN M8 + decisions, landing
       status, todo review. Screenshots + webm.
 
-## Review (M9, commits 1 and 2)
+## Review (M9)
 
 ### Commit 1 - First-run experience (90a8309)
 
@@ -142,6 +142,61 @@ What shipped:
   first run.
 - Tests: 337 unit (migrations, problems, zoom band), `e2e/robustness.spec.ts`
   (crashing window, arrow culling, reset).
+
+### Commit 3 - Accessibility and landing refresh
+
+axe-core (`@axe-core/playwright`, WCAG 2.1 A and AA rules) in
+`e2e/a11y.spec.ts`, tldraw's own chrome excluded:
+
+| Page                           | Before (serious / critical, our markup)                                                                                                               | After         |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `/` landing                    | color-contrast x3 (section kickers, 3.16:1)                                                                                                           | no violations |
+| `/app` IDE workspace           | aria-input-field-name (CodeMirror), scrollable-region-focusable (CodeMirror), color-contrast x15 (top-bar badge, sample site badges, headings, links) | no violations |
+| `/app` board "Build a product" | select-name x2 (critical), label-title-only x2, aria-dialog-name x2, svg-img-alt x4, list x4, color-contrast x39, scrollable-region-focusable x2      | no violations |
+| `/app` Data window             | (same set as the board)                                                                                                                               | no violations |
+| `/app` Share window            | (same set as the board)                                                                                                                               | no violations |
+
+Moderate and minor findings that remain are listed by the spec's summary
+(none on the audited pages after the fixes; the component gallery's h4
+under h2 heading order was fixed by not being reached: it is inside the
+Design window's iframe, which the board audit does include, and passes).
+
+Fixes: `aria-label` and `tabindex="0"` on CodeMirror content (Editor and
+Script), labels on the Page Builder's link selects, a screen-reader header
+for the Data grid's actions column, `aria-label` on the top bar and the
+table asides, `aria-label="{title}"` on the design system's Modal dialog, a
+`<title>` and `aria-label` on Chart SVGs, the data runtime puts a list's
+`data-empty` text in an `<li>`, the Kanban board is focusable, and contrast:
+the top-bar badge uses `--pos-accent-strong`, the landing's kickers use
+`--land-accent-text`, the design system derives `--ds-color-*Text` (semantic
+color mixed 62-70% with ink) for every place a semantic color was small
+text (31 rules), avatar initials are darker, and the sample site's primary
+and danger-colored text uses the same mix. Keyboard: menus focus their
+first item on open, arrows and Home/End move, Escape returns focus to the
+button, Tab closes; one `:focus-visible` ring for the desktop; the tour's
+and boards' camera moves and the window manager's focus animation are
+instant under `prefers-reduced-motion`, and the desktop's transitions are
+turned off there.
+
+Contrast of the four presets (`src/design/contrast.test.ts`, 14 text and
+button pairs in light and dark): Paper light failed twice (white on the
+ember primary 3.48:1 and on the rose accent 3.83:1); Paper's `accentInk`
+is now the same ink as its dark scheme (5.5:1 and 5.0:1), and the landing's
+`--land-accent-ink` matches. Ink, Studio and Bold passed as they were.
+
+Landing: `landing-visual.tsx` (the animated SVG scene) is gone; `Shots`
+renders five WebP screenshots (1600 px and 2x, ~1.4 MB for all ten files)
+from `public/shots/`, produced by `npm run shots` (`scripts/shots.mjs`:
+Playwright against `next start`, PNG re-encoded to WebP through a canvas so
+no image dependency is needed). The carousel is radio buttons and labels
+(no client JavaScript, arrow keys switch slides, reduced motion drops the
+slide transition). "What's inside" lists the eight things that shipped;
+Status mirrors the plan (M0 to M9 done, the deferred list); "Try the demo"
+and "Open a board" (`/app?board=build-product`) deep-link into the
+desktop (`src/desktop/board-link.ts` opens the board on load, creating the
+sample when the browser is fresh, and drops the parameter from the URL).
+
+Tests: 339 unit, 45 e2e (a11y spec: 3 tests).
 
 # tasks/todo.md
 

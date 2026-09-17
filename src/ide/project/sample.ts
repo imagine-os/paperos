@@ -183,7 +183,7 @@ button {
   padding: 1px 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ds-color-danger, #991b1b) 14%, transparent);
-  color: var(--ds-color-danger, #991b1b);
+  color: color-mix(in srgb, var(--ds-color-danger, #991b1b) 62%, var(--ds-color-ink, #000));
 }
 
 /* Mega menu (declarative data-source) */
@@ -198,7 +198,7 @@ button {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ds-color-primary, #6b7280);
+  color: color-mix(in srgb, var(--ds-color-primary, #6b7280) 70%, var(--ds-color-ink, #000));
 }
 
 .mega ul {
@@ -246,7 +246,7 @@ button {
   display: flex;
   gap: 6px;
   align-items: center;
-  color: var(--ds-color-primary, #2563eb);
+  color: color-mix(in srgb, var(--ds-color-primary, #2563eb) 70%, var(--ds-color-ink, #000));
   text-decoration: none;
   font-size: 13px;
   padding: 2px 0;

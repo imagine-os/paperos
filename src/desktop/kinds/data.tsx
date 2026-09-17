@@ -102,7 +102,11 @@ export function DataWindow({ shape, editor, update }: WindowKindProps) {
       )}
       {project && store && hasSchema.value && (
         <div className="pos-data__body">
-          <aside className="pos-data__tables" data-testid="data-tables">
+          <aside
+            className="pos-data__tables"
+            data-testid="data-tables"
+            aria-label="Tables"
+          >
             <div className="pos-data__heading">Tables</div>
             {tables.value.map((t) => (
               <button
@@ -480,7 +484,9 @@ function TableGrid({
                   )}
                 </th>
               ))}
-              <th className="pos-data__th pos-data__th--actions" />
+              <th className="pos-data__th pos-data__th--actions">
+                <span className="pos-sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>

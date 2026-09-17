@@ -81,6 +81,10 @@ export async function createEditor(
       ]),
       yCollab(options.text, options.awareness ?? null),
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({
+        "aria-label": `Editor: ${options.path}`,
+        tabindex: "0",
+      }),
     ],
   });
 

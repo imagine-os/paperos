@@ -6,21 +6,23 @@ arrange. A tiling engine arranges windows into layouts, the windows hold IDE
 tools (file tree, editors, previews, consoles), and a Canvas API later makes
 the whole desktop programmable.
 
-**Status:** v2 preview, milestone M5 (design system, pages, flowcharting).
-The desktop renders, windows tile into layouts and workspaces (M1), the
-windows hold an IDE (file tree, CodeMirror editors, live preview, console,
-Markdown, command palette; M2), the whole desktop is scriptable: a typed
-**Canvas API** (`window.paperos`), a **Script** window, **plugins**, and a
-local **MCP bridge** so agents like Claude can drive the canvas (M3), a
-project carries its **data model**: tables and rows as JSON files, a
-**Data** grid, a **Schema** diagram and a **Connections** view (M4), and now
-a **design system** (tokens and a component library as files, edited in the
-**Design** window), **pages** composed from those components in the **Page
-Builder** with a per-device preview, and **flowcharting**: arrows between
-windows, titled sections, and a generated **project map** that lays the
-whole project out as one flowchart of cards (M5). Everything runs in the
-browser and survives a refresh; the bridge is a small Node CLI on your
-machine. The rest of the roadmap is in [`docs/PLAN.md`](docs/PLAN.md).
+**Status:** v2 preview, milestones M0 to M9 done. The desktop renders,
+windows tile into layouts and workspaces (M1), the windows hold an IDE (file
+tree, CodeMirror editors, live preview, console, Markdown, command palette;
+M2), the whole desktop is scriptable: a typed **Canvas API**
+(`window.paperos`), a **Script** window, **plugins** and a local **MCP
+bridge** so agents like Claude can drive the canvas (M3), a project carries
+its **data model** as JSON files with **Data**, **Schema** and
+**Connections** windows (M4), a **design system**, **pages** and
+**flowcharting** with a generated project map (M5), **boards** with tours,
+**data lineage** and the **Small Business SaaS** sample (M6), **Browser** and
+**Terminal** windows (M7), live **rooms** with cursors and shared files (M8),
+and the polish pass (M9): a welcome tour, a Start here card, a keyboard map,
+empty states with one-click fixes, on-demand loading of window kinds, error
+recovery per window, store versioning with Reset local data, an
+accessibility gate and a landing page with real screenshots. Everything runs
+in the browser and survives a refresh; the bridge is a small Node CLI on your
+machine. The plan and every decision are in [`docs/PLAN.md`](docs/PLAN.md).
 
 The 2025 prototype (a tldraw whiteboard with a code editor and a project
 browser) still runs at `/legacy`.
@@ -64,10 +66,38 @@ Other commands:
 | `npm run api:gen`   | Regenerate `docs/CANVAS_API.md` and the MCP CLI's schema copy (Node 22+). |
 | `npm run mcp:build` | Install and build the MCP bridge CLI (`tools/paperos-mcp`).               |
 | `npm run mcp`       | Run the MCP bridge CLI (agents normally start it themselves).             |
+| `npm run shots`     | Regenerate the landing screenshots in `public/shots/` (after a build).    |
 
 For `npm run e2e`, Playwright needs a Chromium. Either run
 `npx playwright install chromium` once, or point
 `PLAYWRIGHT_BROWSERS_PATH` at an existing install.
+
+## First run and finding your way
+
+- The first visit opens the sample project in the IDE workspace and starts
+  an eight-step **welcome tour** (the top bar, a board, the data lineage,
+  ending on "Open the Small Business SaaS sample"). It shows once per
+  browser; replay it from **About > Take the tour**, the palette or the
+  **Start here** card that an empty canvas shows (Open sample, Play a board,
+  Watch the tour).
+- Press **`?`** anywhere (outside a text field) for the **keyboard map**: every
+  shortcut grouped (desktop, windows, layouts, canvas, editors, terminal),
+  searchable, generated from the command registry and tldraw's actions so it
+  cannot drift.
+- Windows whose project lacks what they need show an empty state with a
+  one-click fix: Preview creates `index.html`, Data and Schema add a first
+  table, Pages creates the starter component library, Files opens the
+  sample.
+- A window that crashes shows a card (Reload window, Copy details) and a
+  "Something broke" toast; the rest of the canvas keeps working.
+- **About > Reset local data...** wipes every project, document, workspace
+  and the canvas from this browser after a confirm and reloads as a first
+  run. The project store carries a schema version and a migration list
+  (`src/ide/project/migrations.ts`).
+- Deep links: `/app?board=<name>` opens that board of the active project
+  (the sample's `build-product`, `ship-feature`, `agent-driven`,
+  `collaborate`, or the SaaS `showcase`); `/app?room=<id>` joins a room;
+  `/app?bridge=1` connects the agent bridge.
 
 ## Window manager
 
@@ -636,14 +666,29 @@ All optional. Copy `.env.example` to `.env.local` if you want to set any.
 | `NEXT_PUBLIC_PAPEROS_SYNC_URL`   | `/app`    | A `tools/paperos-sync` (y-websocket) server; rooms use it by default.       |
 | `NEXT_PUBLIC_PAPEROS_SIGNALING`  | `/app`    | Signaling server(s) for peer-to-peer rooms. Default: y-webrtc's public one. |
 
-## Routes
+## Accessibility
 
-| Route     | What                                                          |
-| --------- | ------------------------------------------------------------- |
-| `/`       | PaperOS v2 desktop. Top bar, persistent canvas, Window shape. |
-| `/legacy` | The 2025 prototype, frozen. Has a banner linking back to `/`. |
+- `e2e/a11y.spec.ts` runs axe-core (WCAG 2.1 A/AA) over the landing page,
+  the IDE workspace, a board, the Data window and the Share window; serious
+  and critical findings in PaperOS's own markup fail the run (tldraw's chrome
+  is excluded), and a keyboard test walks the top bar and a menu.
+- Visible focus rings everywhere, labels on icon buttons and landmarks, menus
+  that open on Enter, move with the arrow keys and return focus on Escape,
+  screen-reader text for icon-only headers.
+- `prefers-reduced-motion` makes tour and board camera moves instant and
+  turns off the desktop's transitions and the landing's animations.
+- The four design presets' text and button pairs are checked for AA contrast
+  in a unit test (`src/design/contrast.test.ts`); Paper's button text is ink
+  on the ember and rose accents for that reason.
 
-Both pages link to each other.
+## Landing page
+
+`/` is a static page (`src/app/page.tsx`, `src/app/landing.css`): no fonts,
+no client JavaScript beyond Next's runtime. Its screenshot carousel is CSS
+only (radio buttons and labels) over WebP images in `public/shots/`
+(1600 px and 2x), generated from the production build by `npm run shots`
+(`scripts/shots.mjs`, Playwright). Regenerate them when the desktop's look
+changes and commit the result.
 
 ## Architecture
 

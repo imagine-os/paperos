@@ -86,7 +86,7 @@ export function ConnectionsWindow({ shape, editor, update }: WindowKindProps) {
             onSource={(p) => select({ source: p })}
           />
           <div className="pos-connections__body">
-            <aside className="pos-data__tables">
+            <aside className="pos-data__tables" aria-label="Tables and sources">
               <div className="pos-data__heading">Tables</div>
               {idx.tables.map((t) => (
                 <button

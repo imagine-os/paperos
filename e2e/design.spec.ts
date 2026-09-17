@@ -84,15 +84,20 @@ test("the Design window shows the gallery and a token change recolors the previe
       { timeout: 15000 }
     )
     .toBe("rgb(255, 0, 0)");
-  // Primary buttons wear the accent gradient; the hero eyebrow is the flat primary color.
+  // Primary buttons wear the accent gradient; the hero eyebrow is the primary
+  // color as small text (mixed with ink for AA contrast), so it turns a deep red.
   await expect
-    .poll(async () =>
-      tokenPreview
+    .poll(async () => {
+      const value = await tokenPreview
         .locator(".ds-hero__eyebrow")
         .first()
-        .evaluate((el) => getComputedStyle(el).color)
-    )
-    .toBe("rgb(255, 0, 0)");
+        .evaluate((el) => getComputedStyle(el).color);
+      const nums = value.match(/[\d.]+/g)?.map(Number) ?? [];
+      const scale = value.startsWith("color(") ? 1 : 255;
+      const [r, g, b] = nums.map((n) => n / scale);
+      return r > 0.6 && g < 0.1 && b < 0.1;
+    })
+    .toBe(true);
 
   await design.getByTestId("design-tab-components").click();
   const gallery = design.frameLocator('[data-testid="component-gallery"]');

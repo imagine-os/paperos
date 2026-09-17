@@ -7,6 +7,7 @@
  */
 import { atom, type Editor, type TLArrowShape, type TLShapeId } from "tldraw";
 import { runCommand } from "@/ide/commands";
+import { motionMs } from "@/lib/motion";
 import type { Rect } from "@/wm/types";
 import {
   BOARD_COLOR_META,
@@ -34,13 +35,7 @@ export const TOUR_ANIMATION_MS = 600;
 
 /** Camera moves are instant when the person asked for reduced motion. */
 export function tourAnimationMs(): number {
-  if (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  )
-    return 0;
-  return TOUR_ANIMATION_MS;
+  return motionMs(TOUR_ANIMATION_MS);
 }
 
 export class TourController {

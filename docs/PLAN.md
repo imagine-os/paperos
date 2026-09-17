@@ -333,12 +333,47 @@ setName`, event `collab.changed`, palette commands `Share: ...`, MCP tools
   upgrade), shared layouts (the tiling tree stays personal by decision 8),
   access control beyond id and password, binary files.
 
-### M9 - Polish and plugins
+### M9 - Polish (done)
 
-- GenMoji plugin (see the original "3D GenMoji Generator" issue), now as a
-  PaperOS plugin (`activate(api)`).
-- Themes beyond light/dark.
-- Export/import of workspaces.
+- First run: a welcome tour (eight steps over the IDE workspace, the top
+  bar, the "Build a product" board, the data lineage, ending on the SaaS
+  sample) built on the boards' tour machinery, which gained steps that frame
+  a chrome element (`target`), run a palette command (`run`), point at
+  another board's section (`board`) and close with an action button
+  (`action`); shown once (`paperos-v2:welcome-seen`), replayed from About,
+  the palette and the "Start here" card an empty canvas shows (Open sample,
+  Play a board, Watch the tour). Keyboard map window kind `keys` (`?`),
+  generated from the command registry and tldraw's actions and tools plus
+  the editor and terminal keys. Empty states with one-click fixes (Preview,
+  Files, Pages, Data, Schema).
+- Performance: every window kind except Files, Editor, Preview, Console,
+  Note and About is a `React.lazy` chunk; the sample templates and the
+  starter design library load on demand (desktop chunk 712 kB to 436 kB);
+  zoom-band culling of arrows and labels; the window manager's tree is
+  written 250 ms after the last change. Measured before and after in
+  `tasks/todo.md` (60-window pan stays vsync-bound; the tail improves).
+- Robustness: an error boundary per window body (Reload window, Copy
+  details) and a "Something broke" toast for crashes, uncaught errors and
+  unhandled rejections; the project store carries a schema version and an
+  ordered migration list; "Reset local data..." in About wipes the browser
+  state after a confirm and reloads as a first run.
+- Accessibility: axe-core (WCAG 2.1 A/AA) over the landing, the IDE, a
+  board, the Data and Share windows in `e2e/a11y.spec.ts` (serious and
+  critical findings in our markup fail; tldraw's chrome is excluded), a
+  keyboard test for the top bar and menus, visible focus rings, labels on
+  icon buttons and landmarks, `prefers-reduced-motion` for camera moves and
+  transitions, and a unit test that keeps the four presets' text and button
+  pairs at AA (Paper's button text became ink).
+- Landing: a CSS-only screenshot carousel over WebP images generated from
+  the production build by `npm run shots`, a "What's inside" grid that
+  matches what shipped, an honest status panel from this plan, and deep
+  links (`/app?board=<name>` opens a board).
+- Tests: 339 unit and 45 e2e (onboarding, robustness, a11y specs added).
+- Not done, deferred to later: the GenMoji plugin (as `activate(api)`),
+  themes beyond light and dark, export/import of workspaces, a bundle
+  analyzer (chunk names were read from the build output by hand), findings
+  inside preview iframes that are moderate or the rendered project's own
+  (heading order in the component gallery).
 
 ## Architecture decisions
 
@@ -575,6 +610,42 @@ setName`, event `collab.changed`, palette commands `Share: ...`, MCP tools
     14%, so panning and zooming do not flicker. The second sample is not
     seeded on first run: it is one click (or `projects.open('saas')`) away
     and keeps first-run tests and timings unchanged.
+
+44. **Tours can frame chrome and run commands.** A tour step is still "a
+    section and a caption", but it may name a top-bar element instead of a
+    section (`target`), run a palette command when entered (`run`), look a
+    section up on another board (`board`) or end with a button (`action`).
+    The welcome tour is therefore an ordinary `BoardDef` with no sections,
+    the overlay moved from tldraw's `InFrontOfTheCanvas` to the desktop
+    root so it can draw over the top bar, and nothing about boards changed.
+45. **Window kinds load on demand.** The registry keeps the kind metadata
+    static (menus and boards need it at once) and makes the component a
+    `React.lazy` for everything the first paint does not show; the window
+    frame renders a placeholder under `Suspense`. Files, Editor, Preview,
+    Console, Note and About stay in the desktop chunk because the first run
+    shows them. The two sample templates and the starter design library are
+    dynamic imports for the same reason.
+46. **Every window body has an error boundary.** A crash in one kind is a
+    card in that window (Reload window remounts the body), never a blank
+    canvas; the boundary, uncaught errors and unhandled rejections all
+    report through one `reportProblem()` so there is one toast with "Copy
+    details" instead of three mechanisms.
+47. **The project store is versioned.** `paperos-v2:projects` carries a
+    schema version stamped at init; migrations are an ordered list run
+    before the store is read; a store from a newer build is left alone.
+    "Reset local data" is the documented escape hatch: it removes only what
+    PaperOS wrote (its `paperos-v2*` storage and databases and tldraw's
+    document) and reloads as a first run.
+48. **Landing screenshots are generated, not drawn.** `npm run shots`
+    drives the production build with Playwright and writes WebP files
+    (1600 px and 2x) to `public/shots/`, which are committed so the static
+    export needs no build step of its own. The carousel is radio buttons and
+    labels, which keeps decision 31 (no client JavaScript on the landing).
+49. **Accessibility is a test, not a checklist.** `e2e/a11y.spec.ts` fails
+    on serious or critical axe findings in PaperOS's markup, so regressions
+    show up like any other bug; tldraw's own chrome is excluded because it
+    is not ours to fix. Token contrast is a unit test over the presets, so
+    a palette change that breaks readability fails before it ships.
 
 ## Notes
 

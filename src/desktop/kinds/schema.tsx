@@ -523,7 +523,7 @@ function SchemaEditor({
 
   return (
     <div className="pos-schema__edit" data-testid="schema-editor">
-      <aside className="pos-data__tables">
+      <aside className="pos-data__tables" aria-label="Schema tables">
         <div className="pos-data__heading">Tables</div>
         {draft.tables.map((t) => (
           <button

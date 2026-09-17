@@ -1,0 +1,32 @@
+[
+  {
+    "name": "desktop-ide",
+    "title": "The desktop: Files, editor, preview and console tiled",
+    "width": 1600,
+    "height": 1000
+  },
+  {
+    "name": "board-build-product",
+    "title": "A board: data, schema, design, page builder and previews left to right",
+    "width": 1600,
+    "height": 1000
+  },
+  {
+    "name": "data-lineage",
+    "title": "Data lineage: tables, components and pages with labeled arrows",
+    "width": 1600,
+    "height": 1000
+  },
+  {
+    "name": "showcase-saas",
+    "title": "The Small Business SaaS sample and its showcase board",
+    "width": 1600,
+    "height": 1000
+  },
+  {
+    "name": "share-window",
+    "title": "Share: a live room with cursors and shared files, no account",
+    "width": 1600,
+    "height": 1000
+  }
+]

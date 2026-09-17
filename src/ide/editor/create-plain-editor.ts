@@ -16,6 +16,8 @@ import { basicSetup } from "codemirror";
 import { baseTheme, lightTheme } from "./themes";
 
 export interface PlainEditorOptions {
+  /** Accessible name of the editor (default "Script source"). */
+  label?: string;
   parent: HTMLElement;
   doc: string;
   dark: boolean;
@@ -57,6 +59,10 @@ export function createPlainEditor(
         ...defaultKeymap,
       ]),
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({
+        "aria-label": options.label ?? "Script source",
+        tabindex: "0",
+      }),
       EditorView.updateListener.of((u) => {
         if (u.docChanged) options.onChange(u.state.doc.toString());
       }),

@@ -48,7 +48,7 @@
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 999px;
-  color: var(--pos-accent);
+  color: var(--pos-accent-strong);
   background: color-mix(in srgb, var(--pos-accent) 14%, transparent);
 }
 
@@ -3585,4 +3585,44 @@
 .pos-about__fine {
   font-size: 12px;
   align-self: center;
+}
+
+/* Visible focus for keyboard users: one ring everywhere in the desktop */
+.pos-desktop :focus-visible,
+.pos-window :focus-visible {
+  outline: 2px solid var(--pos-accent);
+  outline-offset: 2px;
+}
+
+.pos-window__button:focus-visible,
+.pos-menu__item:focus-visible {
+  outline-offset: -1px;
+}
+
+.pos-menu__item:focus-visible {
+  background: var(--pos-surface-2);
+}
+
+/* Screen-reader-only text */
+.pos-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion: no transitions or animations in the desktop chrome */
+@media (prefers-reduced-motion: reduce) {
+  .pos-desktop *,
+  .pos-desktop *::before,
+  .pos-desktop *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
