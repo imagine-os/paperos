@@ -6,18 +6,21 @@ arrange. A tiling engine arranges windows into layouts, the windows hold IDE
 tools (file tree, editors, previews, consoles), and a Canvas API later makes
 the whole desktop programmable.
 
-**Status:** v2 preview, milestone M4 (data). The desktop renders, windows
-tile into layouts and workspaces (M1), the windows hold an IDE (file tree,
-CodeMirror editors, live preview, console, Markdown, command palette; M2),
-the whole desktop is scriptable: a typed **Canvas API** (`window.paperos`), a
-**Script** window, **plugins**, and a local **MCP bridge** so agents like
-Claude can drive the canvas (M3), and a project now carries its **data
-model**: tables and rows as JSON files, a **Data** grid, a **Schema** diagram
-and a **Connections** view that shows how components and pages use each
-table, with the preview rendering menus and lists straight from the data
-(M4). Everything runs in the browser and survives a refresh; the bridge is a
-small Node CLI on your machine. The rest of the roadmap is in
-[`docs/PLAN.md`](docs/PLAN.md).
+**Status:** v2 preview, milestone M5 (design system, pages, flowcharting).
+The desktop renders, windows tile into layouts and workspaces (M1), the
+windows hold an IDE (file tree, CodeMirror editors, live preview, console,
+Markdown, command palette; M2), the whole desktop is scriptable: a typed
+**Canvas API** (`window.paperos`), a **Script** window, **plugins**, and a
+local **MCP bridge** so agents like Claude can drive the canvas (M3), a
+project carries its **data model**: tables and rows as JSON files, a
+**Data** grid, a **Schema** diagram and a **Connections** view (M4), and now
+a **design system** (tokens and a component library as files, edited in the
+**Design** window), **pages** composed from those components in the **Page
+Builder** with a per-device preview, and **flowcharting**: arrows between
+windows, titled sections, and a generated **project map** that lays the
+whole project out as one flowchart of cards (M5). Everything runs in the
+browser and survives a refresh; the bridge is a small Node CLI on your
+machine. The rest of the roadmap is in [`docs/PLAN.md`](docs/PLAN.md).
 
 The 2025 prototype (a tldraw whiteboard with a code editor and a project
 browser) still runs at `/legacy`.
@@ -118,10 +121,12 @@ A workspace is a saved arrangement: layout preset, layout tree, the windows in
 it, the layout region and the camera. The **Workspaces** menu lists them and
 lets you save the current arrangement, update, rename, duplicate or delete the
 active one. Switching applies the layout and animates the camera to it. A fresh
-install has four: "IDE" (Files, Editor, Preview and Console; built when first
+install has five: "IDE" (Files, Editor, Preview and Console; built when first
 selected), "Data" (Files, Data over Schema, Connections over Preview; built
-when first selected), "Desk" (free) and "Grid" (tiles whatever is on the page
-in a grid). Workspaces live in this browser's `localStorage` under
+when first selected), "Design" (Design system, Page Builder over the Preview
+of `pages/home.json`; built when first selected), "Desk" (free) and "Grid"
+(tiles whatever is on the page in a grid); generating the project map adds
+"Map". Workspaces live in this browser's `localStorage` under
 `paperos-v2:workspaces`; the live arrangement is kept under `paperos-v2:wm` so
 a reload comes back tiled.
 
@@ -170,20 +175,23 @@ writes it back. To make files collaborative later, attach a sync provider in
 
 ### Windows
 
-| Kind        | What it shows                                                                                                                                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Files       | Tree of the active project: folders expand and collapse, a filter box, right-click menu (new file, new folder, rename, delete; open as Markdown), project switcher and Open menu. Clicking a file opens an editor next to Files.        |
-| Editor      | CodeMirror 6: language by extension (lazy-loaded), line numbers, bracket matching, search (`Ctrl+F`), light and dark theme following the app. `Ctrl+S` saves, `Shift+Alt+F` or **Format** runs Prettier (JS/TS/CSS/HTML/JSON/Markdown). |
-| Preview     | The project's entry (`index.html`, or pick another `.html` in the URL bar) in a sandboxed iframe, rebuilt from the live buffers 300 ms after the last edit. Stylesheets, `@import`, `url()` SVGs and scripts are inlined.               |
-| Console     | `console.*` output and errors from the preview, with levels and Clear, plus a one-line input that evaluates JavaScript inside the preview.                                                                                              |
-| Markdown    | A rendered `.md` file (`README.md` by default), sanitized with DOMPurify. **Edit** opens it in an editor.                                                                                                                               |
-| Note        | Plain text, stored in the window.                                                                                                                                                                                                       |
-| Data        | The project's tables (`data/schema.json` + `data/<table>.json`): table list with counts, sortable grid with inline editing, add/delete rows, filter, pagination, ref click-through, thumbnails, import/export. See Data.                |
-| Schema      | Entity-relationship diagram of the tables (SVG, pan/zoom, click a table to open it in Data) and a form that adds tables and columns, changes types and refs, and migrates the rows on Apply.                                            |
-| Connections | The binding index: pick a table to see the components, pages and files that read or write it (with `path:line` links that open the editor there), or a page/component to see its tables; unused tables and broken bindings.             |
-| Script      | A JavaScript editor that runs against the Canvas API (`paperos`) with a captured `console`; output pane, Snippets menu, `Ctrl+Enter`. See Programmability.                                                                              |
-| Plugins     | The plugin manager: built-in, project (`plugins/*.js`) and URL plugins, enable/disable, permissions note.                                                                                                                               |
-| Agent       | Read-only transcript of the tool calls an agent makes over the MCP bridge, with a Pause switch.                                                                                                                                         |
+| Kind         | What it shows                                                                                                                                                                                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Files        | Tree of the active project: folders expand and collapse, a filter box, right-click menu (new file, new folder, rename, delete; open as Markdown), project switcher and Open menu. Clicking a file opens an editor next to Files.                                                                                          |
+| Editor       | CodeMirror 6: language by extension (lazy-loaded), line numbers, bracket matching, search (`Ctrl+F`), light and dark theme following the app. `Ctrl+S` saves, `Shift+Alt+F` or **Format** runs Prettier (JS/TS/CSS/HTML/JSON/Markdown).                                                                                   |
+| Preview      | The project's entry (`index.html`, or pick another `.html` in the URL bar) in a sandboxed iframe, rebuilt from the live buffers 300 ms after the last edit. Stylesheets, `@import`, `url()` SVGs and scripts are inlined.                                                                                                 |
+| Console      | `console.*` output and errors from the preview, with levels and Clear, plus a one-line input that evaluates JavaScript inside the preview.                                                                                                                                                                                |
+| Markdown     | A rendered `.md` file (`README.md` by default), sanitized with DOMPurify. **Edit** opens it in an editor.                                                                                                                                                                                                                 |
+| Note         | Plain text, stored in the window.                                                                                                                                                                                                                                                                                         |
+| Data         | The project's tables (`data/schema.json` + `data/<table>.json`): table list with counts, sortable grid with inline editing, add/delete rows, filter, pagination, ref click-through, thumbnails, import/export. See Data.                                                                                                  |
+| Schema       | Entity-relationship diagram of the tables (SVG, pan/zoom, click a table to open it in Data) and a form that adds tables and columns, changes types and refs, and migrates the rows on Apply.                                                                                                                              |
+| Connections  | The binding index: pick a table to see the components, pages and files that read or write it (with `path:line` links that open the editor there), or a page/component to see its tables; unused tables and broken bindings.                                                                                               |
+| Design       | The design system: **Tokens** (colors with light/dark values, type scale, spacing, radius, shadows, breakpoints; editable, live preview, writes `design/tokens.json`), **Components** (gallery of every component and variant, inspector, "Insert into page") and **Guidelines** (`design/README.md`). See Design system. |
+| Page Builder | Pages composed from components: page list, block tree (drag to reorder or nest, spans on a 12-column grid, add from the library), inspector (typed props, table and field binding from the schema, variant), page settings and links, device preview at 390 / 820 / 1280. Writes `pages/*.json`. See Pages.               |
+| Card         | A light node for the project map: title, subtitle, a few facts and an Open button that opens the real thing (a table in Data, a file in an editor, a component in Design, a page in the Page Builder). Created by `map.generate`.                                                                                         |
+| Script       | A JavaScript editor that runs against the Canvas API (`paperos`) with a captured `console`; output pane, Snippets menu, `Ctrl+Enter`. See Programmability.                                                                                                                                                                |
+| Plugins      | The plugin manager: built-in, project (`plugins/*.js`) and URL plugins, enable/disable, permissions note.                                                                                                                                                                                                                 |
+| Agent        | Read-only transcript of the tool calls an agent makes over the MCP bridge, with a Pause switch.                                                                                                                                                                                                                           |
 
 One file per editor window: opening a file focuses its existing window, fills
 an empty editor, or creates a new one. When a layout is active the new editor
@@ -259,14 +267,103 @@ The Canvas API exposes the same model as `paperos.data.tables()`, `schema()`,
 `bindings()` and `open()`, and emits `data.changed`, so scripts, plugins and
 agents over the MCP bridge can read and change project data.
 
+## Design system
+
+A project's look lives in `design/` as plain files, edited in the **Design**
+window or any editor:
+
+- **`design/tokens.json`**: semantic colors (`bg`, `surface`, `text`,
+  `muted`, `primary`, `accent`, `danger`, `border`; a value or
+  `{light, dark}`), typography (`fontFamily`, `fontSize`, `fontWeight`,
+  `lineHeight` scales), `spacing`, `radius`, `shadow` and `breakpoint`
+  scales. The bundler turns them into CSS variables in every preview:
+  `--ds-color-primary`, `--ds-font-size-md`, `--ds-space-4`,
+  `--ds-radius-lg`, `--ds-shadow-md`, with the dark values under
+  `[data-theme="dark"]` and `prefers-color-scheme: dark`. The sample's
+  `styles.css` reads `--ds-color-primary`, so changing the token in the
+  Design window recolors the site as you drag the swatch.
+- **`design/components/<Name>.json`**: one component per file with `props`
+  (typed: `string`, `number`, `boolean`, `select` with `options`, `html`,
+  `list`, `json`, and the data-aware `table`, `field`, `fields`), `slots`,
+  a `template` and `variants`. Templates are HTML with `{prop}` (escaped),
+  `{@slot}` (raw HTML), `{#each items}...{/each}` (`{.}`, `{key}`,
+  `{@index}`), `{#if prop}...{:else}...{/if}` and `{{literal}}` for a
+  literal brace, so the M4 `data-source` / `data-field` attributes work
+  inside them and a Table or Nav renders from the project's tables. A
+  `fields` prop defaults to the bound table's columns; templates get
+  `columns` (name, label, type, input type, ref display column) to build
+  tables and forms from the schema.
+- **`design/README.md`**: the guidelines, shown in the Guidelines tab.
+
+The starter library (created in the sample, or with **Create design system**
+in an empty project) has Button, Card, Table, Form, Nav, MegaMenu, Hero,
+Stat, List, Grid, Tabs, Modal, Badge and Avatar. Components also work in
+hand-written HTML: `<ds-component name="Badge" props='{"text":"New"}'>` or
+`<div data-component="Card" data-prop-title="Hi">...</div>` hydrate through
+`paperos.design`, which the bundler injects with the library embedded (it
+also renders `paperos.design.render(name, props)` on demand).
+
+## Pages
+
+`pages/<name>.json` composes components on a grid: `title`, `route`,
+`layout` (`columns`, default 12, `gap`, `maxWidth`), `components` (blocks:
+`{id, name, span, variant, props, bindings: [{table, fields, filter,
+order, mode}], children}`), `links` to other pages (`{to, label, from}`,
+the UX flows on the project map), `device` and page-level `bindings`. A
+block's binding feeds its `table` / `fields` props, so the Connections
+window and the project map see which tables a page uses. M4's page files
+(`file: "index.html"`, `components: ["side-menu"]`) still parse.
+
+The **Preview** window renders a page when its entry is
+`pages/<name>.json` (the URL bar lists them); links with `href="#/route"`
+switch to that page inside the preview. The **Page Builder** edits the
+block tree (drag to reorder or into a container such as Grid or Card, spans,
+add from the library, remove), the selected block's props, variant and
+data binding (tables and columns from the schema), the page's title, route,
+grid and links, and shows the page at mobile (390), tablet (820) or desktop
+(1280) width; clicking a block in the preview selects it. Every change
+writes the JSON file, so an open editor and the Preview follow. The sample
+ships `home`, `products` and `admin`, bound to the M4 tables.
+
+## Flowcharting
+
+Windows can be connected and grouped, so a board reads like a flowchart:
+
+- **Arrows**: tldraw's arrow tool binds to windows. Drag from the `↗`
+  handle in a title bar to another window (or draw with the arrow tool),
+  double-click the arrow for a label; arrows follow the windows they
+  connect. `paperos.flow.connect(from, to, label)`, `flow.disconnect` and
+  `flow.list` do the same from scripts and agents.
+- **Sections**: tldraw frames with a title. "Group selected windows into a
+  section" and "Section from workspace" (frames the tiled windows) are in
+  the palette; `paperos.sections.create(title, windowIds)` and
+  `sections.list` in the API. Windows in a section move with it, and a
+  layout applied while a window in a section is focused tiles inside that
+  section (the region is the section's bounds; otherwise it is the
+  viewport as before).
+- **Project map**: "Generate project map" (palette, or
+  `paperos.map.generate()`) builds one board from the real project:
+  sections Data (tables), Code (files, by folder; folders collapse to one
+  card in big projects), Design (tokens), Components, Pages and UX flows
+  (plus Growth and Ops when those folders exist), each a frame of Card
+  windows, with arrows from the bindings index (table → component, page
+  or file; `write` labels writes), component usage (component → page),
+  page links (page → page, with the link label) and tokens → components.
+  The layout is layered left to right with no overlaps, the camera zooms
+  to it and it is saved as the "Map" workspace. "Regenerate project map"
+  (`paperos.map.regenerate()`) rebuilds from the current project but keeps
+  the position of every card you moved; gone subjects disappear, new ones
+  take free slots. Each card's **Open** button opens the real thing.
+
 ## Programmability
 
 Everything the desktop does is reachable from one typed object, the
 **Canvas API**, documented method by method in
 [`docs/CANVAS_API.md`](docs/CANVAS_API.md): `windows`, `layout`,
-`workspaces`, `projects`, `files`, `data`, `preview`, `console`, `commands`,
-`canvas` and `events`. Every method returns plain JSON and throws a readable error on
-bad input. Three doors lead to it:
+`workspaces`, `projects`, `files`, `data`, `flow`, `sections`, `map`,
+`preview`, `console`, `commands`, `canvas` and `events`. Every method
+returns plain JSON and throws a readable error on bad input. Three doors
+lead to it:
 
 ### Script window
 
@@ -274,8 +371,9 @@ bad input. Three doors lead to it:
 async function with `paperos` (the Canvas API) and a capturing `console` in
 scope, so `await` works at the top level. **Run** (or `Ctrl+Enter`) shows
 logs, the returned value and errors in the pane below; a returned image data
-URL renders inline. The **Snippets** menu has starters: tile everything in a
-grid, open every `.js` file, create a note per file, take a screenshot,
+URL renders inline. The **Snippets** menu has starters: query a table,
+generate the project map, connect and group two windows, tile everything in
+a grid, open every `.js` file, create a note per file, take a screenshot,
 subscribe to events. The source is stored in the window, so it survives a
 reload and can be saved in a workspace.
 
@@ -397,13 +495,17 @@ src/
     window-tool.ts     toolbar tool: press "w", click to open a window
     window-kinds.tsx   registry of what a window can show (icon, size, component)
     kinds/             one file per kind: files, editor, preview, console,
-                       markdown, data, schema, connections, script, plugins,
-                       agent, note, about (+ file-picker, data-common helpers)
+                       markdown, data, schema, connections, design, pages,
+                       card, script, plugins, agent, note, about (+ file-picker,
+                       data-common, design-common, prop-editor helpers)
+    sections.ts        sections = tldraw frames around windows (create, list, move)
+    flow.ts            arrows bound to windows (connect, disconnect, list)
     create-window.ts   create a window with cascading placement
     cascade.ts         pure placement helper (unit tested)
     project-actions.ts Open folder / sample / ZIP / GitHub / dropped files
     ide-workspace.ts   the "IDE" arrangement, applied on first run
-    data-workspace.ts  the "Data" arrangement; preset-workspaces.ts maps both
+    data-workspace.ts  the "Data" arrangement; design-workspace.ts the "Design"
+                       one; preset-workspaces.ts maps them
     ide-commands.ts    fills the command registry (WM, windows, files, ...)
     command-palette.tsx Ctrl+K palette over the registry
   api/            The Canvas API (M3)
@@ -431,6 +533,21 @@ src/
     runtime.ts         paperos.data for the preview (self-contained function the
                        bundler injects with the tables embedded)
     erd.ts             layered entity-relationship layout for the Schema window
+  design/         The design system (M5, pure TypeScript apart from project-design)
+    tokens.ts          design/tokens.json: defaults, tolerant parser, --ds-* CSS
+    components.ts      design/components/*.json: typed props, slots, variants
+    render.ts          self-contained renderer (template language) + the
+                       paperos.design preview runtime, injected like the data runtime
+    pages.ts           pages/*.json: blocks on a grid, links, validation, HTML
+    page-ops.ts        immutable block-tree operations for the Page Builder
+    base-css.ts        component styles written against the tokens
+    starter.ts         the starter library, default tokens and guidelines
+    gallery.ts         the Design window's preview document
+    project-design.ts  loads tokens, components, pages from the live documents
+  map/            The project map (M5)
+    model.ts           sections, nodes and edges from the project's content (pure)
+    layout.ts          layered left-to-right placement, keeps given positions (pure)
+    generate.ts        draws frames, cards and arrows; saves the "Map" workspace
   plugins/        Plugin system (M3)
     types.ts           PluginModule / PluginApi contract
     manager.ts         load, activate, disable, persist (paperos-v2:plugins)
@@ -461,7 +578,7 @@ src/
   legacy/         The 2025 prototype, moved verbatim (see src/legacy/README.md)
 tools/paperos-mcp/ MCP server + WebSocket bridge CLI (own package, built with tsc)
 scripts/gen-api.mts Generates docs/CANVAS_API.md and the CLI's schema copy
-e2e/              Playwright: landing, smoke, window manager, IDE, API and data tests
+e2e/              Playwright: landing, smoke, window manager, IDE, API, data and design tests
 docs/PLAN.md      Milestones and architecture decisions
 docs/CANVAS_API.md Generated Canvas API reference; docs/MCP.md the bridge guide
 tasks/todo.md     Working checklist and review notes

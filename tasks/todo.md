@@ -169,48 +169,101 @@
 
 ## M5 - Design system, pages and flowcharting
 
-- [ ] Plan written, foundation read (`src/data/`, `src/desktop/kinds/*`,
+- [x] Plan written, foundation read (`src/data/`, `src/desktop/kinds/*`,
       `src/desktop/window-shape.tsx`, `src/wm/window-manager.ts`,
       `src/ide/preview/bundle.ts`, `src/api/`, tldraw arrow/frame APIs)
-- [ ] Design tokens (`src/design/tokens.ts`): `design/tokens.json` types,
+- [x] Design tokens (`src/design/tokens.ts`): `design/tokens.json` types,
       defaults, tolerant parser, `--ds-*` CSS generation (light + dark), base
       component CSS; injected by the bundler when the file exists
-- [ ] Components (`src/design/components.ts`, `render.ts`):
+- [x] Components (`src/design/components.ts`, `render.ts`):
       `design/components/*.json` (name, props typed with defaults, slots,
       template with `{prop}` / `{@html}` / `{#each}` / `{#if}`, variants,
       bindings); self-contained renderer shared by the bundler and the
       preview runtime (`<ds-component>` / `data-component` hydrate); starter
       library (Button, Card, Table, Form, Nav, MegaMenu, Hero, Stat, List,
       Grid, Tabs, Modal, Badge, Avatar)
-- [ ] Pages (`src/design/pages.ts`): `pages/*.json` schema (title, route,
+- [x] Pages (`src/design/pages.ts`): `pages/*.json` schema (title, route,
       12-column layout, component blocks with props / bindings / children,
       links, device), validation, HTML rendering; the preview renders a page
       when the entry is `pages/<name>.json`
-- [ ] Design window kind (`design`): Tokens (swatches, type scale, spacing,
+- [x] Design window kind (`design`): Tokens (swatches, type scale, spacing,
       radius, shadows, light/dark toggle, live preview, writes tokens.json),
       Components (gallery with variants, inspector, Insert into page),
       Guidelines (`design/README.md`)
-- [ ] Page Builder window kind (`pages`): page list, block list in the grid,
+- [x] Page Builder window kind (`pages`): page list, block list in the grid,
       move / reorder / add from library, props panel, table and field
       dropdowns from the schema, device toggle (390 / 820 / 1280) with an
       embedded preview, writes `pages/*.json`
-- [ ] Flowcharting: arrows bind to windows (connect handle on the title bar),
+- [x] Flowcharting: arrows bind to windows (connect handle on the title bar),
       sections as frames (group selected, section from workspace), tiling
       inside the focused section, `card` window kind, project map generator
       (`map.generate` / `map.regenerate`, layered layout, keeps positions),
       "Map" workspace
-- [ ] Canvas API: `map.generate`, `map.regenerate`, `flow.connect`,
+- [x] Canvas API: `map.generate`, `map.regenerate`, `flow.connect`,
       `flow.disconnect`, `flow.list`, `sections.create`, `sections.list`
       (schema, host, facade, fake host, tests, `npm run api:gen`)
-- [ ] Sample project: `design/tokens.json`, `design/components/*.json`,
+- [x] Sample project: `design/tokens.json`, `design/components/*.json`,
       `design/README.md`, pages `home`, `products`, `admin` bound to the M4
       tables with links between them
-- [ ] Tests: unit (tokens, renderer, pages, map layout, flow API) and
+- [x] Tests: unit (tokens, renderer, pages, map layout, flow API) and
       `e2e/design.spec.ts`
-- [ ] Docs: README (Design system, Pages, Flowcharting), `docs/PLAN.md`
+- [x] Docs: README (Design system, Pages, Flowcharting), `docs/PLAN.md`
       (M5 done, decisions), `docs/CANVAS_API.md`, this Review
-- [ ] Validate: `npm run check`, `npm run build`, `npm run build:static`,
+- [x] Validate: `npm run check`, `npm run build`, `npm run build:static`,
       screenshots, push, CI
+
+## Review (M5)
+
+### What changed
+
+- `src/design/`: `tokens.ts` (defaults, tolerant parser, `--ds-*` CSS with
+  a dark block, serializer), `components.ts` (typed props, slots, variants,
+  parser), `render.ts` (self-contained `designCore` template renderer and
+  the `paperos.design` preview runtime), `pages.ts` (page schema, parser,
+  validation, HTML rendering of a 12-column grid), `page-ops.ts`,
+  `base-css.ts`, `starter.ts` (14 components, default tokens, guidelines),
+  `gallery.ts`, `project-design.ts`. The bundler injects token CSS, the
+  design runtime and renders `pages/*.json` entries; the data runtime gained
+  `data-count`; the bindings scanner reads page blocks.
+- Window kinds `design`, `pages`, `card` (`src/desktop/kinds/`), plus
+  `prop-editor.tsx` and `design-common.ts`; the Preview lists page entries
+  and follows `#/route` links; "Design" workspace preset.
+- Flowcharting: `src/desktop/sections.ts` (frames), `src/desktop/flow.ts`
+  (bound arrows), the `↗` connect handle in the title bar, window-manager
+  support for tiling inside the focused section and for windows in frames.
+- `src/map/`: `model.ts` (graph from the project), `layout.ts` (layered
+  placement that keeps given positions), `generate.ts` (frames, cards,
+  arrows, "Map" workspace, regenerate).
+- Canvas API namespaces `flow`, `sections`, `map`; `npm run api:gen` run;
+  commands and snippets; sample project design files and pages;
+  `e2e/design.spec.ts`; README, PLAN (M5 done, decisions 32-37).
+
+### Verified in a real browser (Chromium 1440x900, production build)
+
+- Zero console errors on `/app` while editing tokens (the preview's `h1`
+  recolors), browsing the gallery, building a page at mobile / tablet /
+  desktop width, generating and regenerating the map (32 cards, 6
+  sections, 49 arrows on the sample), tiling inside a section and drawing
+  an arrow with the connect handle. `/legacy` still renders.
+- Screenshots and a webm of the map generation are in the session
+  scratchpad (`v2shots/m5/`).
+
+### Decisions and notes
+
+- The design renderer follows the data runtime's pattern (self-contained
+  source injected into the preview); pages are rendered from JSON on the
+  fly, nothing is generated into the project (PLAN decisions 32-34).
+- Sections and arrows are tldraw's own frames and arrows; no new shape
+  type. tldraw's arrow tool binds to windows out of the box, so the connect
+  handle only switches tools (decision 35). Tiling follows the focused
+  section (decision 36).
+- The map puts Design before Components so token arrows run left to right,
+  and repeats pages as a row of small "UX flow" cards (decision 37).
+- The M4 `pages/home.json` became a composed page; the Connections e2e
+  expectation changed from "via side-menu" to the page's direct bindings.
+- Not done: WYSIWYG editing inside the page preview (blocks are selected
+  there, edited in the inspector), arrow routing around cards, a Growth /
+  Ops model beyond listing files in those folders.
 
 ## Review (M4)
 

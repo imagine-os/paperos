@@ -168,10 +168,72 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   `attachProvider()` will cover it), a visual page builder for
   `pages/*.json` (M5).
 
-### M5 - Page builder
+### M5 - Design system, pages and flowcharting (done)
 
-- Arrange components on pages: edit `pages/*.json` and `components/*.json`
-  visually, place bound components, preview per page.
+- Design system as project files (`src/design/`, pure TypeScript apart from
+  `project-design.ts`): `design/tokens.json` (semantic colors with light and
+  dark values, typography, spacing, radius, shadow and breakpoint scales;
+  defaults, tolerant parser, `--ds-*` CSS with a dark block),
+  `design/components/*.json` (typed props incl. the data-aware `table` /
+  `field` / `fields`, slots, variants, an HTML template with `{prop}`,
+  `{@raw}`, `{#each}`, `{#if}...{:else}`, `{{literal}}`), a starter library
+  of 14 components (Button, Card, Table, Form, Nav, MegaMenu, Hero, Stat,
+  List, Grid, Tabs, Modal, Badge, Avatar) styled against the tokens, and
+  `design/README.md`. The renderer is a self-contained function (like the
+  data runtime) that the bundler runs to render pages and injects into the
+  preview as `paperos.design` (hydrates `<ds-component>` / `data-component`,
+  tabs and modal behavior, `#/route` navigation).
+- Pages (`pages/*.json`): 12-column grid of component blocks with props,
+  a table binding (feeds `table` / `fields`), children, links to other pages
+  and a device hint; validation against the library and the page list;
+  rendered to a document by the bundler when the preview entry is
+  `pages/<name>.json`. The bindings scanner reads block bindings and
+  component names, so Connections and the map see pages' tables. The data
+  runtime gained `data-count`.
+- Window kinds `design` (Tokens editor with live gallery and light/dark
+  toggle, Components gallery with inspector and "Insert into page",
+  Guidelines), `pages` (page list, block tree with drag/reorder/nesting and
+  spans, inspector with typed props and a schema-driven binding editor, page
+  settings and links, device preview 390 / 820 / 1280 with click-to-select)
+  and `card` (map node). The Preview lists page entries and follows page
+  links. "Design" workspace preset.
+- Flowcharting: tldraw arrows bind to Window shapes natively (verified); a
+  `↗` connect handle in the title bar switches to the arrow tool so a drag
+  from it draws a bound arrow. Sections are tldraw frames
+  (`src/desktop/sections.ts`): "Group selected windows into a section",
+  "Section from workspace"; the window manager tiles inside the focused
+  window's section (region = section bounds) and converts coordinates for
+  windows in frames. `src/desktop/flow.ts` creates and lists bound arrows.
+- Project map (`src/map/`): `buildProjectMap` turns tables, code files (by
+  folder, collapsed above 30), tokens, components (design library + M4
+  declarations), pages and page links into sections, nodes and edges
+  (bindings, usage, links, tokens); `layoutMap` places sections left to
+  right with a column grid per section, no overlaps, honoring kept
+  positions; `generateMap` draws frames, Card windows and arrows, zooms to
+  it and saves the "Map" workspace. Regenerate keeps moved cards, drops gone
+  subjects and redraws arrows.
+- Canvas API: `flow.connect / disconnect / list`, `sections.create / list`,
+  `map.generate / regenerate` (schema, host, browser host, fake host, facade
+  tests), `WindowInfo.section`, `windows.create` knows the new kinds; docs
+  and the CLI schema regenerated. Commands "Generate project map",
+  "Regenerate project map", "Group selected windows into a section",
+  "Section from workspace", "Apply Design workspace"; Script snippets for
+  the map and for connecting windows.
+- Sample project: `design/tokens.json`, `design/components/*.json`,
+  `design/README.md`, pages `home`, `products`, `admin` bound to the M4
+  tables with links between them; `styles.css` reads `--ds-color-primary`.
+- Tests: 238 unit tests (tokens, template language and renderer, component
+  files, pages and block operations, bundler injection, bindings for page
+  blocks, map model and layout, flow/sections/map facade) and
+  `e2e/design.spec.ts` (token recolors the preview and the gallery, Page
+  Builder adds a block and the device preview shows it, `map.generate` from
+  the Script window, an arrow drawn between two windows with the handle).
+- Not done, deferred: a full WYSIWYG page editor (the builder is a block
+  list with a live preview), component templates beyond the small template
+  language (no expressions), arrow routing that avoids cards (tldraw arcs
+  cross other cards in dense maps), map sections for Growth / Ops beyond
+  listing the files, undo of `map.generate` as one step (it is several
+  history marks).
 
 ### M6 - Full-stack sample
 
@@ -360,6 +422,44 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
     Pages base path applies. The landing's tokens (`--land-*`) are the
     reference visual language, written up in `docs/BRAND.md` for the design
     system to adopt (M5).
+32. **The design system is files plus one self-contained renderer.**
+    Tokens, components and pages are JSON in the project (they travel with
+    it and diff in git, like the data model); the renderer (`designCore`)
+    has no imports so its source is injected into the preview with
+    `toString()`, the same way as the data runtime (decision 27). The
+    bundler renders pages with it in the app and the preview hydrates
+    `<ds-component>` elements with the same code, so a component looks the
+    same everywhere.
+33. **A small template language, not a framework.** `{prop}`, `{@raw}`,
+    `{#each}`, `{#if}/{:else}` and `{{literal}}` are enough for the starter
+    library and keep templates readable JSON strings. Data binding inside
+    templates reuses the M4 `data-source` / `data-field` convention (with
+    `{{id}}` for the runtime's own placeholders), so the bindings scanner,
+    the runtime and the map all agree without a second mechanism.
+34. **Pages render from JSON, no generated HTML.** The preview entry
+    `pages/<name>.json` is rendered by the bundler on the fly; nothing is
+    written back to the project. Links use `href="#/route"` and the runtime
+    posts a `navigate` message the Preview window turns into an entry
+    change. Pages therefore never drift from their components or tokens.
+35. **Sections are tldraw frames, arrows are tldraw arrows.** No new shape
+    types (decision 6): windows stay the one primitive; frames group them
+    and move them, arrows bind to them natively (`canBind` is tldraw's
+    default). The map is built only from those three: frames with a
+    `paperosMap` meta, Card windows keyed by `key` in `content`, arrows with
+    a `paperosMap` edge key, which is what lets regeneration reuse and
+    prune them.
+36. **The layout region follows the focused section.** When the focused
+    window sits in a frame, layouts apply inside that frame's bounds (minus
+    padding and the title band) and only to that frame's windows; otherwise
+    the viewport rule (decision 7) holds and windows inside sections are
+    left alone. Shapes in frames carry parent-relative coordinates, so the
+    window manager and the Canvas API read page bounds and convert with
+    `getPointInParentSpace` when writing.
+37. **Map order: Data, Code, Design, Components, Pages, UX flows.** Design
+    (tokens) sits left of Components so the tokens → components arrows run
+    left to right like the rest; UX flows repeat the pages as a separate
+    row of small cards so page-to-page links read as a flow instead of
+    tangling with the binding arrows in the Pages column.
 
 ## Notes
 
