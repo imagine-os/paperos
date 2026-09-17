@@ -12,10 +12,14 @@ import { signal, type Signal } from "@/ide/signal";
 import {
   BRIDGE_DEFAULT_URL,
   BRIDGE_PROTOCOL_VERSION,
+  createPendingCalls,
   decodeMessage,
   encodeMessage,
+  newCallId,
+  NO_BRIDGE_ERROR,
   type BridgeMessage,
   type CallMessage,
+  type PendingCalls,
 } from "./bridge-protocol";
 import type { CanvasApi } from "./canvas-api";
 import { invokeTool } from "./invoke";
@@ -48,6 +52,8 @@ export interface BridgeClientOptions {
   connect?: (url: string) => SocketLike;
   /** Reconnect delay while enabled and disconnected. */
   retryMs?: number;
+  /** How long a `request()` to the CLI may take (default 60 s). */
+  requestTimeoutMs?: number;
   now?: () => number;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
 }
@@ -84,6 +90,7 @@ export class BridgeClient {
   private readonly retryMs: number;
   private readonly now: () => number;
   private readonly storage: BridgeClientOptions["storage"];
+  private readonly requests: PendingCalls;
 
   constructor(
     private readonly api: CanvasApi,
@@ -96,6 +103,23 @@ export class BridgeClient {
     this.now = options.now ?? Date.now;
     this.storage =
       options.storage === undefined ? safeStorage() : options.storage;
+    this.requests = createPendingCalls({
+      timeoutMs: options.requestTimeoutMs ?? 60_000,
+    });
+  }
+
+  /**
+   * Asks the CLI to run one of its local tools (`browser.fetch`,
+   * `browser.screenshot`, `shell.*`). Rejects at once when no bridge is
+   * connected.
+   */
+  request(tool: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (this.status.get() !== "connected" || !this.socket)
+      return Promise.reject(new Error(NO_BRIDGE_ERROR));
+    const id = newCallId("r");
+    const result = this.requests.start(id, tool);
+    this.send({ type: "request", id, tool, args });
+    return result;
   }
 
   isEnabled(): boolean {
@@ -136,6 +160,7 @@ export class BridgeClient {
     this.retry = null;
     this.socket?.close();
     this.socket = null;
+    this.requests.rejectAll("the agent bridge was turned off");
     this.status.set("off");
   }
 
@@ -183,6 +208,7 @@ export class BridgeClient {
     socket.onclose = () => {
       if (this.socket !== socket) return;
       this.socket = null;
+      this.requests.rejectAll("the agent bridge disconnected");
       if (this.enabled) {
         this.status.set("waiting");
         this.scheduleRetry();
@@ -212,6 +238,10 @@ export class BridgeClient {
     if (!message) return;
     if (message.type === "welcome") {
       this.status.set("connected");
+      return;
+    }
+    if (message.type === "response") {
+      this.requests.settle(message);
       return;
     }
     if (message.type === "call") await this.handleCall(message);

@@ -717,6 +717,16 @@ or a public GitHub repository URL.
     ...samplePages(),
     ...starterDesignFiles(),
     ...sampleBoardFiles(),
+    "browser/bookmarks.json": json({
+      bookmarks: [
+        { title: "Preview", url: "paperos://preview/index.html" },
+        { title: "Home page", url: "paperos://preview/pages/home.json" },
+        { title: "Canvas API docs", url: "paperos://docs/docs/CANVAS_API.md" },
+        { title: "Agent bridge (MCP)", url: "paperos://docs/docs/MCP.md" },
+        { title: "PaperOS", url: "paperos://home" },
+        { title: "MDN web docs", url: "https://developer.mozilla.org/" },
+      ],
+    }),
     "plugins/hello.js": `// A PaperOS plugin: an ES module exporting activate(api).
 // Enable it in New window -> Plugins. It runs in this page, like the devtools.
 export const name = "Hello plugin";

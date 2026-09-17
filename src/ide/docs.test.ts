@@ -21,7 +21,12 @@ describe("file documents", () => {
     const { store, id } = await sampleStore();
     const d = getFileDoc(id, "app.js", store);
     expect(getFileDoc(id, "app.js", store)).toBe(d);
+    // Until the document has loaded, reads fall through to the backend.
+    expect(d.loaded).toBe(false);
+    expect(peekLiveText(id, "app.js")).toBeNull();
+    expect(await readLiveText(id, "app.js", store)).toContain("console.log");
     await d.ready;
+    expect(d.loaded).toBe(true);
     expect(d.text.toString()).toContain("console.log");
     expect(d.dirty.get()).toBe(false);
 

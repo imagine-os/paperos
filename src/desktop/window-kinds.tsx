@@ -19,6 +19,7 @@ import { DesignWindow } from "./kinds/design";
 import { PagesWindow } from "./kinds/pages";
 import { CardWindow } from "./kinds/card";
 import { LineageWindow } from "./kinds/lineage";
+import { BrowserWindow } from "./kinds/browser";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -95,6 +96,16 @@ registerWindowKind({
   icon: "▶",
   defaultSize: { w: 520, h: 420 },
   Component: PreviewWindow,
+});
+
+registerWindowKind({
+  id: "browser",
+  heavy: true,
+  label: "Browser",
+  defaultTitle: "Browser",
+  icon: "\u{1F310}",
+  defaultSize: { w: 720, h: 520 },
+  Component: BrowserWindow,
 });
 
 registerWindowKind({

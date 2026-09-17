@@ -23,6 +23,8 @@ export interface FileDoc {
   text: Y.Text;
   /** Resolves once persistence has loaded and the backend content is in place. */
   ready: Promise<void>;
+  /** True once `ready` resolved: before that the buffer may still be empty. */
+  loaded: boolean;
   /** Buffer differs from what the backend holds. */
   dirty: Signal<boolean>;
   /** Backend read failed (missing file, no permission). */
@@ -82,6 +84,7 @@ export function getFileDoc(
   const dirty = signal(false);
   const error = signal<string | null>(null);
   let saved: string | null = null;
+  let loaded = false;
 
   const refreshDirty = () =>
     dirty.set(saved !== null && text.toString() !== saved);
@@ -107,6 +110,7 @@ export function getFileDoc(
       if (text.length === 0 && backend.length > 0) text.insert(0, backend);
     }
     refreshDirty();
+    loaded = true;
     const off = providerHook?.(doc, key);
     if (off) disposers.get(key)?.push(off);
   })();
@@ -123,6 +127,9 @@ export function getFileDoc(
     doc,
     text,
     ready,
+    get loaded() {
+      return loaded;
+    },
     dirty,
     error,
     async save() {
@@ -150,10 +157,10 @@ export function getFileDoc(
   return fileDoc;
 }
 
-/** The live text of a file when its document is open, else null. */
+/** The live text of a file when its document is open and loaded, else null. */
 export function peekLiveText(projectId: string, path: string): string | null {
   const d = docs.get(docKey(projectId, path));
-  return d ? d.text.toString() : null;
+  return d && d.loaded ? d.text.toString() : null;
 }
 
 /** Current text of a file: the open buffer when there is one, else the backend. */

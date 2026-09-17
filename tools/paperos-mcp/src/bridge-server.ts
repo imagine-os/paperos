@@ -4,6 +4,8 @@
  * and matched to their results by id.
  */
 import { WebSocketServer, type WebSocket } from "ws";
+import { BROWSER_TOOLS } from "./browser-tools.js";
+import { LocalTools } from "./local-tools.js";
 import {
   BRIDGE_PROTOCOL_VERSION,
   createPendingCalls,
@@ -12,6 +14,7 @@ import {
   newCallId,
   NO_TAB_ERROR,
   type HelloMessage,
+  type RequestMessage,
 } from "./shared/bridge-protocol.js";
 
 export interface BridgeServerOptions {
@@ -29,10 +32,51 @@ export class BridgeServer {
   private hello: HelloMessage | null = null;
   private readonly pending;
   private readonly log: (line: string) => void;
+  /** Tools this process runs for the tab and the agent (browser.*, shell.*). */
+  readonly local: LocalTools;
 
   constructor(private readonly options: BridgeServerOptions) {
     this.log = options.log ?? (() => {});
     this.pending = createPendingCalls({ timeoutMs: options.callTimeoutMs });
+    this.local = new LocalTools({
+      log: this.log,
+      push: (message) => this.push(message),
+    });
+    for (const t of BROWSER_TOOLS) this.local.register(t);
+  }
+
+  /** Sends a message to the connected tab (streams from local tools); false when there is none. */
+  push(message: unknown): boolean {
+    if (!this.tab) return false;
+    try {
+      this.tab.send(JSON.stringify(message));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async onRequest(socket: WebSocket, request: RequestMessage) {
+    let reply: string;
+    try {
+      const result = await this.local.run(request.tool, request.args);
+      reply = encodeMessage({
+        type: "response",
+        id: request.id,
+        ok: true,
+        result: result ?? null,
+      });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      this.log(`${request.tool} failed: ${error}`);
+      reply = encodeMessage({
+        type: "response",
+        id: request.id,
+        ok: false,
+        error,
+      });
+    }
+    if (this.tab === socket) socket.send(reply);
   }
 
   /** Starts listening; resolves once the port is bound. */
@@ -44,11 +88,15 @@ export class BridgeServer {
       });
       this.wss = wss;
       wss.once("listening", () => {
-        this.log(`bridge listening on ws://${this.options.host ?? "127.0.0.1"}:${this.options.port}`);
+        this.log(
+          `bridge listening on ws://${this.options.host ?? "127.0.0.1"}:${this.options.port}`
+        );
         resolve();
       });
       wss.once("error", (e) => reject(e));
-      wss.on("connection", (socket, req) => this.onConnection(socket, req.socket.remoteAddress));
+      wss.on("connection", (socket, req) =>
+        this.onConnection(socket, req.socket.remoteAddress)
+      );
     });
   }
 
@@ -91,12 +139,20 @@ export class BridgeServer {
       if (!message) return;
       if (message.type === "hello") {
         this.hello = message;
-        this.log(`tab connected: ${message.client} (API v${message.apiVersion}, ${message.tools.length} tools)`);
+        this.log(
+          `tab connected: ${message.client} (API v${message.apiVersion}, ${message.tools.length} tools)`
+        );
         socket.send(
-          encodeMessage({ type: "welcome", version: BRIDGE_PROTOCOL_VERSION, server: "paperos-mcp" })
+          encodeMessage({
+            type: "welcome",
+            version: BRIDGE_PROTOCOL_VERSION,
+            server: "paperos-mcp",
+          })
         );
       } else if (message.type === "result") {
         this.pending.settle(message);
+      } else if (message.type === "request") {
+        void this.onRequest(socket, message);
       }
     });
     socket.on("close", () => {

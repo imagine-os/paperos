@@ -110,6 +110,10 @@ const LINEAGE_RESULT =
   "LineageResult: BoardResult plus {page: string | null, tables, components, pages, edges}";
 const TOUR_INFO =
   "TourInfo {board, title, step, total, section, sectionTitle, stepTitle, caption, first, last} or null when no tour is playing";
+const BROWSER_TAB =
+  "BrowserTab {id, url, title, active, canGoBack, canGoForward}";
+const BROWSER_INFO = `BrowserInfo {id (window id), title, tabs: ${BROWSER_TAB}[]}`;
+const BOOKMARK = "Bookmark {title, url}";
 const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
@@ -816,6 +820,100 @@ export const TOOLS: ToolSpec[] = [
       "On the open Data lineage board, dims every card and arrow that does not feed the page; without a page everything is shown again.",
     params: [str("page", "Page name; omit or null for all pages", false)],
     returns: "{page: string | null, dimmed, kept}",
+    mutates: true,
+  },
+
+  // ----- browser -----
+  {
+    name: "browser.open",
+    description:
+      "Opens a Browser window. Addresses are http(s) URLs or internal targets: paperos://preview/<entry> (the project preview; empty entry = the default page), paperos://docs/<file> (README.md, docs/CANVAS_API.md, docs/MCP.md, docs/PLAN.md, docs/BRAND.md), paperos://legacy, paperos://home.",
+    params: [
+      {
+        name: "options",
+        description: "What to open",
+        schema: {
+          type: "object",
+          properties: {
+            url: {
+              type: "string",
+              description: "Address (default paperos://preview/)",
+            },
+            title: { type: "string", description: "Window title" },
+          },
+        },
+      },
+    ],
+    returns: BROWSER_INFO,
+    mutates: true,
+  },
+  {
+    name: "browser.navigate",
+    description:
+      "Goes to an address in the active tab of a Browser window (the focused or first Browser window when id is omitted; opens one when there is none).",
+    params: [
+      str("url", "Address (http(s) or paperos://...)"),
+      str("id", "Browser window id (default: focused or first)", false),
+    ],
+    returns: BROWSER_INFO,
+    mutates: true,
+  },
+  {
+    name: "browser.back",
+    description: "Goes back in the active tab of a Browser window.",
+    params: [str("id", "Browser window id (default: focused or first)", false)],
+    returns: BROWSER_INFO,
+    mutates: true,
+  },
+  {
+    name: "browser.forward",
+    description: "Goes forward in the active tab of a Browser window.",
+    params: [str("id", "Browser window id (default: focused or first)", false)],
+    returns: BROWSER_INFO,
+    mutates: true,
+  },
+  {
+    name: "browser.reload",
+    description: "Reloads the active tab of a Browser window.",
+    params: [str("id", "Browser window id (default: focused or first)", false)],
+    returns: BROWSER_INFO,
+    mutates: true,
+  },
+  {
+    name: "browser.tabs",
+    description:
+      "The tabs of a Browser window, or of every Browser window when id is omitted.",
+    params: [str("id", "Browser window id", false)],
+    returns: `${BROWSER_INFO}[]`,
+  },
+  {
+    name: "browser.bookmarks",
+    description:
+      "The project's bookmarks (browser/bookmarks.json; defaults when the file does not exist).",
+    params: [],
+    returns: `${BOOKMARK}[]`,
+  },
+  {
+    name: "browser.bookmark",
+    description:
+      "Adds (or retitles) a bookmark in browser/bookmarks.json, or removes it with remove: true.",
+    params: [
+      {
+        name: "bookmark",
+        description: "The bookmark",
+        required: true,
+        schema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "Address" },
+            title: { type: "string", description: "Title (default: derived)" },
+            remove: { type: "boolean", description: "Remove instead of add" },
+          },
+          required: ["url"],
+        },
+      },
+    ],
+    returns: `${BOOKMARK}[] (the whole list)`,
     mutates: true,
   },
 

@@ -291,6 +291,11 @@ function BoardsMenu({ editor }: { editor: Editor }) {
     };
   }, [project, changes, docTick, editor]);
 
+  // Which boards have frames on the canvas right now (reactive to the store).
+  const onCanvas = useValue("boards on canvas", () => boardsOnCanvas(editor), [
+    editor,
+  ]);
+
   const open = async (name: string) => {
     if (!project) return;
     openBoard(editor, await readBoard(project, name), { project });
@@ -328,7 +333,7 @@ function BoardsMenu({ editor }: { editor: Editor }) {
         <MenuItem
           key={b.name}
           label={`${b.title} (${b.sections} sections)`}
-          checked={b.onCanvas}
+          checked={onCanvas.includes(b.name)}
           testId={`board-open-${b.name}`}
           onSelect={() => void open(b.name)}
         />

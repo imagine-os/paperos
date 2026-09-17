@@ -25,7 +25,12 @@ import { applyDataWorkspace } from "./data-workspace";
 import { applyDesignWorkspace } from "./design-workspace";
 import { createSection } from "./sections";
 import { applyIdeWorkspace } from "./ide-workspace";
-import { openConnectionsWindow, parseContent } from "./kinds/data-common";
+import {
+  openConnectionsWindow,
+  openKindWindow,
+  parseContent,
+} from "./kinds/data-common";
+import { createState as createBrowserState } from "@/browser/tabs";
 import { applyPresetWorkspace } from "./preset-workspaces";
 import {
   canOpenFolder,
@@ -138,6 +143,32 @@ export function registerIdeCommands(editor: Editor): () => void {
       openConnectionsWindow(editor, {});
     },
   });
+
+  const openBrowser = (url: string, title: string) =>
+    openKindWindow(editor, "browser", createBrowserState(url), { title });
+  list.push(
+    {
+      id: "browser.open-preview",
+      title: "Open the Preview in the Browser window",
+      group: "Browser",
+      keywords: "web tabs url site page",
+      run: () => void openBrowser("paperos://preview/", "Browser"),
+    },
+    {
+      id: "browser.open-docs",
+      title: "Open the PaperOS docs in the Browser window",
+      group: "Browser",
+      keywords: "readme canvas api mcp plan help",
+      run: () => void openBrowser("paperos://docs/README.md", "Browser: docs"),
+    },
+    {
+      id: "browser.open-landing",
+      title: "Open the PaperOS landing page in the Browser window",
+      group: "Browser",
+      keywords: "home site",
+      run: () => void openBrowser("paperos://home", "Browser"),
+    }
+  );
 
   list.push(
     {

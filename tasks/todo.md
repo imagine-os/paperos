@@ -245,6 +245,35 @@
 - [x] Validate: `npm run check`, `npm run build`, `npm run build:static`,
       `npm run e2e` (production build), screenshots and tour video, push, CI
 
+## M7 - Browser and Terminal windows
+
+- [x] Plan written, foundation read (window kinds, Canvas API host/facade,
+      bridge protocol, boards, MCP CLI)
+- [x] Browser: pure model in `src/browser/` (addresses incl. `paperos://`
+      targets, embed-refusal heuristic + blocked list, tab state, bookmarks
+      file), unit tests
+- [x] Browser window kind: tab strip, URL bar with back/forward/reload/home,
+      bookmarks (`browser/bookmarks.json`), Open in new tab, refusal card,
+      internal targets (Preview, /legacy, docs, landing), sandboxed iframe
+- [x] Canvas API `browser.*` (open, navigate, back, forward, reload, tabs,
+      bookmarks, bookmark), commands, "Ship a feature" board step, sample
+      bookmarks file, docs regenerated
+- [x] Bridge: tab -> bridge `request`/`response` messages; CLI local tools
+      `browser.fetch` and `browser.screenshot` (Playwright optional), MCP
+      tools `browser_fetch` / `browser_screenshot`, docs/MCP.md
+- [x] e2e `e2e/browser.spec.ts`; check, build, build:static, e2e; push Part 1
+- [ ] Terminal: pure project shell in `src/terminal/` (interpreter over a
+      virtual fs, completion, history), unit tests
+- [ ] Terminal window kind: own terminal component, Project shell and Bridge
+      shell backends, opt-in confirm for the bridge shell, backend indicator
+- [ ] Bridge `shell.*` tools (node-pty optional, child_process fallback) and
+      `stream` messages; Canvas API `terminal.*`; palette commands;
+      "Agent-driven" board step; docs/MCP.md security section
+- [ ] e2e `e2e/terminal.spec.ts`; check, build, build:static, e2e; push Part 2
+- [ ] Docs: CANVAS_API.md, README (Windows), PLAN (M7 done + decisions),
+      landing status, this Review
+- [ ] Screenshots and webm in the scratchpad (`v2shots/m7/`)
+
 ## Review (M6)
 
 ### What changed

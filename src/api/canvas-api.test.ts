@@ -771,3 +771,79 @@ describe("lineage", () => {
     await expect(api.lineage.open({ page: "nope" })).rejects.toThrow(/No page/);
   });
 });
+
+describe("browser", () => {
+  it("opens, navigates with history, reloads and lists tabs", () => {
+    const { api } = setup();
+    expect(() => api.browser.back()).toThrow(/No Browser window/);
+    expect(api.browser.tabs()).toEqual([]);
+
+    const b = api.browser.open();
+    expect(b.tabs).toHaveLength(1);
+    expect(b.tabs[0]).toMatchObject({
+      url: "paperos://preview/",
+      title: "Preview",
+      active: true,
+      canGoBack: false,
+    });
+    isPlainJson(b);
+    expect(api.windows.get(b.id)?.kind).toBe("browser");
+
+    // No id: the focused (just opened) browser window.
+    const nav = api.browser.navigate("example.com");
+    expect(nav.id).toBe(b.id);
+    expect(nav.tabs[0]).toMatchObject({
+      url: "https://example.com",
+      canGoBack: true,
+    });
+    expect(api.browser.back().tabs[0].url).toBe("paperos://preview/");
+    expect(api.browser.forward(b.id).tabs[0].url).toBe("https://example.com");
+    expect(api.browser.reload().tabs[0].url).toBe("https://example.com");
+    expect(api.browser.tabs(b.id)).toHaveLength(1);
+    expect(api.browser.tabs()).toHaveLength(1);
+
+    // A second window: tabs() lists both; navigate with an explicit id.
+    const c = api.browser.open({ url: "paperos://docs", title: "Docs" });
+    expect(c.title).toBe("Docs");
+    expect(c.tabs[0].url).toBe("paperos://docs/README.md");
+    expect(api.browser.tabs()).toHaveLength(2);
+    expect(api.browser.navigate("paperos://legacy", b.id).tabs[0].url).toBe(
+      "paperos://legacy"
+    );
+    // Ids of other kinds are refused.
+    const note = api.windows.create({ kind: "note" });
+    expect(() => api.browser.tabs(note.id)).toThrow(/not a Browser window/);
+    expect(() => api.browser.open({ url: "" })).toThrow(/url/);
+  });
+
+  it("navigate() with no browser window opens one", () => {
+    const { api } = setup();
+    const b = api.browser.navigate("paperos://home");
+    expect(api.windows.get(b.id)?.kind).toBe("browser");
+    expect(b.tabs[0].url).toBe("paperos://home");
+  });
+
+  it("reads and writes the project's bookmarks file", async () => {
+    const { api, host } = setup();
+    const defaults = await api.browser.bookmarks();
+    expect(defaults.length).toBeGreaterThan(3);
+    const list = await api.browser.bookmark({
+      url: "example.com",
+      title: "Ex",
+    });
+    expect(list.at(-1)).toEqual({ title: "Ex", url: "https://example.com" });
+    const text = await host.files.read("prj_1", "browser/bookmarks.json");
+    expect(JSON.parse(text).bookmarks).toHaveLength(defaults.length + 1);
+    const after = await api.browser.bookmark({
+      url: "https://example.com",
+      remove: true,
+    });
+    expect(after).toHaveLength(defaults.length);
+    await expect(api.browser.bookmark({ url: "" })).rejects.toThrow(/url/);
+    await expect(
+      invokeTool(api, "browser.bookmark", {
+        url: "paperos://preview/pages/admin.json",
+      })
+    ).resolves.toHaveLength(defaults.length + 1);
+  });
+});

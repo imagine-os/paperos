@@ -74,12 +74,45 @@ bridge only accepts loopback connections.
 
 - `bridge_status`: whether a tab is connected. Tools called with no tab
   connected return a clear error saying how to connect one.
-- One tool per Canvas API method that takes no callback (41 of them). Input
+- One tool per Canvas API method that takes no callback. Input
   schemas come from `src/api/schema.ts`; `readOnlyHint` is set on queries.
 - `canvas_screenshot` returns the PNG as an MCP image (windows render as
   titled frames; their live HTML bodies are not captured).
 - `events_poll` returns the last 200 canvas events (`window.created`,
   `layout.changed`, `file.changed`, ...) for agents that want to react.
+- Two **local tools** the CLI runs itself, on your machine, instead of
+  forwarding to the tab: `browser_fetch` and `browser_screenshot` (below).
+
+## A real browser through the bridge
+
+The Browser window (New window → Browser) shows pages in a sandboxed iframe.
+Many sites refuse to be framed (`X-Frame-Options`, `frame-ancestors`); the
+window then shows a card with "Open in new tab" and, when the bridge is
+connected, "Screenshot via bridge". Agents get the same reach as two MCP
+tools:
+
+| Tool                 | What it does                                                                                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `browser_fetch`      | `{url, selector?, maxChars?, waitMs?}` → `{url, title, text, via}`. With Playwright: loads the page in headless Chromium and returns its visible text (`selector` narrows it). Without: a plain `fetch` and tag stripping (`via: "fetch"`, no JavaScript ran). |
+| `browser_screenshot` | `{url, width?, height?, fullPage?, waitMs?}` → a PNG image plus `{url, title, width, height}`. Needs Playwright; without it the error says how to install it.                                                                                                  |
+
+Playwright is optional and never installed by `npm run mcp:build`. To turn
+it on:
+
+```bash
+npm --prefix tools/paperos-mcp install playwright
+npx --prefix tools/paperos-mcp playwright install chromium
+```
+
+The CLI loads it with a dynamic `import("playwright")` at call time, so
+nothing changes when it is absent. Both tools only accept `http(s)` URLs,
+launch a fresh headless browser per call and close it afterwards.
+
+The tab reaches the same tools over the bridge: the protocol (v2) has
+`request` / `response` messages going tab → CLI, next to the agent's
+`call` / `result`. The Browser window's "Screenshot via bridge" is
+`browser.screenshot` sent that way; the Terminal's bridge shell (M7) uses the
+same channel.
 
 ## Options
 

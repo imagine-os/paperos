@@ -294,8 +294,29 @@ export function shipFeatureBoard(): BoardDef {
           "console.* output and errors from the preview; run snippets in it.",
       },
       {
+        id: "browser",
+        title: "5. Browser: the page as a site",
+        grid: "single",
+        windows: [
+          {
+            id: "web",
+            kind: "browser",
+            title: "Browser",
+            content: {
+              tabs: [
+                { address: "paperos://preview/index.html" },
+                { address: "paperos://docs/README.md" },
+              ],
+            },
+            size: { w: 900, h: 620 },
+          },
+        ],
+        notes:
+          "Tabs, an address bar and bookmarks; the preview, the docs and http(s) sites. Sites that refuse embedding get a way out.",
+      },
+      {
         id: "data",
-        title: "5. Data the feature reads",
+        title: "6. Data the feature reads",
         grid: "single",
         windows: [
           {
@@ -315,6 +336,7 @@ export function shipFeatureBoard(): BoardDef {
       { from: "tree", to: "e-js", label: "open" },
       { from: "editors", to: "prev", label: "bundled into srcdoc" },
       { from: "prev", to: "log", label: "console.log" },
+      { from: "prev", to: "web", label: "paperos://preview/index.html" },
       { from: "menu", to: "prev", label: "data-source" },
     ],
     steps: [
@@ -341,6 +363,12 @@ export function shipFeatureBoard(): BoardDef {
         title: "Read the logs",
         caption:
           "Logs and errors from the preview land here; the input evaluates inside it.",
+      },
+      {
+        section: "browser",
+        title: "Browse it",
+        caption:
+          "The Browser window opens the preview as a site, with tabs, bookmarks in browser/bookmarks.json and the docs one tab over.",
       },
       {
         section: "data",

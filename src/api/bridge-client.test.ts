@@ -181,3 +181,59 @@ describe("bridge client", () => {
     expect(summarize(undefined)).toBe("undefined");
   });
 });
+
+describe("bridge client requests to the CLI", () => {
+  it("rejects at once while disconnected", async () => {
+    const { client } = setup();
+    await expect(client.request("browser.fetch", { url: "x" })).rejects.toThrow(
+      /not connected/
+    );
+    client.start();
+    await expect(client.request("browser.fetch")).rejects.toThrow(
+      /not connected/
+    );
+  });
+
+  it("sends a request and settles on the matching response", async () => {
+    const { client, sockets } = setup();
+    client.start();
+    const s = sockets[0];
+    s.onopen?.();
+    s.onmessage?.({
+      data: JSON.stringify({ type: "welcome", version: 2, server: "x" }),
+    });
+    const p = client.request("browser.fetch", { url: "https://example.com" });
+    const sent = last(s) as {
+      type: string;
+      id: string;
+      tool: string;
+      args: unknown;
+    };
+    expect(sent).toMatchObject({
+      type: "request",
+      tool: "browser.fetch",
+      args: { url: "https://example.com" },
+    });
+    await client.handleIncoming({
+      type: "response",
+      id: sent.id,
+      ok: true,
+      result: { text: "hi" },
+    });
+    await expect(p).resolves.toEqual({ text: "hi" });
+
+    const failing = client.request("shell.spawn");
+    const req = last(s) as { id: string };
+    await client.handleIncoming({
+      type: "response",
+      id: req.id,
+      ok: false,
+      error: "no pty",
+    });
+    await expect(failing).rejects.toThrow("no pty");
+
+    const dropped = client.request("browser.screenshot");
+    s.close();
+    await expect(dropped).rejects.toThrow(/disconnected/);
+  });
+});

@@ -3,11 +3,16 @@
  * (`tools/paperos-mcp`). JSON messages over one WebSocket. No imports, so
  * the file is copied verbatim into the CLI (see scripts/gen-api.ts).
  *
- *   tab    -> bridge : hello, result, event
- *   bridge -> tab    : welcome, call
+ *   tab    -> bridge : hello, result, event, request
+ *   bridge -> tab    : welcome, call, response
+ *
+ * `call`/`result` run Canvas API tools in the tab for the agent;
+ * `request`/`response` go the other way: the tab asks the CLI for something
+ * only a process on the user's machine can do (a real browser through
+ * Playwright, a shell), see `tools/paperos-mcp/src/local-tools.ts`.
  */
 
-export const BRIDGE_PROTOCOL_VERSION = 1;
+export const BRIDGE_PROTOCOL_VERSION = 2;
 export const BRIDGE_DEFAULT_PORT = 7331;
 export const BRIDGE_DEFAULT_URL = `ws://127.0.0.1:${BRIDGE_DEFAULT_PORT}`;
 export const BRIDGE_CALL_TIMEOUT_MS = 30_000;
@@ -45,8 +50,26 @@ export interface EventMessage {
   payload: unknown;
 }
 
+/** The tab asks the CLI to run one of its local tools (`browser.fetch`, `shell.spawn`, ...). */
+export interface RequestMessage {
+  type: "request";
+  id: string;
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+export type ResponseMessage =
+  | { type: "response"; id: string; ok: true; result: unknown }
+  | { type: "response"; id: string; ok: false; error: string };
+
 export type BridgeMessage =
-  HelloMessage | WelcomeMessage | CallMessage | ResultMessage | EventMessage;
+  | HelloMessage
+  | WelcomeMessage
+  | CallMessage
+  | ResultMessage
+  | EventMessage
+  | RequestMessage
+  | ResponseMessage;
 
 export function encodeMessage(message: BridgeMessage): string {
   return JSON.stringify(message);
@@ -81,24 +104,27 @@ export function decodeMessage(raw: unknown): BridgeMessage | null {
         ? (data as unknown as WelcomeMessage)
         : null;
     case "call":
+    case "request":
       return typeof data.id === "string" &&
         typeof data.tool === "string" &&
         (data.args === undefined || isRecord(data.args))
         ? {
-            type: "call",
+            type: data.type,
             id: data.id,
             tool: data.tool,
             args: (data.args as Record<string, unknown>) ?? {},
           }
         : null;
     case "result":
+    case "response": {
       if (typeof data.id !== "string" || typeof data.ok !== "boolean")
         return null;
-      if (data.ok)
-        return { type: "result", id: data.id, ok: true, result: data.result };
+      const type = data.type;
+      if (data.ok) return { type, id: data.id, ok: true, result: data.result };
       return typeof data.error === "string"
-        ? { type: "result", id: data.id, ok: false, error: data.error }
+        ? { type, id: data.id, ok: false, error: data.error }
         : null;
+    }
     case "event":
       return typeof data.name === "string" && typeof data.time === "number"
         ? {
@@ -124,7 +150,7 @@ export interface PendingCalls {
   /** Registers a call and resolves/rejects when its result arrives (or it times out). */
   start(id: string, tool: string): Promise<unknown>;
   /** Delivers a result. False when no call with that id is pending. */
-  settle(message: ResultMessage): boolean;
+  settle(message: ResultMessage | ResponseMessage): boolean;
   /** Rejects every pending call (the tab went away). */
   rejectAll(reason: string): void;
   size(): number;
@@ -191,6 +217,10 @@ export function createPendingCalls(
     size: () => pending.size,
   };
 }
+
+/** Message the tab shows when it asks the CLI for something while disconnected. */
+export const NO_BRIDGE_ERROR =
+  'The agent bridge is not connected. Turn on "Agent bridge" in the top bar and start the CLI (npm run mcp, or through your agent).';
 
 /** Message the bridge answers with when no tab is connected. */
 export const NO_TAB_ERROR =

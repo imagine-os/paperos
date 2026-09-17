@@ -2738,3 +2738,238 @@
   gap: 6px;
   justify-content: flex-end;
 }
+
+/* Browser */
+.pos-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--pos-surface);
+}
+
+.pos-browser__tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 6px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--pos-border);
+  background: color-mix(in srgb, var(--pos-border) 35%, var(--pos-surface));
+  flex: none;
+}
+
+.pos-browser__tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  min-width: 0;
+  padding: 4px 6px 4px 10px;
+  border-radius: 7px 7px 0 0;
+  font-size: 12px;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pos-browser__tab:hover {
+  background: color-mix(in srgb, var(--pos-accent) 8%, transparent);
+}
+
+.pos-browser__tab--active {
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  box-shadow:
+    inset 1px 0 0 var(--pos-border),
+    inset -1px 0 0 var(--pos-border),
+    inset 0 1px 0 var(--pos-border);
+}
+
+.pos-browser__tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.pos-browser__tab-close,
+.pos-browser__tab-add {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pos-text-muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.pos-browser__tab-close:hover,
+.pos-browser__tab-add:hover {
+  background: color-mix(in srgb, var(--pos-accent) 14%, transparent);
+  color: var(--pos-text);
+}
+
+.pos-browser__tab-add {
+  margin: 0 0 3px 2px;
+  font-size: 15px;
+}
+
+.pos-browser__nav {
+  gap: 4px;
+}
+
+.pos-browser__url {
+  flex: 1;
+  min-width: 80px;
+  font: inherit;
+  font-size: 12px;
+  font-family: var(--pos-mono);
+  padding: 3px 8px;
+  border: 1px solid var(--pos-border);
+  border-radius: 999px;
+  background: var(--pos-bg);
+  color: var(--pos-text);
+}
+
+.pos-browser__url:focus {
+  outline: none;
+  border-color: var(--pos-accent);
+}
+
+.pos-browser__body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--pos-bg);
+}
+
+.pos-browser__frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: var(--pos-surface);
+}
+
+.pos-browser__loading {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--pos-surface);
+  border: 1px solid var(--pos-border);
+  color: var(--pos-text-muted);
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pos-browser__card {
+  margin: auto;
+  max-width: 440px;
+  padding: 20px 22px;
+  border: 1px solid var(--pos-border);
+  border-radius: 12px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pos-browser__card p {
+  margin: 8px 0 0;
+  color: var(--pos-text-muted);
+}
+
+.pos-browser__card-url {
+  font-family: var(--pos-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.pos-browser__card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.pos-browser__card-hint {
+  font-size: 12px;
+}
+
+.pos-browser__card-error {
+  color: var(--pos-danger);
+  font-size: 12px;
+}
+
+.pos-browser__shot {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: 12px;
+  border: 1px solid var(--pos-border);
+  border-radius: 8px;
+}
+
+.pos-browser__blank {
+  padding: 24px;
+  overflow: auto;
+}
+
+.pos-browser__blank-hint {
+  margin: 0 0 14px;
+  color: var(--pos-text-muted);
+  font-size: 13px;
+}
+
+.pos-browser__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.pos-browser__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--pos-border);
+  border-radius: 10px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.pos-browser__tile:hover {
+  border-color: var(--pos-accent);
+}
+
+.pos-browser__tile-title {
+  font-weight: 600;
+}
+
+.pos-browser__tile-url {
+  font-family: var(--pos-mono);
+  font-size: 11px;
+  color: var(--pos-text-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

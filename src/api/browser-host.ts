@@ -8,8 +8,15 @@ import { createWindow } from "@/desktop/create-window";
 import {
   openDataWindow,
   openConnectionsWindow,
+  openKindWindow,
   openSchemaWindow,
 } from "@/desktop/kinds/data-common";
+import {
+  BOOKMARKS_PATH,
+  parseBookmarks,
+  serializeBookmarks,
+} from "@/browser/bookmarks";
+import { parseState, serializeState } from "@/browser/tabs";
 import { applyPresetWorkspace } from "@/desktop/preset-workspaces";
 import { describeStep } from "@/data/migrate";
 import { getDataStore, scanProjectBindings } from "@/data/project-fs";
@@ -353,6 +360,46 @@ export function createBrowserHost(editor: Editor): CanvasHost {
       graph: (p) => gatherLineage(p, projects),
       open: (p, page) => openLineage(editor, { page, project: p }),
       focus: (p, page) => focusLineage(editor, page, p),
+    },
+
+    browser: {
+      open(state, title) {
+        return openKindWindow(editor, "browser", serializeState(state), {
+          title,
+          reuse: false,
+        });
+      },
+      resolve(id) {
+        const list = windowsOfKind("browser");
+        if (id) return list.some((w) => w.id === id) ? id : null;
+        const focused = wm.getFocusedId();
+        return list.find((w) => w.id === focused)?.id ?? list[0]?.id ?? null;
+      },
+      list: () => windowsOfKind("browser").map((w) => w.id),
+      state(id) {
+        const w = editor.getShape<WindowShape>(sid(id));
+        return parseState(w?.props.content ?? "");
+      },
+      setState(id, state) {
+        editor.updateShape<WindowShape>({
+          id: sid(id),
+          type: "window",
+          props: { content: serializeState(state) },
+        });
+      },
+      async bookmarks(project) {
+        return parseBookmarks(
+          await readLiveText(project, BOOKMARKS_PATH, projects)
+        );
+      },
+      async setBookmarks(project, list) {
+        await writeLiveText(
+          project,
+          BOOKMARKS_PATH,
+          serializeBookmarks(list),
+          projects
+        );
+      },
     },
 
     preview: {

@@ -4,6 +4,8 @@
  * tests use a fake. Everything here speaks in plain values (no tldraw
  * records, no atoms), which is what keeps the facade testable in Node.
  */
+import type { Bookmark } from "@/browser/bookmarks";
+import type { BrowserState } from "@/browser/tabs";
 import type { SampleTemplate } from "@/ide/project/types";
 import type { LineageGraph } from "@/lineage/model";
 import type { BindingIndex } from "@/data/bindings";
@@ -265,6 +267,17 @@ export interface CanvasHost {
     open(project: string, page: string | null): Promise<LineageOpenRecord>;
     /** Dims what does not feed `page` on the open lineage board (null: everything). */
     focus(project: string, page: string | null): Promise<LineageFocusRecord>;
+  };
+  browser: {
+    /** Creates a Browser window showing `state`; returns its id. */
+    open(state: BrowserState, title?: string): string;
+    /** The Browser window to act on: `id` when given (must be a browser), else the focused one, else the first; null when none. */
+    resolve(id?: string): string | null;
+    list(): string[];
+    state(id: string): BrowserState;
+    setState(id: string, state: BrowserState): void;
+    bookmarks(project: string): Promise<Bookmark[]>;
+    setBookmarks(project: string, list: Bookmark[]): Promise<void>;
   };
   preview: {
     reload(): number;

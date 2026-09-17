@@ -113,3 +113,21 @@ describe("bridge protocol", () => {
     expect(newCallId()).not.toBe(newCallId());
   });
 });
+
+describe("request/response messages (tab -> CLI)", () => {
+  it("decode like call/result but keep their type", () => {
+    expect(
+      decodeMessage(
+        JSON.stringify({ type: "request", id: "r1", tool: "browser.fetch" })
+      )
+    ).toEqual({ type: "request", id: "r1", tool: "browser.fetch", args: {} });
+    expect(
+      decodeMessage({ type: "response", id: "r1", ok: true, result: 1 })
+    ).toEqual({ type: "response", id: "r1", ok: true, result: 1 });
+    expect(
+      decodeMessage({ type: "response", id: "r1", ok: false, error: "e" })
+    ).toEqual({ type: "response", id: "r1", ok: false, error: "e" });
+    expect(decodeMessage({ type: "response", id: "r1", ok: false })).toBeNull();
+    expect(decodeMessage({ type: "request", tool: "x" })).toBeNull();
+  });
+});

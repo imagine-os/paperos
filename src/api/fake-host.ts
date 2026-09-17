@@ -2,6 +2,12 @@
  * An in-memory `CanvasHost` for tests: windows are plain records, the layout
  * is a real tree from the pure engine, files live in a Map.
  */
+import {
+  BOOKMARKS_PATH,
+  parseBookmarks,
+  serializeBookmarks,
+} from "@/browser/bookmarks";
+import { parseState, serializeState } from "@/browser/tabs";
 import { scanBindings } from "@/data/bindings";
 import { describeStep } from "@/data/migrate";
 import { DataStore, type DataFs } from "@/data/store";
@@ -314,6 +320,7 @@ export function fakeHost(): FakeHost {
         "schema",
         "connections",
         "card",
+        "browser",
         "design",
         "pages",
       ],
@@ -800,6 +807,34 @@ export function fakeHost(): FakeHost {
       },
     },
 
+    browser: {
+      open(bstate, title) {
+        return host.windows.create({
+          kind: "browser",
+          title: title ?? "Browser",
+          content: serializeState(bstate),
+        });
+      },
+      resolve(id) {
+        const list = state.windows.filter((w) => w.kind === "browser");
+        if (id) return list.some((w) => w.id === id) ? id : null;
+        return (
+          list.find((w) => w.id === state.focused)?.id ?? list[0]?.id ?? null
+        );
+      },
+      list: () =>
+        state.windows.filter((w) => w.kind === "browser").map((w) => w.id),
+      state: (id) => parseState(win(id)?.content ?? ""),
+      setState(id, next) {
+        host.windows.update(id, { content: serializeState(next) });
+      },
+      async bookmarks(project) {
+        return parseBookmarks(files(project).get(BOOKMARKS_PATH) ?? null);
+      },
+      async setBookmarks(project, list) {
+        files(project).set(BOOKMARKS_PATH, serializeBookmarks(list));
+      },
+    },
     preview: {
       reload() {
         state.previewReloads++;

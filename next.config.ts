@@ -38,6 +38,10 @@ const nextConfig: NextConfig = {
       config.resolve.alias["yjs"] = path.resolve(__dirname, "node_modules/yjs");
     }
 
+    // `import text from "./x.md?raw"` bundles a file's text (the Browser
+    // window shows README.md and docs/*.md offline this way).
+    config.module.rules.push({ resourceQuery: /raw/, type: "asset/source" });
+
     // tldraw ships its icons, fonts and translations in @tldraw/assets.
     // We import them (see src/lib/tldraw-assets.ts) so the app never depends
     // on cdn.tldraw.com. Next handles png/svg imports itself; fonts and the

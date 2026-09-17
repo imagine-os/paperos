@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 68 methods in 16 namespaces.
+API version: 1. 76 methods in 17 namespaces.
 
 ## Where to call it
 
@@ -872,6 +872,122 @@ Returns `{page: string | null, dimmed, kept}`. changes state · MCP tool `lineag
 | Parameter | Required | Type     | Description                           |
 | --------- | -------- | -------- | ------------------------------------- |
 | `page`    | no       | `string` | Page name; omit or null for all pages |
+
+### `browser`
+
+#### `browser.open`
+
+```ts
+paperos.browser.open(options?: {url?: string, title?: string})
+```
+
+Opens a Browser window. Addresses are http(s) URLs or internal targets: paperos://preview/<entry> (the project preview; empty entry = the default page), paperos://docs/<file> (README.md, docs/CANVAS_API.md, docs/MCP.md, docs/PLAN.md, docs/BRAND.md), paperos://legacy, paperos://home.
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}`. changes state · MCP tool `browser_open` · object-style call passes the object itself.
+
+| Parameter       | Required | Type                             | Description                          |
+| --------------- | -------- | -------------------------------- | ------------------------------------ |
+| `options`       | no       | `{url?: string, title?: string}` | What to open                         |
+| `options.url`   | no       | `string`                         | Address (default paperos://preview/) |
+| `options.title` | no       | `string`                         | Window title                         |
+
+#### `browser.navigate`
+
+```ts
+paperos.browser.navigate(url: string, id?: string)
+```
+
+Goes to an address in the active tab of a Browser window (the focused or first Browser window when id is omitted; opens one when there is none).
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}`. changes state · MCP tool `browser_navigate`.
+
+| Parameter | Required | Type     | Description                                   |
+| --------- | -------- | -------- | --------------------------------------------- |
+| `url`     | yes      | `string` | Address (http(s) or paperos://...)            |
+| `id`      | no       | `string` | Browser window id (default: focused or first) |
+
+#### `browser.back`
+
+```ts
+paperos.browser.back(id?: string)
+```
+
+Goes back in the active tab of a Browser window.
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}`. changes state · MCP tool `browser_back`.
+
+| Parameter | Required | Type     | Description                                   |
+| --------- | -------- | -------- | --------------------------------------------- |
+| `id`      | no       | `string` | Browser window id (default: focused or first) |
+
+#### `browser.forward`
+
+```ts
+paperos.browser.forward(id?: string)
+```
+
+Goes forward in the active tab of a Browser window.
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}`. changes state · MCP tool `browser_forward`.
+
+| Parameter | Required | Type     | Description                                   |
+| --------- | -------- | -------- | --------------------------------------------- |
+| `id`      | no       | `string` | Browser window id (default: focused or first) |
+
+#### `browser.reload`
+
+```ts
+paperos.browser.reload(id?: string)
+```
+
+Reloads the active tab of a Browser window.
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}`. changes state · MCP tool `browser_reload`.
+
+| Parameter | Required | Type     | Description                                   |
+| --------- | -------- | -------- | --------------------------------------------- |
+| `id`      | no       | `string` | Browser window id (default: focused or first) |
+
+#### `browser.tabs`
+
+```ts
+paperos.browser.tabs(id?: string)
+```
+
+The tabs of a Browser window, or of every Browser window when id is omitted.
+
+Returns `BrowserInfo {id (window id), title, tabs: BrowserTab {id, url, title, active, canGoBack, canGoForward}[]}[]`. read-only · MCP tool `browser_tabs`.
+
+| Parameter | Required | Type     | Description       |
+| --------- | -------- | -------- | ----------------- |
+| `id`      | no       | `string` | Browser window id |
+
+#### `browser.bookmarks`
+
+```ts
+paperos.browser.bookmarks();
+```
+
+The project's bookmarks (browser/bookmarks.json; defaults when the file does not exist).
+
+Returns `Bookmark {title, url}[]`. read-only · MCP tool `browser_bookmarks`.
+
+#### `browser.bookmark`
+
+```ts
+paperos.browser.bookmark(bookmark: {url: string, title?: string, remove?: boolean})
+```
+
+Adds (or retitles) a bookmark in browser/bookmarks.json, or removes it with remove: true.
+
+Returns `Bookmark {title, url}[] (the whole list)`. changes state · MCP tool `browser_bookmark` · object-style call passes the object itself.
+
+| Parameter         | Required | Type                                              | Description              |
+| ----------------- | -------- | ------------------------------------------------- | ------------------------ |
+| `bookmark`        | yes      | `{url: string, title?: string, remove?: boolean}` | The bookmark             |
+| `bookmark.url`    | yes      | `string`                                          | Address                  |
+| `bookmark.title`  | no       | `string`                                          | Title (default: derived) |
+| `bookmark.remove` | no       | `boolean`                                         | Remove instead of add    |
 
 ### `preview`
 

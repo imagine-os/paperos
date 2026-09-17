@@ -6,6 +6,21 @@
  * the schema).
  */
 import type { BindingIndex } from "@/data/bindings";
+import {
+  addBookmark,
+  removeBookmark,
+  type Bookmark,
+} from "@/browser/bookmarks";
+import {
+  activeTab,
+  createState,
+  describeTabs,
+  goBack,
+  goForward,
+  navigate as navigateTab,
+  reload as reloadTab,
+  tabTitle,
+} from "@/browser/tabs";
 import type { Renames } from "@/data/migrate";
 import type { QueryOptions, QueryResult } from "@/data/query";
 import type { DataSchema, Row, RowId } from "@/data/schema";
@@ -61,6 +76,21 @@ export interface Camera {
   x: number;
   y: number;
   z: number;
+}
+
+export interface BrowserTabInfo {
+  id: string;
+  url: string;
+  title: string;
+  active: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+}
+
+export interface BrowserInfo {
+  id: string;
+  title: string;
+  tabs: BrowserTabInfo[];
 }
 
 export interface CreateWindowOptions {
@@ -171,6 +201,20 @@ export interface CanvasApi {
     open(options?: { page?: string | null }): Promise<LineageOpenRecord>;
     focus(page?: string | null): Promise<LineageFocusRecord>;
   };
+  browser: {
+    open(options?: { url?: string; title?: string }): BrowserInfo;
+    navigate(url: string, id?: string): BrowserInfo;
+    back(id?: string): BrowserInfo;
+    forward(id?: string): BrowserInfo;
+    reload(id?: string): BrowserInfo;
+    tabs(id?: string): BrowserInfo[];
+    bookmarks(): Promise<Bookmark[]>;
+    bookmark(bookmark: {
+      url: string;
+      title?: string;
+      remove?: boolean;
+    }): Promise<Bookmark[]>;
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -270,6 +314,27 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
       fail(`No project with id "${id}"`);
     return { ...p, active: host.projects.activeId() === p.id };
   };
+
+  const browserInfo = (id: string): BrowserInfo => {
+    const state = host.browser.state(id);
+    return {
+      id,
+      title: host.windows.get(id)?.title ?? tabTitle(activeTab(state)),
+      tabs: describeTabs(state),
+    };
+  };
+
+  /** The Browser window `id` names (any window id form), else the focused / first one; null when none. */
+  const resolveBrowser = (id: unknown): string | null => {
+    if (id === undefined || id === null) return host.browser.resolve();
+    const w = requireWindow(id);
+    if (w.kind !== "browser") fail(`Window "${w.id}" is not a Browser window`);
+    return w.id;
+  };
+
+  const requireBrowser = (id: unknown): string =>
+    resolveBrowser(id) ??
+    fail("No Browser window is open (browser.open creates one)");
 
   const requireProject = (): string =>
     host.projects.activeId() ??
@@ -749,6 +814,65 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
           requireProject(),
           page === null ? null : expectPageName(page)
         );
+      },
+    },
+
+    browser: {
+      open(options = {}) {
+        if (typeof options !== "object" || options === null)
+          fail("options must be an object");
+        const url =
+          options.url === undefined
+            ? "paperos://preview/"
+            : expectString(options.url, "url");
+        const title =
+          options.title === undefined
+            ? undefined
+            : expectString(options.title, "title");
+        const id = host.browser.open(createState(url), title);
+        return browserInfo(id);
+      },
+      navigate(url, id) {
+        const u = expectString(url, "url");
+        const wid = resolveBrowser(id);
+        if (!wid) return browserInfo(host.browser.open(createState(u)));
+        host.browser.setState(wid, navigateTab(host.browser.state(wid), u));
+        return browserInfo(wid);
+      },
+      back(id) {
+        const wid = requireBrowser(id);
+        host.browser.setState(wid, goBack(host.browser.state(wid)));
+        return browserInfo(wid);
+      },
+      forward(id) {
+        const wid = requireBrowser(id);
+        host.browser.setState(wid, goForward(host.browser.state(wid)));
+        return browserInfo(wid);
+      },
+      reload(id) {
+        const wid = requireBrowser(id);
+        host.browser.setState(wid, reloadTab(host.browser.state(wid)));
+        return browserInfo(wid);
+      },
+      tabs(id) {
+        if (id === undefined) return host.browser.list().map(browserInfo);
+        return [browserInfo(requireBrowser(id))];
+      },
+      bookmarks: () => host.browser.bookmarks(requireProject()),
+      async bookmark(bookmark) {
+        if (typeof bookmark !== "object" || bookmark === null)
+          fail("bookmark must be an object");
+        const url = expectString(bookmark.url, "url");
+        const project = requireProject();
+        const list = await host.browser.bookmarks(project);
+        const next = bookmark.remove
+          ? removeBookmark(list, url)
+          : addBookmark(list, {
+              url,
+              title: typeof bookmark.title === "string" ? bookmark.title : "",
+            });
+        await host.browser.setBookmarks(project, next);
+        return next;
       },
     },
 
