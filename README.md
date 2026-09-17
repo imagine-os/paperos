@@ -142,13 +142,14 @@ same arrangement is in the Workspaces menu ("IDE") and the command palette
 A project is a virtual file tree. **Open** in the top bar (also in the Files
 window and the palette) adds one:
 
-| Source                 | Backend                                      | Writes back | Browsers                                                             |
-| ---------------------- | -------------------------------------------- | ----------- | -------------------------------------------------------------------- |
-| Open folder...         | File System Access API directory handle      | Yes         | Chromium (Chrome, Edge, Brave...). The picker is disabled elsewhere. |
-| Open sample project    | In-browser (IndexedDB)                       | Yes         | All                                                                  |
-| Import ZIP...          | In-browser (IndexedDB), text files only      | Yes         | All                                                                  |
-| Import GitHub repo URL | In-browser (IndexedDB), text files only      | Yes         | All, when `api.github.com` is reachable (see below)                  |
-| Drop on the canvas     | In-browser (IndexedDB); folders, ZIPs, files | Yes         | All                                                                  |
+| Source                           | Backend                                      | Writes back | Browsers                                                             |
+| -------------------------------- | -------------------------------------------- | ----------- | -------------------------------------------------------------------- |
+| Open folder...                   | File System Access API directory handle      | Yes         | Chromium (Chrome, Edge, Brave...). The picker is disabled elsewhere. |
+| Open sample project              | In-browser (IndexedDB)                       | Yes         | All                                                                  |
+| Open sample: Small Business SaaS | In-browser (IndexedDB)                       | Yes         | All (see Sample projects below)                                      |
+| Import ZIP...                    | In-browser (IndexedDB), text files only      | Yes         | All                                                                  |
+| Import GitHub repo URL           | In-browser (IndexedDB), text files only      | Yes         | All, when `api.github.com` is reachable (see below)                  |
+| Drop on the canvas               | In-browser (IndexedDB); folders, ZIPs, files | Yes         | All                                                                  |
 
 In-browser projects live in the IndexedDB database `paperos-v2:projects`
 (metadata plus files). Folder projects keep only the directory handle there;
@@ -354,6 +355,84 @@ Windows can be connected and grouped, so a board reads like a flowchart:
   (`paperos.map.regenerate()`) rebuilds from the current project but keeps
   the position of every card you moved; gone subjects disappear, new ones
   take free slots. Each card's **Open** button opens the real thing.
+
+## Boards and tours
+
+A board is a saved arrangement of the canvas: sections laid out left to
+right, each a frame holding windows or a tiled grid of windows, with labeled
+arrows between windows and a tour through the sections. Boards are project
+files, `boards/<name>.json`:
+
+```json
+{
+  "name": "build-product",
+  "title": "Build a product",
+  "sections": [
+    {
+      "id": "data",
+      "title": "1. Data",
+      "grid": "grid",
+      "cell": { "w": 520, "h": 360 },
+      "windows": [
+        { "id": "roles", "kind": "data", "content": { "table": "roles" } }
+      ]
+    }
+  ],
+  "arrows": [{ "from": "data", "to": "schema", "label": "tables" }],
+  "steps": [{ "section": "data", "title": "Start with data", "caption": "..." }]
+}
+```
+
+`grid` is one of the window manager's presets (`columns`, `rows`, `grid`,
+`bento-*`), or `row`, `stack`, `single` and `free` for windows with their own
+sizes; sections that share a `column` stack vertically. The **Boards** menu
+opens a board (frames, windows and arrows appear, the camera zooms to it and
+a "Board: ..." workspace is saved), plays its tour and saves the current
+canvas as a new board file. Tour mode animates the camera section by
+section, highlights the section and its arrows, shows a caption with
+previous / next / exit, and takes the arrow keys and Escape. The Canvas API
+has `boards.list / open / save / play / step / stop`. The sample site ships
+"Build a product", "Ship a feature" and "Agent-driven"; the SaaS sample
+ships "Small Business SaaS".
+
+## Data lineage
+
+**Boards > Data lineage** draws where every component on every page gets
+its data: a Tables section (one card per table with its columns), a
+Components section (one card per component that binds data) and a Pages
+section, laid out left to right with arrows bound to the cards. Table →
+component arrows are labeled with the bound fields, filter and mode (writes
+in red); component → page arrows with the block ids. Pick a page in the
+controls window (or click Focus on a page card, or call
+`lineage.focus(page)`) to dim everything that does not feed it. **Data
+lineage for <page>** puts the page's tables and components on the left and
+the real Page Builder and a Preview on the right. In any Preview or Page
+Builder, **Data sources** badges every component instance with its
+`table.field` sources; hovering a badge outlines the table's card on the
+canvas. `lineage.graph(page?)` returns the graph.
+
+## Sample projects
+
+**Open > Open sample project** creates the small site (tables `roles`,
+`users`, `menu_items`, `pages`; pages `home`, `products`, `admin`; three
+boards). **Open > Open sample: Small Business SaaS** (also
+`projects.open('saas')`) creates a multi-tenant template: fifteen tables
+(`tenants`, `users`, `roles`, `permissions`, `menu_items`, `customers`,
+`bookings`, `services`, `invoices`, `leads`, `sequences`, `touches`,
+`posts`, `campaigns`, `assets`) seeded for five businesses (a salon, a
+restaurant, a contractor, a clinic and a shop), and twenty pages in four
+apps: `pages/apps/customer/*` (mobile-first customer app with a bottom tab
+bar, in the tenant's brand colors), `pages/apps/admin/*` (back office with a
+role-gated side menu from `menu_items`, tenant and role switchers),
+`pages/site/*` (the marketing site) and `pages/growth/social/*`,
+`pages/growth/outreach/*` (post templates, content calendar, ad A/B,
+assets; leads kanban, sequence builder, touch log, call sheet). Every
+data-bound block filters by `tenant_id=@tenant`; `?tenant=2&role=3` on a
+preview entry picks the business and the viewer's role. `boards/showcase.json`
+tours Acquisition, Product and Growth with the pipeline arrows lead →
+customer → booking → invoice → repeat. Heavy windows (previews, editors,
+data grids) show a placeholder while far off screen or below 10% zoom, so
+a board of a dozen previews stays smooth.
 
 ## Programmability
 

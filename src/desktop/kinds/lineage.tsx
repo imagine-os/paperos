@@ -95,8 +95,8 @@ export function LineageWindow({ editor }: WindowKindProps) {
           <span className="pos-lineage__swatch" data-tone="write" /> a write
         </li>
         <li>
-          <span className="pos-lineage__swatch" data-tone="usage" /> component
-          → page: rendered on
+          <span className="pos-lineage__swatch" data-tone="usage" /> component →
+          page: rendered on
         </li>
       </ul>
       <p className="pos-lineage__hint">

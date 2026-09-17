@@ -214,9 +214,9 @@
 
 ## M6 - Gorgeous design system, boards and tours, Small Business SaaS
 
-- [ ] Plan written, foundation read (`src/design/`, `src/map/`, `src/desktop/kinds/`,
+- [x] Plan written, foundation read (`src/design/`, `src/map/`, `src/desktop/kinds/`,
       `src/wm/`, `src/api/`, `src/ide/project/sample.ts`, `docs/BRAND.md`)
-- [ ] Part 1: `docs/BRAND.md` ported into `design/tokens.json` defaults (paper/ink
+- [x] Part 1: `docs/BRAND.md` ported into `design/tokens.json` defaults (paper/ink
       palette, rose-ember-amber gradient, display + body type, fluid scale, 4px
       spacing, 8/12/20/pill radii, layered shadows, glass, dot grid, motion);
       premium base CSS; upgraded 14 components + Pricing, Testimonial, FAQ,
@@ -225,20 +225,76 @@
       Section, PostCard, AdCard); theme presets Paper / Ink / Studio / Bold in
       the Design window; dark mode in the renderer; sample pages look like a
       product; push
-- [ ] Part 2: boards (`src/boards/`, `boards/*.json`): model, layout, build,
+- [x] Part 2: boards (`src/boards/`, `boards/*.json`): model, layout, build,
       save, list; tour mode with overlay, keys and captions; Canvas API
       `boards` namespace; Boards menu; curated boards "Build a product",
       "Ship a feature", "Agent-driven" in the sample; docs + CLI schema; push
-- [ ] Part 3: "Small Business SaaS" template (multi-tenant data model seeded
+- [x] Data lineage (priority insertion): `src/lineage/` graph builder and
+      boards, "Data lineage" and "Data lineage for <page>" in the Boards
+      menu and palette, per-page focus (dropdown, card Focus, API), "Data
+      sources" overlay in Preview / Page Builder with hover hinting, Canvas
+      API `lineage.*`, unit + e2e tests, screenshots; push
+- [x] Part 3: "Small Business SaaS" template (multi-tenant data model seeded
       for 5 tenants, customer app, admin dashboard, marketing site, social and
       ad production, outreach CRM), tenant / role switchers, showcase board,
       viewport culling for heavy windows
-- [ ] Tests: unit (boards, tour, template, tenant filtering) and
+- [x] Tests: unit (boards, tour, template, tenant filtering) and
       `e2e/boards.spec.ts`
-- [ ] Docs: README, `docs/PLAN.md` (M6 done, decisions), `docs/CANVAS_API.md`,
+- [x] Docs: README, `docs/PLAN.md` (M6 done, decisions), `docs/CANVAS_API.md`,
       landing status, this Review
-- [ ] Validate: `npm run check`, `npm run build`, `npm run build:static`,
+- [x] Validate: `npm run check`, `npm run build`, `npm run build:static`,
       `npm run e2e` (production build), screenshots and tour video, push, CI
+
+## Review (M6)
+
+### What changed
+
+- `src/design/`: tokens rewritten from `docs/BRAND.md` (`tokens.ts`,
+  `presets.ts` with Paper / Ink / Studio / Bold), `base-css.ts` (premium CSS
+  for 35 components, the `.ds-src-*` overlay), `starter.ts` (35 components),
+  `render.ts` (icons, avatars, SVG charts and calendars, preview context:
+  tenant and role, tenant brand colors, role gates, `showSources` overlay),
+  `pages.ts` (nested page names, `theme`, `texture`, `padBottom`),
+  `gallery.ts`; the bundler passes `?tenant=&role=&sources=` from the entry.
+- `src/boards/`: `model.ts`, `layout.ts`, `tour.ts` (pure, tested),
+  `build.ts` (open / save / list / capture), `tour-controller.ts`;
+  `src/desktop/tour-overlay.tsx`; Boards menu in `top-bar.tsx`; palette
+  commands; Canvas API `boards.*`; `src/ide/project/sample-boards.ts`.
+- `src/lineage/`: `model.ts` (graph, focus, boards), `open.ts` (draw,
+  focus, hint), `src/desktop/kinds/lineage.tsx` (controls window), Focus
+  button on page cards, Sources toggles in Preview and Page Builder, Canvas
+  API `lineage.*`.
+- `src/ide/project/saas.ts`: the Small Business SaaS template (schema,
+  deterministic seed for five tenants, twenty pages, `boards/showcase.json`,
+  README); `projects.open('saas')`, Open menu and palette entries.
+- `src/desktop/window-shape.tsx`: viewport culling for `heavy` kinds with a
+  placeholder body; `WindowKind.heavy`.
+- Tests: `src/design/*.test.ts` updated, `src/boards/boards.test.ts`,
+  `src/lineage/lineage.test.ts`, `src/ide/project/saas.test.ts`, API facade
+  tests; `e2e/boards.spec.ts` (boards, tour, lineage, SaaS showcase with
+  placeholders, tenant and role switches).
+- Docs: README (Boards and tours, Data lineage, Sample projects),
+  `docs/PLAN.md` (M6 done, decisions 38-43), `docs/CANVAS_API.md` (71
+  methods), landing status panel.
+
+### Verified in a real browser (Chromium, production build)
+
+- Zero console errors on `/app` while opening the three sample boards,
+  playing a tour, drawing the lineage board, focusing a page, opening the
+  per-page lineage with the overlay, opening the SaaS project (about 30 ms)
+  and its showcase board (17 windows, 11 arrows), zooming out to
+  placeholders and back, switching tenant (colors and services change) and
+  role (menu items appear). `/legacy` still renders.
+- Screenshots and the tour video are in the session scratchpad
+  (`v2shots/m6/`).
+
+### Decisions and notes
+
+- See PLAN decisions 38-43. The second sample is not seeded on first run.
+- Not done: dragging kanban cards between stages (edit the stage in the
+  Data window), arrow routing around windows on dense boards (labels can
+  overlap where many arrows cross), WYSIWYG editing inside previews,
+  binary assets (thumbnails are inline SVG data URIs).
 
 ## Review (M5)
 

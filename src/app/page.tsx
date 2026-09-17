@@ -437,13 +437,14 @@ export default function LandingPage() {
                   <li className="is-done">
                     Design system, page builder, project map
                   </li>
+                  <li className="is-done">Full-stack sample project</li>
+                  <li className="is-done">Boards and tours</li>
                 </ul>
               </div>
               <div>
                 <h3>Next</h3>
                 <ul>
-                  <li className="is-now">Full-stack sample project</li>
-                  <li>Real-time collaboration</li>
+                  <li className="is-now">Real-time collaboration</li>
                   <li>Polish and a plugin catalogue</li>
                 </ul>
               </div>

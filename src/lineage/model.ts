@@ -88,10 +88,7 @@ function pageNameOf(path: string, source: string): string {
   return m ? m[1] : source;
 }
 
-function walkBlocks(
-  blocks: PageBlock[],
-  visit: (b: PageBlock) => void
-): void {
+function walkBlocks(blocks: PageBlock[], visit: (b: PageBlock) => void): void {
   for (const b of blocks) {
     visit(b);
     if (b.children) walkBlocks(b.children, visit);
@@ -133,8 +130,10 @@ export function buildLineage(input: LineageInput): LineageGraph {
       edges.set(k, { ...e, fields: [...e.fields], pages: [...e.pages] });
       return;
     }
-    for (const f of e.fields) if (!existing.fields.includes(f)) existing.fields.push(f);
-    for (const p of e.pages) if (!existing.pages.includes(p)) existing.pages.push(p);
+    for (const f of e.fields)
+      if (!existing.fields.includes(f)) existing.fields.push(f);
+    for (const p of e.pages)
+      if (!existing.pages.includes(p)) existing.pages.push(p);
     if (e.blocks) existing.blocks = [...(existing.blocks ?? []), ...e.blocks];
     if (e.filter && existing.filter && e.filter !== existing.filter)
       existing.filter = `${existing.filter} | ${e.filter}`;
@@ -178,7 +177,12 @@ export function buildLineage(input: LineageInput): LineageGraph {
     };
     walkBlocks(p.components, (b) => {
       // Bindings declared on the block, plus a `table` prop (Stat, Chart, Sidebar...).
-      const bound: { table: string; fields: string[]; filter?: string; mode: "read" | "write" }[] = [];
+      const bound: {
+        table: string;
+        fields: string[];
+        filter?: string;
+        mode: "read" | "write";
+      }[] = [];
       for (const bind of b.bindings ?? [])
         if (bind.table)
           bound.push({
@@ -378,7 +382,10 @@ function tableCard(t: LineageTable): BoardWindowSpec {
     kind: "card",
     title: t.name,
     content,
-    size: { w: CARD.w, h: Math.min(320, 92 + Math.min(t.columns.length, 10) * 16) },
+    size: {
+      w: CARD.w,
+      h: Math.min(320, 92 + Math.min(t.columns.length, 10) * 16),
+    },
   };
 }
 
@@ -586,7 +593,11 @@ export function lineagePageBoard(
             : "orange",
     })),
     steps: [
-      { section: "tables", title: "Tables", caption: `What ${page.title} reads.` },
+      {
+        section: "tables",
+        title: "Tables",
+        caption: `What ${page.title} reads.`,
+      },
       {
         section: "components",
         title: "Components",

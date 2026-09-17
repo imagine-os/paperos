@@ -235,10 +235,24 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   listing the files, undo of `map.generate` as one step (it is several
   history marks).
 
-### M6 - Full-stack sample
+### M6 - Design system, boards and tours, Small Business SaaS (done)
 
-- Grow the sample into a small SaaS (auth-like roles, CRUD screens, menus,
-  dashboards) that exercises every window kind.
+- Design system ported from `docs/BRAND.md`: paper/ink tokens, the accent
+  gradient, type and spacing scales, motion; premium base CSS; 35
+  components (Pricing, Testimonial, FAQ, Footer, Sidebar, Topbar, TabBar,
+  KpiGrid, Timeline, Calendar, Kanban, Thread, Chart, EmptyState, ...);
+  theme presets Paper / Ink / Studio / Bold; dark mode; a preview context
+  (tenant, role) with `@key` filters, tenant brand colors and role gates.
+- Boards (`boards/*.json`, `src/boards/`): sections left to right, grids of
+  windows, arrows, tours with captions and keys; Boards menu; Canvas API
+  `boards.*`; three curated boards in the sample.
+- Data lineage (`src/lineage/`): Tables → Components → Pages as a board of
+  cards with labeled arrows, per-page focus, "Data lineage for <page>" next
+  to the real Page Builder, the "Data sources" overlay in previews; Canvas
+  API `lineage.*`.
+- "Small Business SaaS" template (`src/ide/project/saas.ts`): fifteen
+  tables seeded for five tenants, twenty pages in four apps, the showcase
+  board; viewport culling for heavy windows.
 
 ### M7 - Collaboration
 
@@ -460,6 +474,36 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
     left to right like the rest; UX flows repeat the pages as a separate
     row of small cards so page-to-page links read as a flow instead of
     tangling with the binding arrows in the Pages column.
+
+38. **Boards are project files of sections, not canvas snapshots.** A board
+    names windows by kind and content and lets the pure layout place them
+    (no overlaps by construction), so it survives edits, diffs well and can
+    be written by an agent. Saving the canvas as a board captures positions
+    into a `free` section for the cases where hand placement matters.
+39. **Tours are a camera path over sections.** No slides, no separate
+    presentation model: a step names a section and a caption; the tour
+    zooms to the section's frame and highlights its arrows. Boards without
+    steps get one step per section.
+40. **Lineage reuses the map machinery.** Tables, components and pages are
+    Card windows in frames with bound arrows (no new shape type); focus is
+    shape opacity; the per-page variant places the real Page Builder and
+    Preview windows so the lineage is live, not a drawing of it.
+41. **The Data sources overlay lives in the preview runtime.** The badges
+    are derived from the rendered DOM (`data-source`, `data-count`,
+    `data-table`, forms), so they are right for any page or hand-written
+    HTML, and they post `hover-table` to the host, which hints the table's
+    card.
+42. **One data model, apps as page sets.** The SaaS template does not add
+    an "app" concept: an app is a folder of pages (`pages/apps/customer/*`)
+    sharing a shell block, and tenancy is a filter (`tenant_id=@tenant`) plus
+    the tenant row's brand colors. Roles gate menu rows and blocks through
+    the existing `required_role` / RoleGate mechanics.
+43. **Viewport culling by kind, with hysteresis.** Kinds flag themselves
+    `heavy`; a heavy window shows a placeholder beyond 3/4 of a viewport off
+    screen or below 10% zoom and renders again within 1/4 viewport and above
+    14%, so panning and zooming do not flicker. The second sample is not
+    seeded on first run: it is one click (or `projects.open('saas')`) away
+    and keeps first-run tests and timings unchanged.
 
 ## Notes
 

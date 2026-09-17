@@ -82,7 +82,11 @@ const small = (): LineageInput =>
           id: "grid",
           name: "Grid",
           children: [
-            { id: "count", name: "Stat", props: { table: "roles", filter: "level>1" } },
+            {
+              id: "count",
+              name: "Stat",
+              props: { table: "roles", filter: "level>1" },
+            },
           ],
         },
       ],
@@ -108,9 +112,17 @@ describe("buildLineage", () => {
     const g = buildLineage(small());
     expect(g.tables.map((t) => t.name)).toEqual(["roles", "users", "orphan"]);
     expect(g.tables[0].rows).toBe(3);
-    expect(g.tables[1].columns[2]).toEqual({ name: "role_id", type: "ref", ref: "roles" });
+    expect(g.tables[1].columns[2]).toEqual({
+      name: "role_id",
+      type: "ref",
+      ref: "roles",
+    });
     // Hero and Grid bind nothing, so they are not components here; Stat is, through its table prop.
-    expect(g.components.map((c) => c.name).sort()).toEqual(["Form", "Stat", "Table"]);
+    expect(g.components.map((c) => c.name).sort()).toEqual([
+      "Form",
+      "Stat",
+      "Table",
+    ]);
     const table = g.components.find((c) => c.name === "Table")!;
     expect(table.tables.sort()).toEqual(["roles", "users"]);
     expect(table.pages.sort()).toEqual(["admin", "home"]);
@@ -120,26 +132,35 @@ describe("buildLineage", () => {
 
     const e = (from: string, to: string, mode = "read") =>
       g.edges.find((x) => x.from === from && x.to === to && x.mode === mode)!;
-    expect(e(lineageKey.table("users"), lineageKey.component("Table"))).toMatchObject({
+    expect(
+      e(lineageKey.table("users"), lineageKey.component("Table"))
+    ).toMatchObject({
       kind: "table-component",
       label: "name, role_id",
       pages: ["admin"],
     });
-    expect(e(lineageKey.table("users"), lineageKey.component("Form"), "write").label).toBe(
-      "name (write)"
-    );
-    expect(e(lineageKey.table("roles"), lineageKey.component("Stat")).label).toBe(
-      "all columns where level>1"
-    );
+    expect(
+      e(lineageKey.table("users"), lineageKey.component("Form"), "write").label
+    ).toBe("name (write)");
+    expect(
+      e(lineageKey.table("roles"), lineageKey.component("Stat")).label
+    ).toBe("all columns where level>1");
     // The same component reads roles on home with a filter: one edge, both pages.
-    const rolesTable = e(lineageKey.table("roles"), lineageKey.component("Table"));
+    const rolesTable = e(
+      lineageKey.table("roles"),
+      lineageKey.component("Table")
+    );
     expect(rolesTable.pages).toEqual(["home"]);
     expect(rolesTable.label).toBe("name where level>0");
-    expect(e(lineageKey.component("Table"), lineageKey.page("admin"))).toMatchObject({
+    expect(
+      e(lineageKey.component("Table"), lineageKey.page("admin"))
+    ).toMatchObject({
       kind: "component-page",
       blocks: ["users-table"],
     });
-    expect(e(lineageKey.table("roles"), lineageKey.page("admin"))).toMatchObject({
+    expect(
+      e(lineageKey.table("roles"), lineageKey.page("admin"))
+    ).toMatchObject({
       kind: "table-page",
       label: "name",
     });
@@ -148,7 +169,9 @@ describe("buildLineage", () => {
   it("focuses one page and reduces the graph to it", () => {
     const g = buildLineage(small());
     const all = lineageFocus(g, null);
-    expect(all.nodes.size).toBe(g.tables.length + g.components.length + g.pages.length);
+    expect(all.nodes.size).toBe(
+      g.tables.length + g.components.length + g.pages.length
+    );
     const home = lineageFocus(g, "home");
     expect([...home.nodes].sort()).toEqual([
       lineageKey.component("Table"),
@@ -158,7 +181,11 @@ describe("buildLineage", () => {
     expect(lineageFocus(g, "nope").nodes.size).toBe(0);
     const sub = lineageForPage(g, "admin");
     expect(sub.tables.map((t) => t.name).sort()).toEqual(["roles", "users"]);
-    expect(sub.components.map((c) => c.name).sort()).toEqual(["Form", "Stat", "Table"]);
+    expect(sub.components.map((c) => c.name).sort()).toEqual([
+      "Form",
+      "Stat",
+      "Table",
+    ]);
     expect(sub.pages).toHaveLength(1);
     expect(sub.edges.every((e) => e.pages.includes("admin"))).toBe(true);
   });
@@ -180,9 +207,18 @@ describe("buildLineage", () => {
         if (a !== b) expect(overlaps(a, b), `${a.id} / ${b.id}`).toBe(false);
     const single = lineagePageBoard(g, "home");
     expect(validateBoard(single)).toEqual([]);
-    expect(single.sections.map((s) => s.id)).toEqual(["tables", "components", "page"]);
-    expect(single.sections[2].windows.map((w) => w.kind)).toEqual(["pages", "preview"]);
-    expect(single.sections[2].windows[1].content).toBe("pages/home.json?sources=1");
+    expect(single.sections.map((s) => s.id)).toEqual([
+      "tables",
+      "components",
+      "page",
+    ]);
+    expect(single.sections[2].windows.map((w) => w.kind)).toEqual([
+      "pages",
+      "preview",
+    ]);
+    expect(single.sections[2].windows[1].content).toBe(
+      "pages/home.json?sources=1"
+    );
     // Arrows into the page land on the Page Builder window.
     expect(single.arrows.some((a) => a.to === "builder:home")).toBe(true);
     expect(() => lineagePageBoard(g, "nope")).toThrow(/No page/);
@@ -190,9 +226,19 @@ describe("buildLineage", () => {
 
   it("covers the sample project: every page has bound components", () => {
     const g = buildLineage(inputFromFiles(sampleProjectFiles()));
-    expect(g.tables.map((t) => t.name)).toEqual(["roles", "users", "menu_items", "pages"]);
-    expect(g.pages.map((p) => p.name).sort()).toEqual(["admin", "home", "products"]);
-    for (const p of g.pages) expect(p.components.length, p.name).toBeGreaterThan(0);
+    expect(g.tables.map((t) => t.name)).toEqual([
+      "roles",
+      "users",
+      "menu_items",
+      "pages",
+    ]);
+    expect(g.pages.map((p) => p.name).sort()).toEqual([
+      "admin",
+      "home",
+      "products",
+    ]);
+    for (const p of g.pages)
+      expect(p.components.length, p.name).toBeGreaterThan(0);
     // The M4 declarations (side-menu, mega-menu) bind menu_items and roles.
     expect(g.components.some((c) => c.kind === "declared")).toBe(true);
     const board = lineageBoard(g);

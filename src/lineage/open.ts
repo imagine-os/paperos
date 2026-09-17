@@ -71,12 +71,16 @@ export async function openLineage(
   return {
     ...result,
     page,
-    tables: sub ? graph.tables.filter((t) => sub.nodes.has(t.key)).length : graph.tables.length,
+    tables: sub
+      ? graph.tables.filter((t) => sub.nodes.has(t.key)).length
+      : graph.tables.length,
     components: sub
       ? graph.components.filter((c) => sub.nodes.has(c.key)).length
       : graph.components.length,
     pages: page ? 1 : graph.pages.length,
-    edges: page ? graph.edges.filter((e) => e.pages.includes(page)).length : graph.edges.length,
+    edges: page
+      ? graph.edges.filter((e) => e.pages.includes(page)).length
+      : graph.edges.length,
   };
 }
 
@@ -110,7 +114,11 @@ export async function focusLineage(
   const keptIds = new Set<string>();
   for (const [key, w] of cards) if (focus.nodes.has(key)) keptIds.add(w.id);
   let dimmed = 0;
-  const partials: { id: TLShapeId; type: "window" | "arrow"; opacity: number }[] = [];
+  const partials: {
+    id: TLShapeId;
+    type: "window" | "arrow";
+    opacity: number;
+  }[] = [];
   for (const w of windows) {
     const key = parseContent<CardContent>(w.props.content).key;
     const keep = page === null || !key || keptIds.has(w.id);
