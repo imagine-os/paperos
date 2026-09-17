@@ -96,7 +96,8 @@ const intro = `# Canvas API
 
 The Canvas API is the programmable surface of the PaperOS desktop: one
 object, \`paperos\`, whose namespaces cover windows, layouts, workspaces,
-projects, files, the preview, the console, commands, the camera and events.
+projects, files, data (tables, rows, schema, bindings), the preview, the
+console, commands, the camera and events.
 Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
@@ -150,6 +151,7 @@ a callback (the MCP bridge). Each event is \`{seq, name, time, payload}\`.
 | \`file.changed\` | \`{project, path, kind: 'write' \\| 'mkdir' \\| 'rename' \\| 'delete', to?}\` |
 | \`command.run\` | \`{id}\` |
 | \`project.changed\` | \`{id, name}\` |
+| \`data.changed\` | \`{project}\` (a table or the schema changed) |
 
 (${EVENT_NAMES.length} events.)
 

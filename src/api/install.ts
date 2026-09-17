@@ -5,6 +5,7 @@
  */
 import { react, type Editor } from "tldraw";
 import type { WindowShape } from "@/desktop/window-shape";
+import { getDataStore } from "@/data/project-fs";
 import { onCommandRun } from "@/ide/commands";
 import { getProjectStore } from "@/ide/project/store";
 import { collectWindowIds } from "@/wm/tree";
@@ -102,6 +103,21 @@ export function installCanvasApi(editor: Editor): InstalledApi {
   );
 
   offs.push(onCommandRun((id) => events.emit("command.run", { id })));
+
+  // data.changed follows the active project's DataStore.
+  let offData: (() => void) | null = null;
+  const watchData = () => {
+    offData?.();
+    offData = null;
+    const id = projects.getActiveId();
+    if (!id) return;
+    const store = getDataStore(id, projects);
+    offData = store.changed.subscribe(() =>
+      events.emit("data.changed", { project: id })
+    );
+  };
+  watchData();
+  offs.push(projects.state.subscribe(watchData), () => offData?.());
 
   if (typeof window !== "undefined") window.paperos = api;
 

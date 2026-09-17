@@ -5,6 +5,11 @@
  * `schema.ts`; keep the two in step (the docs and the MCP tools come from
  * the schema).
  */
+import type { BindingIndex } from "@/data/bindings";
+import type { Renames } from "@/data/migrate";
+import type { QueryOptions, QueryResult } from "@/data/query";
+import type { DataSchema, Row, RowId } from "@/data/schema";
+import type { TableInfo } from "@/data/store";
 import { normalizePath } from "@/ide/project/paths";
 import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
@@ -94,6 +99,32 @@ export interface CanvasApi {
     rename(from: string, to: string): Promise<{ path: string }>;
     open(path: string, kind?: "editor" | "markdown"): WindowInfo;
   };
+  data: {
+    tables(): Promise<TableInfo[]>;
+    schema(): Promise<{ tables: DataSchema["tables"]; errors: string[] }>;
+    setSchema(
+      schema: DataSchema,
+      renames?: Renames
+    ): Promise<{ steps: string[] }>;
+    list(table: string, options?: QueryOptions): Promise<QueryResult>;
+    get(table: string, id: RowId): Promise<Row | null>;
+    insert(table: string, row: Row): Promise<Row>;
+    update(table: string, id: RowId, patch: Row): Promise<Row>;
+    delete(
+      table: string,
+      id: RowId,
+      onReferences?: "block" | "nullify" | "cascade"
+    ): Promise<{
+      deleted: boolean;
+      affected: { table: string; column: string; count: number }[];
+    }>;
+    bindings(
+      table?: string
+    ): Promise<
+      Pick<BindingIndex, "bindings" | "sources" | "unusedTables" | "broken">
+    >;
+    open(table?: string, kind?: "data" | "schema" | "connections"): WindowInfo;
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -128,6 +159,8 @@ export interface CanvasApi {
 export const WINDOW_MIN_SIZE = { w: 240, h: 160 };
 
 const CONSOLE_LEVELS = ["log", "info", "warn", "error", "debug", "system"];
+const ON_REFERENCES = ["block", "nullify", "cascade"] as const;
+const DATA_KINDS = ["data", "schema", "connections"] as const;
 
 function fail(message: string): never {
   throw new Error(message);
@@ -199,6 +232,18 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
   const cleanPath = (p: unknown, what = "path"): string => {
     const n = normalizePath(expectString(p, what));
     return n || fail(`${what} must not be empty`);
+  };
+
+  const expectObject = (v: unknown, what: string): Record<string, unknown> => {
+    if (typeof v !== "object" || v === null || Array.isArray(v))
+      fail(`${what} must be an object`);
+    return v as Record<string, unknown>;
+  };
+
+  const expectId = (v: unknown): RowId => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.length > 0) return v;
+    return fail("id must be a non-empty string or a number");
   };
 
   const api: CanvasApi = {
@@ -434,6 +479,89 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
         if (kind !== "editor" && kind !== "markdown")
           fail("kind must be 'editor' or 'markdown'");
         const id = host.files.open(requireProject(), p, kind);
+        return info(requireWindow(id));
+      },
+    },
+
+    data: {
+      tables: async () => host.data.tables(requireProject()),
+      schema: async () => host.data.schema(requireProject()),
+      async setSchema(schema, renames) {
+        const s = expectObject(schema, "schema");
+        if (!Array.isArray(s.tables)) fail("schema.tables must be an array");
+        if (renames !== undefined) expectObject(renames, "renames");
+        const steps = await host.data.setSchema(
+          requireProject(),
+          s as unknown as DataSchema,
+          renames
+        );
+        return { steps };
+      },
+      async list(table, options = {}) {
+        const t = expectString(table, "table");
+        const o = expectObject(options, "options");
+        return host.data.list(requireProject(), t, o as QueryOptions);
+      },
+      async get(table, id) {
+        return host.data.get(
+          requireProject(),
+          expectString(table, "table"),
+          expectId(id)
+        );
+      },
+      async insert(table, row) {
+        return host.data.insert(
+          requireProject(),
+          expectString(table, "table"),
+          expectObject(row, "row")
+        );
+      },
+      async update(table, id, patch) {
+        return host.data.update(
+          requireProject(),
+          expectString(table, "table"),
+          expectId(id),
+          expectObject(patch, "patch")
+        );
+      },
+      async delete(table, id, onReferences) {
+        if (
+          onReferences !== undefined &&
+          !(ON_REFERENCES as readonly string[]).includes(onReferences)
+        )
+          fail(`onReferences must be one of ${ON_REFERENCES.join(", ")}`);
+        return host.data.remove(
+          requireProject(),
+          expectString(table, "table"),
+          expectId(id),
+          onReferences
+        );
+      },
+      async bindings(table) {
+        const index = await host.data.bindings(requireProject());
+        if (table === undefined)
+          return {
+            bindings: index.bindings,
+            sources: index.sources,
+            unusedTables: index.unusedTables,
+            broken: index.broken,
+          };
+        const t = expectString(table, "table");
+        return {
+          bindings: index.bindings.filter((b) => b.table === t),
+          sources: index.sources.filter(
+            (s) => s.tables.includes(t) || s.indirect.some((i) => i.table === t)
+          ),
+          unusedTables: index.unusedTables.filter((u) => u === t),
+          broken: index.broken.filter((p) => p.binding.table === t),
+        };
+      },
+      open(table, kind = "data") {
+        if (!(DATA_KINDS as readonly string[]).includes(kind))
+          fail(`kind must be one of ${DATA_KINDS.join(", ")}`);
+        const t =
+          table === undefined ? undefined : expectString(table, "table");
+        const id = host.data.open(requireProject(), t, kind);
         return info(requireWindow(id));
       },
     },

@@ -2,6 +2,9 @@
  * An in-memory `CanvasHost` for tests: windows are plain records, the layout
  * is a real tree from the pure engine, files live in a Map.
  */
+import { scanBindings } from "@/data/bindings";
+import { describeStep } from "@/data/migrate";
+import { DataStore, type DataFs } from "@/data/store";
 import { buildPreset } from "@/wm/presets";
 import { insertWindow, removeWindow, swapWindows } from "@/wm/operations";
 import { collectWindowIds, findLeaf } from "@/wm/tree";
@@ -61,6 +64,40 @@ export function fakeHost(): FakeHost {
           ["app.js", "console.log(1)"],
           ["docs", null],
           ["docs/README.md", "# Readme"],
+          [
+            "data/schema.json",
+            JSON.stringify({
+              tables: [
+                {
+                  name: "roles",
+                  columns: [
+                    { name: "id", type: "number" },
+                    { name: "name", type: "string", required: true },
+                  ],
+                },
+                {
+                  name: "menu_items",
+                  display: "label",
+                  columns: [
+                    { name: "id", type: "number" },
+                    { name: "label", type: "string", required: true },
+                    { name: "required_role", type: "ref", ref: "roles" },
+                  ],
+                },
+              ],
+            }),
+          ],
+          ["data/roles.json", JSON.stringify([{ id: 1, name: "Admin" }])],
+          [
+            "data/menu_items.json",
+            JSON.stringify([{ id: 1, label: "Home", required_role: 1 }]),
+          ],
+          [
+            "components/menu.json",
+            JSON.stringify({
+              bindings: [{ table: "menu_items", fields: ["label", "nope"] }],
+            }),
+          ],
         ]),
       ],
     ]),
@@ -93,13 +130,43 @@ export function fakeHost(): FakeHost {
     if (!m) throw new Error("Project is not accessible");
     return m;
   };
+  const dataStores = new Map<string, DataStore>();
+  const dataStore = (p: string) => {
+    let s = dataStores.get(p);
+    if (!s) {
+      const fs: DataFs = {
+        list: async () => [...files(p).keys()],
+        read: async (path) => files(p).get(path) ?? null,
+        write: async (path, text) => void files(p).set(path, text),
+        remove: async (path) => void files(p).delete(path),
+        rename: async (from, to) => {
+          const m = files(p);
+          m.set(to, m.get(from) ?? "");
+          m.delete(from);
+        },
+        onChange: () => () => {},
+      };
+      s = new DataStore(fs);
+      dataStores.set(p, s);
+    }
+    return s;
+  };
 
   const host: FakeHost = {
     state,
     windows: {
       list: () => [...state.windows],
       get: (id) => win(id),
-      kinds: () => ["note", "editor", "files", "preview", "script"],
+      kinds: () => [
+        "note",
+        "editor",
+        "files",
+        "preview",
+        "script",
+        "data",
+        "schema",
+        "connections",
+      ],
       create(o) {
         const id = `shape:w${++counter}`;
         state.windows.push({
@@ -267,6 +334,35 @@ export function fakeHost(): FakeHost {
           kind,
           title: path,
           content: JSON.stringify({ project: p, path }),
+        });
+      },
+    },
+    data: {
+      tables: (p) => dataStore(p).tables(),
+      schema: async (p) => ({
+        tables: (await dataStore(p).schema()).tables,
+        errors: await dataStore(p).schemaErrors(),
+      }),
+      setSchema: async (p, schema, renames) =>
+        (await dataStore(p).setSchema(schema, renames)).map(describeStep),
+      list: (p, table, options) => dataStore(p).query(table, options),
+      get: (p, table, id) => dataStore(p).get(table, id),
+      insert: (p, table, row) => dataStore(p).insert(table, row),
+      update: (p, table, id, patch) => dataStore(p).update(table, id, patch),
+      remove: (p, table, id, onReferences) =>
+        dataStore(p).remove(table, id, { onReferences }),
+      async bindings(p) {
+        const list = [...files(p)]
+          .filter(([path, text]) => text !== null && !path.startsWith("data/"))
+          .map(([path, text]) => ({ path, text: text as string }));
+        return scanBindings(list, await dataStore(p).schema());
+      },
+      open(p, table, kind) {
+        state.opened.push({ project: p, path: table ?? "", kind });
+        return host.windows.create({
+          kind,
+          title: table ?? kind,
+          content: table ?? "",
         });
       },
     },

@@ -54,6 +54,7 @@ export const EVENT_NAMES = [
   "file.changed",
   "command.run",
   "project.changed",
+  "data.changed",
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
@@ -97,6 +98,36 @@ const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
 const PROJECT_INFO = "ProjectInfo {id, name, source, backend, active}";
+const TABLE_INFO =
+  "TableInfo {name, primaryKey, display, columns: Column[], rowCount, path}";
+const ROW =
+  "Row (an object; the primary key is `id` unless the table says otherwise)";
+const QUERY_OPTIONS = {
+  type: "object" as const,
+  properties: {
+    filter: {
+      type: "string" as const,
+      description:
+        "Filter text: words match any column; col=value, col!=value, col>n, col>=n, col<n, col<=n, col:part",
+    },
+    where: {
+      type: "object" as const,
+      description: "Column equals value, for every key",
+      additionalProperties: true,
+    },
+    sort: {
+      type: "string" as const,
+      description: "'col', '-col' or 'col desc'",
+    },
+    page: {
+      type: "integer" as const,
+      description: "1-based page (with pageSize)",
+    },
+    pageSize: { type: "integer" as const },
+    limit: { type: "integer" as const },
+    offset: { type: "integer" as const },
+  },
+};
 const CAMERA = "Camera {x, y, z}";
 
 export const TOOLS: ToolSpec[] = [
@@ -116,7 +147,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "windows.create",
     description:
-      "Creates a window of a registered kind (files, editor, preview, console, markdown, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.",
+      "Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.",
     params: [
       {
         name: "options",
@@ -396,6 +427,167 @@ export const TOOLS: ToolSpec[] = [
         name: "kind",
         description: "Window kind (default editor)",
         schema: { type: "string", enum: ["editor", "markdown"] },
+      },
+    ],
+    returns: WINDOW_INFO,
+    mutates: true,
+  },
+
+  // ----- data (active project) -----
+  {
+    name: "data.tables",
+    description:
+      "Tables of the active project's data model (data/schema.json) with their columns and row counts.",
+    params: [],
+    returns: `${TABLE_INFO}[]`,
+  },
+  {
+    name: "data.schema",
+    description:
+      "The data model: tables with columns (name, type: string | number | boolean | date | json | ref | image, required, unique, default, ref), plus problems found in data/schema.json.",
+    params: [],
+    returns: "{tables: Table[], errors: string[]}",
+  },
+  {
+    name: "data.setSchema",
+    description:
+      "Replaces the data model and migrates the row files: new tables get an empty data/<table>.json, removed tables lose theirs, added columns get their default, removed columns are dropped, changed types are converted. Pass renames so renamed tables and columns keep their data.",
+    params: [
+      {
+        name: "schema",
+        description:
+          "The new schema: {tables: [{name, primaryKey?, display?, columns: [{name, type, required?, unique?, default?, ref?}]}]}",
+        required: true,
+        schema: {
+          type: "object",
+          properties: {
+            tables: {
+              type: "array",
+              items: { type: "object", additionalProperties: true },
+            },
+          },
+          required: ["tables"],
+        },
+      },
+      {
+        name: "renames",
+        description:
+          "Old to new names: {tables: {old: new}, columns: {table: {old: new}}}",
+        schema: {
+          type: "object",
+          properties: {
+            tables: {
+              type: "object",
+              additionalProperties: { type: "string" },
+            },
+            columns: {
+              type: "object",
+              additionalProperties: {
+                type: "object",
+                additionalProperties: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    ],
+    returns: "{steps: string[]} (what was migrated)",
+    mutates: true,
+  },
+  {
+    name: "data.list",
+    description: "Rows of a table, filtered, sorted and paginated in memory.",
+    params: [
+      str("table", "Table name"),
+      {
+        name: "options",
+        description: "Filter, sort and paging",
+        schema: QUERY_OPTIONS,
+      },
+    ],
+    returns: "{rows: Row[], total, page, pageCount}",
+  },
+  {
+    name: "data.get",
+    description: "One row by primary key, or null.",
+    params: [
+      str("table", "Table name"),
+      str("id", "Primary key (numbers may be passed as strings)"),
+    ],
+    returns: `${ROW} or null`,
+  },
+  {
+    name: "data.insert",
+    description:
+      "Adds a row, validated against the schema (types, required, unique, refs). The primary key is generated when left out; defaults fill missing columns.",
+    params: [
+      str("table", "Table name"),
+      {
+        name: "row",
+        description: "Column values",
+        required: true,
+        schema: { type: "object", additionalProperties: true },
+      },
+    ],
+    returns: ROW,
+    mutates: true,
+  },
+  {
+    name: "data.update",
+    description:
+      "Changes columns of a row (validated; values typed as text are converted).",
+    params: [
+      str("table", "Table name"),
+      str("id", "Primary key"),
+      {
+        name: "patch",
+        description: "Columns to change",
+        required: true,
+        schema: { type: "object", additionalProperties: true },
+      },
+    ],
+    returns: ROW,
+    mutates: true,
+  },
+  {
+    name: "data.delete",
+    description:
+      "Deletes a row. Fails when other rows refer to it unless onReferences is 'nullify' (clear those refs) or 'cascade' (delete them too).",
+    params: [
+      str("table", "Table name"),
+      str("id", "Primary key"),
+      {
+        name: "onReferences",
+        description:
+          "What to do with rows pointing at this one (default block)",
+        schema: { type: "string", enum: ["block", "nullify", "cascade"] },
+      },
+    ],
+    returns: "{deleted: boolean, affected: {table, column, count}[]}",
+    mutates: true,
+  },
+  {
+    name: "data.bindings",
+    description:
+      "Where tables are used: data-source attributes in HTML, bindings in components/*.json and pages/*.json, and paperos.data.<table> calls in scripts, each with file and line; plus unused tables and broken bindings (missing tables or columns).",
+    params: [str("table", "Only bindings of this table", false)],
+    returns:
+      "{bindings: {table, fields, mode, kind, path, line, source}[], sources: {path, kind, name, tables, components, indirect}[], unusedTables: string[], broken: {binding, message}[]}",
+  },
+  {
+    name: "data.open",
+    description:
+      "Opens a Data window on a table (reusing one when open), or a Schema / Connections window.",
+    params: [
+      str(
+        "table",
+        "Table to show (optional for schema and connections)",
+        false
+      ),
+      {
+        name: "kind",
+        description: "Window kind (default data)",
+        schema: { type: "string", enum: ["data", "schema", "connections"] },
       },
     ],
     returns: WINDOW_INFO,

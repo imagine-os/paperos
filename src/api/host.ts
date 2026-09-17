@@ -4,6 +4,11 @@
  * tests use a fake. Everything here speaks in plain values (no tldraw
  * records, no atoms), which is what keeps the facade testable in Node.
  */
+import type { BindingIndex } from "@/data/bindings";
+import type { Renames } from "@/data/migrate";
+import type { QueryOptions, QueryResult } from "@/data/query";
+import type { DataSchema, Row, RowId } from "@/data/schema";
+import type { TableInfo } from "@/data/store";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 
 export interface WindowRecord {
@@ -107,6 +112,41 @@ export interface CanvasHost {
     remove(project: string, path: string): Promise<void>;
     rename(project: string, from: string, to: string): Promise<void>;
     open(project: string, path: string, kind: "editor" | "markdown"): string;
+  };
+  data: {
+    tables(project: string): Promise<TableInfo[]>;
+    schema(
+      project: string
+    ): Promise<{ tables: DataSchema["tables"]; errors: string[] }>;
+    /** Writes the schema and migrates rows; returns the steps taken (described). */
+    setSchema(
+      project: string,
+      schema: DataSchema,
+      renames?: Renames
+    ): Promise<string[]>;
+    list(
+      project: string,
+      table: string,
+      options: QueryOptions
+    ): Promise<QueryResult>;
+    get(project: string, table: string, id: RowId): Promise<Row | null>;
+    insert(project: string, table: string, row: Row): Promise<Row>;
+    update(project: string, table: string, id: RowId, patch: Row): Promise<Row>;
+    remove(
+      project: string,
+      table: string,
+      id: RowId,
+      onReferences?: "block" | "nullify" | "cascade"
+    ): Promise<{
+      deleted: boolean;
+      affected: { table: string; column: string; count: number }[];
+    }>;
+    bindings(project: string): Promise<BindingIndex>;
+    open(
+      project: string,
+      table: string | undefined,
+      kind: "data" | "schema" | "connections"
+    ): string;
   };
   preview: {
     reload(): number;

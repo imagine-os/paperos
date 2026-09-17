@@ -4,12 +4,13 @@
 
 The Canvas API is the programmable surface of the PaperOS desktop: one
 object, `paperos`, whose namespaces cover windows, layouts, workspaces,
-projects, files, the preview, the console, commands, the camera and events.
+projects, files, data (tables, rows, schema, bindings), the preview, the
+console, commands, the camera and events.
 Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 42 methods in 10 namespaces.
+API version: 1. 52 methods in 11 namespaces.
 
 ## Where to call it
 
@@ -58,8 +59,9 @@ a callback (the MCP bridge). Each event is `{seq, name, time, payload}`.
 | `file.changed`    | `{project, path, kind: 'write' \| 'mkdir' \| 'rename' \| 'delete', to?}` |
 | `command.run`     | `{id}`                                                                   |
 | `project.changed` | `{id, name}`                                                             |
+| `data.changed`    | `{project}` (a table or the schema changed)                              |
 
-(7 events.)
+(8 events.)
 
 ## Examples
 
@@ -119,7 +121,7 @@ Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused} or nu
 paperos.windows.create(options: {kind: string, title?: string, content?: string, rect?: {x?: number, y?: number, w?: number, h?: number}, tiled?: boolean})
 ```
 
-Creates a window of a registered kind (files, editor, preview, console, markdown, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.
+Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.
 
 Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `windows_create` · object-style call passes the object itself.
 
@@ -499,6 +501,159 @@ Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. cha
 | `path`    | yes      | `string`                 | Project-relative path        |
 | `kind`    | no       | `'editor' \| 'markdown'` | Window kind (default editor) |
 
+### `data`
+
+#### `data.tables`
+
+```ts
+paperos.data.tables();
+```
+
+Tables of the active project's data model (data/schema.json) with their columns and row counts.
+
+Returns `TableInfo {name, primaryKey, display, columns: Column[], rowCount, path}[]`. read-only · MCP tool `data_tables`.
+
+#### `data.schema`
+
+```ts
+paperos.data.schema();
+```
+
+The data model: tables with columns (name, type: string | number | boolean | date | json | ref | image, required, unique, default, ref), plus problems found in data/schema.json.
+
+Returns `{tables: Table[], errors: string[]}`. read-only · MCP tool `data_schema`.
+
+#### `data.setSchema`
+
+```ts
+paperos.data.setSchema(schema: {tables: object[]}, renames?: {tables?: object, columns?: object})
+```
+
+Replaces the data model and migrates the row files: new tables get an empty data/<table>.json, removed tables lose theirs, added columns get their default, removed columns are dropped, changed types are converted. Pass renames so renamed tables and columns keep their data.
+
+Returns `{steps: string[]} (what was migrated)`. changes state · MCP tool `data_setSchema`.
+
+| Parameter         | Required | Type                                  | Description                                                                                                            |
+| ----------------- | -------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `schema`          | yes      | `{tables: object[]}`                  | The new schema: {tables: [{name, primaryKey?, display?, columns: [{name, type, required?, unique?, default?, ref?}]}]} |
+| `schema.tables`   | yes      | `object[]`                            |                                                                                                                        |
+| `renames`         | no       | `{tables?: object, columns?: object}` | Old to new names: {tables: {old: new}, columns: {table: {old: new}}}                                                   |
+| `renames.tables`  | no       | `object`                              |                                                                                                                        |
+| `renames.columns` | no       | `object`                              |                                                                                                                        |
+
+#### `data.list`
+
+```ts
+paperos.data.list(table: string, options?: {filter?: string, where?: object, sort?: string, page?: integer, pageSize?: integer, limit?: integer, offset?: integer})
+```
+
+Rows of a table, filtered, sorted and paginated in memory.
+
+Returns `{rows: Row[], total, page, pageCount}`. read-only · MCP tool `data_list`.
+
+| Parameter          | Required | Type                                                                                                                      | Description                                                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `table`            | yes      | `string`                                                                                                                  | Table name                                                                                         |
+| `options`          | no       | `{filter?: string, where?: object, sort?: string, page?: integer, pageSize?: integer, limit?: integer, offset?: integer}` | Filter, sort and paging                                                                            |
+| `options.filter`   | no       | `string`                                                                                                                  | Filter text: words match any column; col=value, col!=value, col>n, col>=n, col<n, col<=n, col:part |
+| `options.where`    | no       | `object`                                                                                                                  | Column equals value, for every key                                                                 |
+| `options.sort`     | no       | `string`                                                                                                                  | 'col', '-col' or 'col desc'                                                                        |
+| `options.page`     | no       | `integer`                                                                                                                 | 1-based page (with pageSize)                                                                       |
+| `options.pageSize` | no       | `integer`                                                                                                                 |                                                                                                    |
+| `options.limit`    | no       | `integer`                                                                                                                 |                                                                                                    |
+| `options.offset`   | no       | `integer`                                                                                                                 |                                                                                                    |
+
+#### `data.get`
+
+```ts
+paperos.data.get(table: string, id: string)
+```
+
+One row by primary key, or null.
+
+Returns `Row (an object; the primary key is `id` unless the table says otherwise) or null`. read-only · MCP tool `data_get`.
+
+| Parameter | Required | Type     | Description                                    |
+| --------- | -------- | -------- | ---------------------------------------------- |
+| `table`   | yes      | `string` | Table name                                     |
+| `id`      | yes      | `string` | Primary key (numbers may be passed as strings) |
+
+#### `data.insert`
+
+```ts
+paperos.data.insert(table: string, row: object)
+```
+
+Adds a row, validated against the schema (types, required, unique, refs). The primary key is generated when left out; defaults fill missing columns.
+
+Returns `Row (an object; the primary key is `id` unless the table says otherwise)`. changes state · MCP tool `data_insert`.
+
+| Parameter | Required | Type     | Description   |
+| --------- | -------- | -------- | ------------- |
+| `table`   | yes      | `string` | Table name    |
+| `row`     | yes      | `object` | Column values |
+
+#### `data.update`
+
+```ts
+paperos.data.update(table: string, id: string, patch: object)
+```
+
+Changes columns of a row (validated; values typed as text are converted).
+
+Returns `Row (an object; the primary key is `id` unless the table says otherwise)`. changes state · MCP tool `data_update`.
+
+| Parameter | Required | Type     | Description       |
+| --------- | -------- | -------- | ----------------- |
+| `table`   | yes      | `string` | Table name        |
+| `id`      | yes      | `string` | Primary key       |
+| `patch`   | yes      | `object` | Columns to change |
+
+#### `data.delete`
+
+```ts
+paperos.data.delete(table: string, id: string, onReferences?: 'block' | 'nullify' | 'cascade')
+```
+
+Deletes a row. Fails when other rows refer to it unless onReferences is 'nullify' (clear those refs) or 'cascade' (delete them too).
+
+Returns `{deleted: boolean, affected: {table, column, count}[]}`. changes state · MCP tool `data_delete`.
+
+| Parameter      | Required | Type                                | Description                                               |
+| -------------- | -------- | ----------------------------------- | --------------------------------------------------------- |
+| `table`        | yes      | `string`                            | Table name                                                |
+| `id`           | yes      | `string`                            | Primary key                                               |
+| `onReferences` | no       | `'block' \| 'nullify' \| 'cascade'` | What to do with rows pointing at this one (default block) |
+
+#### `data.bindings`
+
+```ts
+paperos.data.bindings(table?: string)
+```
+
+Where tables are used: data-source attributes in HTML, bindings in components/_.json and pages/_.json, and paperos.data.<table> calls in scripts, each with file and line; plus unused tables and broken bindings (missing tables or columns).
+
+Returns `{bindings: {table, fields, mode, kind, path, line, source}[], sources: {path, kind, name, tables, components, indirect}[], unusedTables: string[], broken: {binding, message}[]}`. read-only · MCP tool `data_bindings`.
+
+| Parameter | Required | Type     | Description                 |
+| --------- | -------- | -------- | --------------------------- |
+| `table`   | no       | `string` | Only bindings of this table |
+
+#### `data.open`
+
+```ts
+paperos.data.open(table?: string, kind?: 'data' | 'schema' | 'connections')
+```
+
+Opens a Data window on a table (reusing one when open), or a Schema / Connections window.
+
+Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused}`. changes state · MCP tool `data_open`.
+
+| Parameter | Required | Type                                  | Description                                         |
+| --------- | -------- | ------------------------------------- | --------------------------------------------------- |
+| `table`   | no       | `string`                              | Table to show (optional for schema and connections) |
+| `kind`    | no       | `'data' \| 'schema' \| 'connections'` | Window kind (default data)                          |
+
 ### `preview`
 
 #### `preview.reload`
@@ -643,17 +798,17 @@ Returns `{dataUrl, width, height}`. read-only · MCP tool `canvas_screenshot` ·
 #### `events.on`
 
 ```ts
-paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | '*', callback: function)
+paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | 'data.changed' | '*', callback: function)
 ```
 
 Subscribes to an event ('*' for all). The callback gets {name, time, payload}. Returns an unsubscribe function.
 
 Returns `unsubscribe function`. read-only · scripts only (takes a callback).
 
-| Parameter  | Required | Type                                                                                                                                         | Description       |
-| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| '*'` | Event name or '*' |
-| `callback` | yes      | `function`                                                                                                                                   | function(event)   |
+| Parameter  | Required | Type                                                                                                                                                           | Description       |
+| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| 'data.changed' \| '*'` | Event name or '*' |
+| `callback` | yes      | `function`                                                                                                                                                     | function(event)   |
 
 #### `events.list`
 

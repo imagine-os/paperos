@@ -5,7 +5,14 @@
  */
 import type { Editor, TLShapeId } from "tldraw";
 import { createWindow } from "@/desktop/create-window";
-import { applyIdeWorkspace } from "@/desktop/ide-workspace";
+import {
+  openDataWindow,
+  openConnectionsWindow,
+  openSchemaWindow,
+} from "@/desktop/kinds/data-common";
+import { applyPresetWorkspace } from "@/desktop/preset-workspaces";
+import { describeStep } from "@/data/migrate";
+import { getDataStore, scanProjectBindings } from "@/data/project-fs";
 import { listWindowKinds } from "@/desktop/window-kinds";
 import type { WindowShape } from "@/desktop/window-shape";
 import { getWorkspaceStore } from "@/desktop/workspaces";
@@ -22,7 +29,6 @@ import { getProjectStore } from "@/ide/project/store";
 import type { ProjectMeta } from "@/ide/project/types";
 import { swapWindows } from "@/wm/operations";
 import { getWindowManager } from "@/wm/window-manager";
-import { IDE_WORKSPACE_ID } from "@/wm/workspace-store";
 import type { CanvasHost, ProjectRecord, WindowRecord } from "./host";
 
 function record(s: WindowShape): WindowRecord {
@@ -152,12 +158,9 @@ export function createBrowserHost(editor: Editor): CanvasHost {
         };
       },
       apply(id) {
+        if (applyPresetWorkspace(editor, id)) return;
         const ws = workspaces.get(id);
         if (!ws) return;
-        if (id === IDE_WORKSPACE_ID && !ws.root) {
-          void applyIdeWorkspace(editor);
-          return;
-        }
         workspaces.setActive(id);
         wm.applyWorkspace(ws);
       },
@@ -199,6 +202,39 @@ export function createBrowserHost(editor: Editor): CanvasHost {
         closeFileDoc(p, from);
       },
       open: (p, path, kind) => openFile(editor, { project: p, path }, { kind }),
+    },
+
+    data: {
+      tables: (p) => getDataStore(p, projects).tables(),
+      async schema(p) {
+        const store = getDataStore(p, projects);
+        return {
+          tables: (await store.schema()).tables,
+          errors: await store.schemaErrors(),
+        };
+      },
+      async setSchema(p, schema, renames) {
+        const steps = await getDataStore(p, projects).setSchema(
+          schema,
+          renames
+        );
+        return steps.map(describeStep);
+      },
+      list: (p, table, options) =>
+        getDataStore(p, projects).query(table, options),
+      get: (p, table, id) => getDataStore(p, projects).get(table, id),
+      insert: (p, table, row) => getDataStore(p, projects).insert(table, row),
+      update: (p, table, id, patch) =>
+        getDataStore(p, projects).update(table, id, patch),
+      remove: (p, table, id, onReferences) =>
+        getDataStore(p, projects).remove(table, id, { onReferences }),
+      bindings: (p) => scanProjectBindings(p, projects),
+      open(_p, table, kind) {
+        if (kind === "schema") return openSchemaWindow(editor, table);
+        if (kind === "connections")
+          return openConnectionsWindow(editor, table ? { table } : {});
+        return openDataWindow(editor, table ? { table } : {});
+      },
     },
 
     preview: {

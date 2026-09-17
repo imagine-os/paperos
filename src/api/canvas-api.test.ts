@@ -212,6 +212,119 @@ describe("workspaces, projects and files", () => {
   });
 });
 
+describe("data", () => {
+  it("lists tables, queries, inserts, updates and deletes rows with validation", async () => {
+    const { api, host } = setup();
+    const tables = await api.data.tables();
+    expect(tables.map((t) => [t.name, t.rowCount])).toEqual([
+      ["roles", 1],
+      ["menu_items", 1],
+    ]);
+    isPlainJson(tables);
+    const schema = await api.data.schema();
+    expect(schema.tables[1].columns.map((c) => c.name)).toEqual([
+      "id",
+      "label",
+      "required_role",
+    ]);
+    expect(schema.errors).toEqual([]);
+
+    const row = await api.data.insert("menu_items", {
+      label: "Docs",
+      required_role: "1",
+    });
+    expect(row).toEqual({ id: 2, label: "Docs", required_role: 1 });
+    await expect(
+      api.data.insert("menu_items", { label: "X", required_role: 9 })
+    ).rejects.toThrow(/no roles row/);
+    await expect(api.data.insert("menu_items", {})).rejects.toThrow(
+      /label is required/
+    );
+    // @ts-expect-error bad row
+    await expect(api.data.insert("menu_items", "nope")).rejects.toThrow(
+      /row must be an object/
+    );
+
+    const list = await api.data.list("menu_items", {
+      filter: "label:doc",
+      sort: "-id",
+    });
+    expect(list).toMatchObject({ total: 1, page: 1, pageCount: 1 });
+    expect(list.rows[0].label).toBe("Docs");
+    expect((await api.data.list("menu_items")).total).toBe(2);
+    expect((await api.data.get("menu_items", "2"))?.label).toBe("Docs");
+    expect(await api.data.get("menu_items", 99)).toBeNull();
+    await expect(api.data.get("nope", 1)).rejects.toThrow(/No table "nope"/);
+    // @ts-expect-error bad id
+    await expect(api.data.get("roles", null)).rejects.toThrow(/id must be/);
+
+    expect(
+      (await api.data.update("menu_items", 2, { label: "Guides" })).label
+    ).toBe("Guides");
+    await expect(api.data.delete("roles", 1)).rejects.toThrow(/referenced by/);
+    // @ts-expect-error bad mode
+    await expect(api.data.delete("roles", 1, "explode")).rejects.toThrow(
+      /onReferences must be/
+    );
+    const del = await api.data.delete("roles", 1, "nullify");
+    expect(del).toEqual({
+      deleted: true,
+      affected: [{ table: "menu_items", column: "required_role", count: 2 }],
+    });
+    expect((await api.data.get("menu_items", 1))?.required_role).toBeNull();
+    expect(
+      JSON.parse(host.state.files.get("prj_1")!.get("data/roles.json")!)
+    ).toEqual([]);
+
+    host.state.activeProject = null;
+    await expect(api.data.tables()).rejects.toThrow(/No project is open/);
+  });
+
+  it("changes the schema with a described plan and reports bindings", async () => {
+    const { api, host } = setup();
+    const { tables } = await api.data.schema();
+    const next = JSON.parse(JSON.stringify(tables)) as typeof tables;
+    next[1].columns.push({ name: "icon", type: "string", default: "dot" });
+    next.push({
+      name: "pages",
+      primaryKey: "id",
+      columns: [{ name: "id", type: "number" }],
+    });
+    const r = await api.data.setSchema({ tables: next });
+    expect(r.steps).toEqual([
+      'Add column menu_items.icon with default "dot"',
+      "Create table pages (new empty data/pages.json)",
+    ]);
+    expect((await api.data.get("menu_items", 1))?.icon).toBe("dot");
+    expect(host.state.files.get("prj_1")!.get("data/pages.json")).toBe("[]\n");
+    // @ts-expect-error bad schema
+    await expect(api.data.setSchema({ tables: "x" })).rejects.toThrow(
+      /tables must be an array/
+    );
+
+    const all = await api.data.bindings();
+    expect(all.bindings.map((b) => [b.table, b.path, b.line, b.kind])).toEqual([
+      ["menu_items", "components/menu.json", 1, "component"],
+    ]);
+    expect(all.unusedTables).toEqual(["roles", "pages"]);
+    expect(all.broken.map((p) => p.message)).toEqual([
+      'column "nope" is not in menu_items',
+    ]);
+    const one = await api.data.bindings("roles");
+    expect(one.bindings).toEqual([]);
+    expect(one.unusedTables).toEqual(["roles"]);
+    isPlainJson(all);
+
+    const w = api.data.open("menu_items");
+    expect(w.kind).toBe("data");
+    expect(api.data.open(undefined, "schema").kind).toBe("schema");
+    // @ts-expect-error bad kind
+    expect(() => api.data.open("roles", "chart")).toThrow(
+      /kind must be one of/
+    );
+  });
+});
+
 describe("preview, console, commands, canvas", () => {
   it("covers the small namespaces", async () => {
     const { api, host } = setup();
