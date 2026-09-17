@@ -281,11 +281,12 @@ export class ProjectStore {
   async createMemoryProject(
     name: string,
     files: FileMap,
-    source: string
+    source: string,
+    options: { id?: string } = {}
   ): Promise<ProjectMeta> {
     const now = Date.now();
     const meta: ProjectMeta = {
-      id: newProjectId(),
+      id: options.id ?? newProjectId(),
       name,
       backend: "memory",
       source,

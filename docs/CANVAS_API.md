@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 81 methods in 18 namespaces.
+API version: 1. 87 methods in 19 namespaces.
 
 ## Where to call it
 
@@ -60,8 +60,11 @@ a callback (the MCP bridge). Each event is `{seq, name, time, payload}`.
 | `command.run`     | `{id}`                                                                   |
 | `project.changed` | `{id, name}`                                                             |
 | `data.changed`    | `{project}` (a table or the schema changed)                              |
+| `board.opened`    | `{name, sections, windows}`                                              |
+| `tour.changed`    | `{board, step, total, section}` (board null when the tour ends)          |
+| `collab.changed`  | `{room, status, peers}` (joined, left, or peers changed)                 |
 
-(10 events.)
+(11 events.)
 
 ## Examples
 
@@ -1062,6 +1065,88 @@ Every Terminal window with its backend and prompt.
 
 Returns `TerminalInfo {id (window id), title, backend: 'project' | 'bridge', prompt, lines}[]`. read-only · MCP tool `terminal_list`.
 
+### `collab`
+
+#### `collab.create`
+
+```ts
+paperos.collab.create(options?: {password?: string, transport?: 'webrtc' | 'websocket', url?: string, id?: string})
+```
+
+Creates a room seeded with this canvas and project and joins it; others join with the link. Random readable id (amber-fox-417) unless `id` is given.
+
+Returns `RoomState {room, status: 'off' | 'connecting' | 'waiting' | 'connected', transport: 'webrtc' | 'websocket' | null, endpoint, via, peers, project, locked, link, error, online}`. changes state · MCP tool `collab_create` · object-style call passes the object itself.
+
+| Parameter           | Required | Type                                                                                  | Description                                                                                                          |
+| ------------------- | -------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `options`           | no       | `{password?: string, transport?: 'webrtc' \| 'websocket', url?: string, id?: string}` | Password, transport and server                                                                                       |
+| `options.password`  | no       | `string`                                                                              | Room password (peers without it cannot read the room; never part of the link)                                        |
+| `options.transport` | no       | `'webrtc' \| 'websocket'`                                                             | webrtc: peer-to-peer through a signaling server (default); websocket: a self-hosted sync server (tools/paperos-sync) |
+| `options.url`       | no       | `string`                                                                              | Sync server URL (ws:// or wss://) for websocket, or a signaling server for webrtc                                    |
+| `options.id`        | no       | `string`                                                                              | A room id of your own                                                                                                |
+
+#### `collab.join`
+
+```ts
+paperos.collab.join(room: string, options?: {password?: string, transport?: 'webrtc' | 'websocket', url?: string})
+```
+
+Joins a room by id or link. The room's canvas and project replace the local ones (the local project stays in the project list).
+
+Returns `RoomState {room, status: 'off' | 'connecting' | 'waiting' | 'connected', transport: 'webrtc' | 'websocket' | null, endpoint, via, peers, project, locked, link, error, online}`. changes state · MCP tool `collab_join`.
+
+| Parameter           | Required | Type                                                                     | Description                                                                                                          |
+| ------------------- | -------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `room`              | yes      | `string`                                                                 | Room id or a /app?room= link                                                                                         |
+| `options`           | no       | `{password?: string, transport?: 'webrtc' \| 'websocket', url?: string}` | Password and transport (a link's sync= wins)                                                                         |
+| `options.password`  | no       | `string`                                                                 | Room password (peers without it cannot read the room; never part of the link)                                        |
+| `options.transport` | no       | `'webrtc' \| 'websocket'`                                                | webrtc: peer-to-peer through a signaling server (default); websocket: a self-hosted sync server (tools/paperos-sync) |
+| `options.url`       | no       | `string`                                                                 | Sync server URL (ws:// or wss://) for websocket, or a signaling server for webrtc                                    |
+
+#### `collab.leave`
+
+```ts
+paperos.collab.leave();
+```
+
+Leaves the current room. Canvas and project stay as they are, locally.
+
+Returns `{left: boolean}`. changes state · MCP tool `collab_leave`.
+
+#### `collab.status`
+
+```ts
+paperos.collab.status();
+```
+
+The room this tab is in: id, link, transport, connection state, peers.
+
+Returns `RoomState {room, status: 'off' | 'connecting' | 'waiting' | 'connected', transport: 'webrtc' | 'websocket' | null, endpoint, via, peers, project, locked, link, error, online}`. read-only · MCP tool `collab_status`.
+
+#### `collab.participants`
+
+```ts
+paperos.collab.participants();
+```
+
+Who is in the room (this tab first), with the window and file each one focuses; agents connected over a bridge appear with agent: true.
+
+Returns `Participant {clientId, id, name, color, agent, local, window, file}[]`. read-only · MCP tool `collab_participants`.
+
+#### `collab.setName`
+
+```ts
+paperos.collab.setName(name: string)
+```
+
+Sets this browser's participant name (remembered locally).
+
+Returns `{id, name, color}`. changes state · MCP tool `collab_setName`.
+
+| Parameter | Required | Type     | Description                       |
+| --------- | -------- | -------- | --------------------------------- |
+| `name`    | yes      | `string` | Display name, up to 40 characters |
+
 ### `preview`
 
 #### `preview.reload`
@@ -1206,17 +1291,17 @@ Returns `{dataUrl, width, height}`. read-only · MCP tool `canvas_screenshot` ·
 #### `events.on`
 
 ```ts
-paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | 'data.changed' | 'board.opened' | 'tour.changed' | '*', callback: function)
+paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | 'data.changed' | 'board.opened' | 'tour.changed' | 'collab.changed' | '*', callback: function)
 ```
 
 Subscribes to an event ('*' for all). The callback gets {name, time, payload}. Returns an unsubscribe function.
 
 Returns `unsubscribe function`. read-only · scripts only (takes a callback).
 
-| Parameter  | Required | Type                                                                                                                                                                                               | Description       |
-| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| 'data.changed' \| 'board.opened' \| 'tour.changed' \| '*'` | Event name or '*' |
-| `callback` | yes      | `function`                                                                                                                                                                                         | function(event)   |
+| Parameter  | Required | Type                                                                                                                                                                                                                   | Description       |
+| ---------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| 'data.changed' \| 'board.opened' \| 'tour.changed' \| 'collab.changed' \| '*'` | Event name or '*' |
+| `callback` | yes      | `function`                                                                                                                                                                                                             | function(event)   |
 
 #### `events.list`
 

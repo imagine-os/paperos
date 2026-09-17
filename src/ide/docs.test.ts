@@ -76,3 +76,53 @@ describe("file documents", () => {
     closeFileDoc(id, "styles.css");
   });
 });
+
+describe("shared documents", () => {
+  it("binds files to a room text, never dirty, and rebinds on reset", async () => {
+    const { setDocSource, resetFileDocs, docsGeneration } =
+      await import("./docs");
+    const Y = await import("yjs");
+    const { store, id } = await sampleStore();
+    const room = new Y.Doc();
+    const shared = room.getMap<InstanceType<typeof Y.Text>>("files");
+    shared.set("app.js", new Y.Text("shared content"));
+    setDocSource((project, path) =>
+      project === id && shared.has(path)
+        ? { doc: room, text: shared.get(path)! }
+        : null
+    );
+    const gen = docsGeneration.get();
+    resetFileDocs(id);
+    expect(docsGeneration.get()).toBe(gen + 1);
+
+    const d = getFileDoc(id, "app.js", store);
+    expect(d.shared).toBe(true);
+    expect(d.doc).toBe(room);
+    await d.ready;
+    expect(d.text.toString()).toBe("shared content");
+    d.text.insert(0, "x");
+    expect(d.dirty.get()).toBe(false);
+    expect(peekLiveText(id, "app.js")).toBe("xshared content");
+    await d.save();
+    expect(await store.readFile(id, "app.js")).toBe("xshared content");
+    // Reload never overwrites the room's buffer with the backend.
+    await store.writeFile(id, "app.js", "disk");
+    await d.reload();
+    expect(d.text.toString()).toBe("xshared content");
+
+    // Files the room does not know stay local documents.
+    const local = getFileDoc(id, "styles.css", store);
+    expect(local.shared).toBe(false);
+    await local.ready;
+
+    setDocSource(null);
+    resetFileDocs(id);
+    // The room document survives closing its file documents.
+    expect(shared.get("app.js")!.toString()).toBe("xshared content");
+    const again = getFileDoc(id, "app.js", store);
+    expect(again.shared).toBe(false);
+    await again.ready;
+    expect(again.text.toString()).toBe("disk");
+    closeFileDoc(id, "app.js");
+  });
+});

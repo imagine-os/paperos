@@ -7,10 +7,13 @@
  * "Saved" means the text matches what the project backend holds; Save writes
  * the buffer back to the backend.
  *
- * To make a file collaborative later (M4), attach a sync provider in
- * `attachProvider()`: it is called once per document after local persistence
- * has loaded, and receives the doc and its key. No other code needs to change.
+ * Two hooks make files collaborative (M8, `src/collab/`): `attachProvider()`
+ * is called once per document after local persistence has loaded, and
+ * `setDocSource()` lets a room hand out the shared `Y.Text` of a file so the
+ * editor, the preview and the Data window all work on the room's copy. A
+ * shared document is never dirty: the room mirror writes the backend.
  */
+import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { signal, type Signal } from "./signal";
 import { getProjectStore, type ProjectStore } from "./project/store";
@@ -21,6 +24,10 @@ export interface FileDoc {
   path: string;
   doc: Y.Doc;
   text: Y.Text;
+  /** The text comes from a room (`setDocSource`): shared with other peers, saved by the mirror. */
+  shared: boolean;
+  /** The room's awareness (remote cursors), when shared. */
+  awareness: Awareness | null;
   /** Resolves once persistence has loaded and the backend content is in place. */
   ready: Promise<void>;
   /** True once `ready` resolved: before that the buffer may still be empty. */
@@ -45,6 +52,35 @@ let providerHook: ProviderHook | null = null;
  */
 export function attachProvider(hook: ProviderHook | null): void {
   providerHook = hook;
+}
+
+/** Where a shared document comes from: a room's Y.Text for that file, or null for a local document. */
+export type DocSource = (
+  projectId: string,
+  path: string
+) => { doc: Y.Doc; text: Y.Text; awareness?: Awareness | null } | null;
+
+let docSource: DocSource | null = null;
+
+/** Installs (or removes) the source of shared documents; call `resetFileDocs()` after. */
+export function setDocSource(source: DocSource | null): void {
+  docSource = source;
+}
+
+/** Bumps when open documents were reset (editors rebind to the new documents). */
+export const docsGeneration = signal(0);
+
+/**
+ * Closes every open document (of one project, or all) so the next
+ * `getFileDoc` creates them again, from the room or locally. Windows that
+ * hold a document watch `docsGeneration` and rebind.
+ */
+export function resetFileDocs(projectId?: string): void {
+  for (const d of [...docs.values()]) {
+    if (projectId && d.projectId !== projectId) continue;
+    closeFileDoc(d.projectId, d.path);
+  }
+  docsGeneration.update((n) => n + 1);
 }
 
 export function docKey(projectId: string, path: string): string {
@@ -79,15 +115,17 @@ export function getFileDoc(
   const existing = docs.get(key);
   if (existing) return existing;
 
-  const doc = new Y.Doc();
-  const text = doc.getText("content");
+  const source = docSource?.(projectId, path) ?? null;
+  const doc = source?.doc ?? new Y.Doc();
+  const text = source?.text ?? doc.getText("content");
+  const shared = source !== null;
   const dirty = signal(false);
   const error = signal<string | null>(null);
   let saved: string | null = null;
   let loaded = false;
 
   const refreshDirty = () =>
-    dirty.set(saved !== null && text.toString() !== saved);
+    dirty.set(!shared && saved !== null && text.toString() !== saved);
 
   const readBackend = async (): Promise<string | null> => {
     try {
@@ -100,9 +138,16 @@ export function getFileDoc(
     }
   };
 
+  const onText = () => {
+    refreshDirty();
+    docsChanged.update((n) => n + 1);
+  };
+  text.observe(onText);
+  disposers.set(key, [() => text.unobserve(onText)]);
+
   const ready = (async () => {
-    const dispose = await persist(doc, key);
-    disposers.set(key, [dispose]);
+    const dispose = shared ? () => {} : await persist(doc, key);
+    disposers.get(key)?.push(dispose);
     const backend = await readBackend();
     if (backend !== null) {
       saved = backend;
@@ -115,17 +160,14 @@ export function getFileDoc(
     if (off) disposers.get(key)?.push(off);
   })();
 
-  doc.on("update", () => {
-    refreshDirty();
-    docsChanged.update((n) => n + 1);
-  });
-
   const fileDoc: FileDoc = {
     key,
     projectId,
     path,
     doc,
     text,
+    shared,
+    awareness: source?.awareness ?? null,
     ready,
     get loaded() {
       return loaded;
@@ -144,7 +186,8 @@ export function getFileDoc(
       const backend = await readBackend();
       if (backend === null) return;
       saved = backend;
-      if (text.toString() !== backend) {
+      // Shared: the room is the buffer; the backend follows it, not the other way round.
+      if (!shared && text.toString() !== backend) {
         doc.transact(() => {
           text.delete(0, text.length);
           text.insert(0, backend);
@@ -218,5 +261,25 @@ export function closeFileDoc(projectId: string, path: string): void {
   disposers.get(key)?.forEach((f) => f());
   disposers.delete(key);
   docs.delete(key);
-  d.doc.destroy();
+  if (!d.shared) d.doc.destroy();
+}
+
+/**
+ * Deletes the y-indexeddb databases of a project's local documents (best
+ * effort, Chromium has `indexedDB.databases()`), so a project that was
+ * shared in a room does not come back with stale buffers afterwards.
+ */
+export async function clearFileDocStorage(projectId: string): Promise<void> {
+  try {
+    const idb = globalThis.indexedDB as
+      | (IDBFactory & { databases?: () => Promise<{ name?: string }[]> })
+      | undefined;
+    if (!idb?.databases) return;
+    const prefix = docKey(projectId, "");
+    for (const db of await idb.databases()) {
+      if (db.name?.startsWith(prefix)) idb.deleteDatabase(db.name);
+    }
+  } catch {
+    // Storage blocked or unsupported: nothing to clear.
+  }
 }

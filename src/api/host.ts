@@ -5,6 +5,8 @@
  * records, no atoms), which is what keeps the facade testable in Node.
  */
 import type { Bookmark } from "@/browser/bookmarks";
+import type { Participant } from "@/collab/participants";
+import type { RoomState } from "@/collab/session";
 import type { BrowserState } from "@/browser/tabs";
 import type { SampleTemplate } from "@/ide/project/types";
 import type { LineageGraph } from "@/lineage/model";
@@ -133,6 +135,11 @@ export interface MapRecord {
   kept: number;
   bounds: Rect;
   workspace: { id: string; name: string } | null;
+}
+
+export interface RoomOptions {
+  password?: string;
+  transport?: { kind?: "webrtc" | "websocket"; url?: string };
 }
 
 export interface CanvasHost {
@@ -298,6 +305,14 @@ export interface CanvasHost {
       id: string,
       listener: (text: string, kind: string) => void
     ): () => void;
+  };
+  collab: {
+    create(options: RoomOptions & { id?: string }): Promise<RoomState>;
+    join(room: string, options: RoomOptions): Promise<RoomState>;
+    leave(): boolean;
+    status(): RoomState;
+    participants(): Participant[];
+    setName(name: string): { id: string; name: string; color: string };
   };
   preview: {
     reload(): number;

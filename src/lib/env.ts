@@ -17,3 +17,11 @@ export const basePath: string = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 export function withBasePath(pathname: string): string {
   return `${basePath}${pathname.startsWith("/") ? "" : "/"}${pathname}`;
 }
+
+/** Signaling servers for peer-to-peer rooms (comma-separated). Default: y-webrtc's public one. */
+export const collabSignaling: string | undefined =
+  process.env.NEXT_PUBLIC_PAPEROS_SIGNALING || undefined;
+
+/** A self-hosted sync server (`tools/paperos-sync`). When set, rooms use it by default. */
+export const collabSyncUrl: string | undefined =
+  process.env.NEXT_PUBLIC_PAPEROS_SYNC_URL || undefined;

@@ -17,6 +17,7 @@ import {
   serializeBookmarks,
 } from "@/browser/bookmarks";
 import { parseState, serializeState } from "@/browser/tabs";
+import { getCollabSession } from "@/collab/session";
 import { getTerminalSession } from "@/terminal/registry";
 import { parseTerminalContent } from "@/terminal/session";
 import { applyPresetWorkspace } from "@/desktop/preset-workspaces";
@@ -435,6 +436,15 @@ export function createBrowserHost(editor: Editor): CanvasHost {
       write: (id, data) => getTerminalSession(editor, id).write(data),
       onOutput: (id, listener) =>
         getTerminalSession(editor, id).onOutput(listener),
+    },
+
+    collab: {
+      create: (options) => getCollabSession().create(options),
+      join: (room, options) => getCollabSession().join(room, options),
+      leave: () => getCollabSession().leave(),
+      status: () => getCollabSession().state.get(),
+      participants: () => getCollabSession().participants.get(),
+      setName: (name) => getCollabSession().setName(name),
     },
 
     preview: {

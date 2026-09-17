@@ -31,10 +31,13 @@ import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 import type { CanvasEvent, EventBus } from "./events";
 import { lineageForPage, type LineageGraph } from "@/lineage/model";
+import type { Participant } from "@/collab/participants";
+import type { RoomState } from "@/collab/session";
 import type {
   BoardOpenRecord,
   BoardRecord,
   CanvasHost,
+  RoomOptions,
   FlowRecord,
   LineageFocusRecord,
   LineageOpenRecord,
@@ -99,6 +102,12 @@ export interface TerminalInfo {
   backend: "project" | "bridge";
   prompt: string;
   lines: number;
+}
+
+export interface RoomApiOptions {
+  password?: string;
+  transport?: "webrtc" | "websocket";
+  url?: string;
 }
 
 export interface CreateWindowOptions {
@@ -236,6 +245,14 @@ export interface CanvasApi {
     ): () => void;
     list(): TerminalInfo[];
   };
+  collab: {
+    create(options?: RoomApiOptions & { id?: string }): Promise<RoomState>;
+    join(room: string, options?: RoomApiOptions): Promise<RoomState>;
+    leave(): { left: boolean };
+    status(): RoomState;
+    participants(): Participant[];
+    setName(name: string): { id: string; name: string; color: string };
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -356,6 +373,28 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
   const requireBrowser = (id: unknown): string =>
     resolveBrowser(id) ??
     fail("No Browser window is open (browser.open creates one)");
+
+  const roomOptions = (v: unknown): RoomOptions & { id?: string } => {
+    if (v === undefined) return {};
+    const o = expectObject(v, "options");
+    const out: RoomOptions & { id?: string } = {};
+    if (o.password !== undefined)
+      out.password = expectString(o.password, "password");
+    if (o.transport !== undefined || o.url !== undefined) {
+      const kind =
+        o.transport === undefined
+          ? undefined
+          : expectString(o.transport, "transport");
+      if (kind !== undefined && kind !== "webrtc" && kind !== "websocket")
+        fail(`transport must be "webrtc" or "websocket", got "${kind}"`);
+      const url = o.url === undefined ? undefined : expectString(o.url, "url");
+      if (url !== undefined && !/^wss?:\/\//.test(url))
+        fail("url must start with ws:// or wss://");
+      out.transport = { kind, url };
+    }
+    if (o.id !== undefined) out.id = expectString(o.id, "id");
+    return out;
+  };
 
   const terminalInfo = (id: string): TerminalInfo => ({
     id,
@@ -953,6 +992,26 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
         return host.terminal.onOutput(requireTerminal(id), callback);
       },
       list: () => host.terminal.list().map(terminalInfo),
+    },
+
+    collab: {
+      async create(options) {
+        return host.collab.create(roomOptions(options));
+      },
+      async join(room, options) {
+        const r = expectString(room, "room").trim();
+        if (!r) fail("room must not be empty");
+        return host.collab.join(r, roomOptions(options));
+      },
+      leave: () => ({ left: host.collab.leave() }),
+      status: () => host.collab.status(),
+      participants: () => host.collab.participants(),
+      setName(name) {
+        const n = expectString(name, "name").trim();
+        if (!n) fail("name must not be empty");
+        if (n.length > 40) fail("name must be at most 40 characters");
+        return host.collab.setName(n);
+      },
     },
 
     preview: {

@@ -152,6 +152,9 @@ a callback (the MCP bridge). Each event is \`{seq, name, time, payload}\`.
 | \`command.run\` | \`{id}\` |
 | \`project.changed\` | \`{id, name}\` |
 | \`data.changed\` | \`{project}\` (a table or the schema changed) |
+| \`board.opened\` | \`{name, sections, windows}\` |
+| \`tour.changed\` | \`{board, step, total, section}\` (board null when the tour ends) |
+| \`collab.changed\` | \`{room, status, peers}\` (joined, left, or peers changed) |
 
 (${EVENT_NAMES.length} events.)
 

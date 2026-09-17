@@ -1,3 +1,25 @@
+# M8 - Collaboration
+
+- [x] Transport: `src/collab/` with room ids, transport selection (y-webrtc
+      default with public signaling + self-hosted URL, y-websocket for a
+      self-hosted server), provider interface, identity (name + color).
+- [x] Sync: tldraw store <-> Y.Map (one Yjs doc per room), presence through
+      awareness -> instance_presence records; project files <-> Y.Map of
+      Y.Text mirrored to the local project backend; per-file docs bind to the
+      room doc (`setDocSource` in docs.ts).
+- [x] Session: create / join / leave, `?room=` links, joiner adopts the room's
+      project (confirm), creator seeds an empty room, y-indexeddb per room.
+- [x] `tools/paperos-sync/`: tiny y-websocket server (ws + yjs + y-protocols).
+- [ ] UX: Share button + Share window kind, participants, status, title-bar
+      chips, CodeMirror remote cursors, robot badge for bridge agents.
+- [ ] Canvas API `collab.*`, `collab.changed` event, palette commands, docs
+      regenerated, MCP schema copy.
+- [ ] Board "Collaborate" in the sample + tour.
+- [ ] Tests: unit (room ids, transport selection, awareness mapping, store
+      sync, project sync, sync server), e2e with two contexts + local server.
+- [ ] Docs: docs/COLLAB.md, README Share section, PLAN M8 + decisions, landing
+      status, todo review. Screenshots + webm.
+
 # tasks/todo.md
 
 ## M0 - Clean start

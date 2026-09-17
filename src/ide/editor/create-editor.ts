@@ -6,11 +6,16 @@
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { LanguageDescription } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
-import { Compartment, EditorSelection, type Extension } from "@codemirror/state";
+import {
+  Compartment,
+  EditorSelection,
+  type Extension,
+} from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, keymap } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { yCollab } from "y-codemirror.next";
+import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { basename } from "../project/paths";
 import { baseTheme, lightTheme } from "./themes";
@@ -18,6 +23,8 @@ import { baseTheme, lightTheme } from "./themes";
 export interface CreateEditorOptions {
   parent: HTMLElement;
   text: Y.Text;
+  /** Room awareness: remote cursors and selections of the other peers. */
+  awareness?: Awareness | null;
   path: string;
   dark: boolean;
   onSave: () => void;
@@ -72,7 +79,7 @@ export async function createEditor(
         indentWithTab,
         ...defaultKeymap,
       ]),
-      yCollab(options.text, null),
+      yCollab(options.text, options.awareness ?? null),
       EditorView.lineWrapping,
     ],
   });

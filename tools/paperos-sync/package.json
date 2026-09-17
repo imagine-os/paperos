@@ -1,0 +1,23 @@
+{
+  "name": "paperos-sync",
+  "version": "0.1.0",
+  "description": "y-websocket sync server for PaperOS rooms: one port, rooms in memory, no accounts.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "bin": {
+    "paperos-sync": "server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "lib0": "^0.2.102",
+    "ws": "^8.18.0",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.27"
+  }
+}

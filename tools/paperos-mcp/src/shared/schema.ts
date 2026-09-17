@@ -57,6 +57,7 @@ export const EVENT_NAMES = [
   "data.changed",
   "board.opened",
   "tour.changed",
+  "collab.changed",
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
@@ -116,6 +117,31 @@ const BROWSER_INFO = `BrowserInfo {id (window id), title, tabs: ${BROWSER_TAB}[]
 const BOOKMARK = "Bookmark {title, url}";
 const TERMINAL_INFO =
   "TerminalInfo {id (window id), title, backend: 'project' | 'bridge', prompt, lines}";
+const ROOM_STATE =
+  "RoomState {room, status: 'off' | 'connecting' | 'waiting' | 'connected', transport: 'webrtc' | 'websocket' | null, endpoint, via, peers, project, locked, link, error, online}";
+const PARTICIPANT =
+  "Participant {clientId, id, name, color, agent, local, window, file}";
+const ROOM_OPTIONS = {
+  type: "object" as const,
+  properties: {
+    password: {
+      type: "string" as const,
+      description:
+        "Room password (peers without it cannot read the room; never part of the link)",
+    },
+    transport: {
+      type: "string" as const,
+      enum: ["webrtc", "websocket"],
+      description:
+        "webrtc: peer-to-peer through a signaling server (default); websocket: a self-hosted sync server (tools/paperos-sync)",
+    },
+    url: {
+      type: "string" as const,
+      description:
+        "Sync server URL (ws:// or wss://) for websocket, or a signaling server for webrtc",
+    },
+  },
+};
 const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
@@ -987,6 +1013,72 @@ export const TOOLS: ToolSpec[] = [
     description: "Every Terminal window with its backend and prompt.",
     params: [],
     returns: `${TERMINAL_INFO}[]`,
+  },
+
+  // ----- collab -----
+  {
+    name: "collab.create",
+    description:
+      "Creates a room seeded with this canvas and project and joins it; others join with the link. Random readable id (amber-fox-417) unless `id` is given.",
+    params: [
+      {
+        name: "options",
+        description: "Password, transport and server",
+        schema: {
+          ...ROOM_OPTIONS,
+          properties: {
+            ...ROOM_OPTIONS.properties,
+            id: { type: "string", description: "A room id of your own" },
+          },
+        },
+      },
+    ],
+    returns: ROOM_STATE,
+    mutates: true,
+  },
+  {
+    name: "collab.join",
+    description:
+      "Joins a room by id or link. The room's canvas and project replace the local ones (the local project stays in the project list).",
+    params: [
+      str("room", "Room id or a /app?room= link"),
+      {
+        name: "options",
+        description: "Password and transport (a link's sync= wins)",
+        schema: ROOM_OPTIONS,
+      },
+    ],
+    returns: ROOM_STATE,
+    mutates: true,
+  },
+  {
+    name: "collab.leave",
+    description:
+      "Leaves the current room. Canvas and project stay as they are, locally.",
+    params: [],
+    returns: "{left: boolean}",
+    mutates: true,
+  },
+  {
+    name: "collab.status",
+    description:
+      "The room this tab is in: id, link, transport, connection state, peers.",
+    params: [],
+    returns: ROOM_STATE,
+  },
+  {
+    name: "collab.participants",
+    description:
+      "Who is in the room (this tab first), with the window and file each one focuses; agents connected over a bridge appear with agent: true.",
+    params: [],
+    returns: `${PARTICIPANT}[]`,
+  },
+  {
+    name: "collab.setName",
+    description: "Sets this browser's participant name (remembered locally).",
+    params: [str("name", "Display name, up to 40 characters")],
+    returns: "{id, name, color}",
+    mutates: true,
   },
 
   // ----- preview -----

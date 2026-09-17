@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { stopEventPropagation } from "tldraw";
-import { getFileDoc, type FileDoc } from "@/ide/docs";
+import { docsGeneration, getFileDoc, type FileDoc } from "@/ide/docs";
 import type { EditorHandle } from "@/ide/editor/create-editor";
 import { formatterFor } from "@/ide/editor/format";
 import { encodeFileRef, parseFileRef } from "@/ide/file-ref";
@@ -65,6 +65,8 @@ function BoundEditor({
   const projectName = useSignal(getProjectStore().state).projects.find(
     (p) => p.id === project
   )?.name;
+  // Documents are recreated when a room is joined or left: rebind then.
+  const generation = useSignal(docsGeneration);
 
   const save = async () => {
     if (!doc) return;
@@ -115,6 +117,7 @@ function BoundEditor({
       created = await createEditor({
         parent: host.current,
         text: d.text,
+        awareness: d.awareness,
         path,
         dark: resolvedTheme.get() === "dark",
         onSave: () => void saveRef.current(),
@@ -132,7 +135,7 @@ function BoundEditor({
       created?.destroy();
       setHandle(null);
     };
-  }, [project, path]);
+  }, [project, path, generation]);
 
   useEffect(() => {
     handle?.setDark(theme === "dark");

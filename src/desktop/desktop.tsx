@@ -29,6 +29,7 @@ import { getWindowManager } from "@/wm/window-manager";
 import { installBridgeClient } from "@/api/bridge-client";
 import { installCanvasApi } from "@/api/install";
 import { installPlugins } from "@/plugins/install";
+import { getCollabSession } from "@/collab/session";
 import { CommandPalette } from "./command-palette";
 import { registerIdeCommands } from "./ide-commands";
 import {
@@ -131,15 +132,25 @@ export function Desktop() {
     const installed = installCanvasApi(editor);
     const offPlugins = installPlugins(installed.api, installed.events);
     const bridge = installBridgeClient(installed.api);
+    // A `?room=` link joins that room (the room supplies canvas and project).
+    const collab = getCollabSession();
+    const joining = collab.install(editor, {
+      confirmJoin: (id) =>
+        isFirstRun() ||
+        window.confirm(
+          `Join room "${id}"?\n\nIts canvas and project replace what you see here. Your own project stays in the Open menu.`
+        ),
+    });
     // First run: open the sample project in the IDE arrangement.
     if (isFirstRun()) {
       markInitialized();
       const hasWindows = editor
         .getCurrentPageShapes()
         .some((s) => s.type === "window");
-      if (!hasWindows) void applyIdeWorkspace(editor);
+      if (!hasWindows && !joining) void applyIdeWorkspace(editor);
     }
     return () => {
+      collab.uninstall(editor);
       bridge.stop();
       offPlugins();
       installed.dispose();

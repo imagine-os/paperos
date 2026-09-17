@@ -11,6 +11,7 @@ import { getProjectStore } from "@/ide/project/store";
 import { collectWindowIds } from "@/wm/tree";
 import { getWindowManager } from "@/wm/window-manager";
 import { getTourController } from "@/boards/tour-controller";
+import { getCollabSession } from "@/collab/session";
 import { createBrowserHost } from "./browser-host";
 import { createCanvasApi, type CanvasApi } from "./canvas-api";
 import { createEventBus, type EventBus } from "./events";
@@ -120,6 +121,23 @@ export function installCanvasApi(editor: Editor): InstalledApi {
           ? { board: t.board, step: t.step, total: t.total, section: t.section }
           : { board: null, step: -1 }
       );
+    })
+  );
+
+  // collab.changed: joining, leaving, peers coming and going.
+  const collab = getCollabSession();
+  let lastRoom = "";
+  offs.push(
+    collab.state.subscribe(() => {
+      const s = collab.state.get();
+      const key = `${s.room}:${s.status}:${s.peers}`;
+      if (key === lastRoom) return;
+      lastRoom = key;
+      events.emit("collab.changed", {
+        room: s.room,
+        status: s.status,
+        peers: s.peers,
+      });
     })
   );
 

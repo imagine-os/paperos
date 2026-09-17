@@ -848,6 +848,67 @@ describe("browser", () => {
   });
 });
 
+describe("collab", () => {
+  it("creates, joins and leaves rooms with validated options", async () => {
+    const { api, host } = setup();
+    expect(api.collab.status()).toMatchObject({ room: null, status: "off" });
+    expect(api.collab.participants()).toEqual([]);
+
+    const room = await api.collab.create();
+    expect(room.room).toMatch(/^[a-z]+-[a-z]+-\d{3}$/);
+    expect(room).toMatchObject({
+      status: "connected",
+      transport: "webrtc",
+      locked: false,
+      project: "prj_1",
+    });
+    expect(room.link).toContain(`/app?room=${room.room}`);
+    isPlainJson(room);
+    expect(api.collab.participants()).toHaveLength(1);
+    expect(api.collab.participants()[0]).toMatchObject({
+      local: true,
+      agent: false,
+      name: "Fake User",
+    });
+
+    const joined = await api.collab.join(
+      "https://x/app?room=amber-fox-417&sync=ws://localhost:1234",
+      { password: "pw" }
+    );
+    expect(joined).toMatchObject({
+      room: "amber-fox-417",
+      transport: "websocket",
+      endpoint: "ws://localhost:1234",
+      locked: true,
+    });
+    expect(api.collab.leave()).toEqual({ left: true });
+    expect(api.collab.leave()).toEqual({ left: false });
+    expect(host.state.room.room).toBeNull();
+
+    await expect(api.collab.join("")).rejects.toThrow(/room must/);
+    await expect(api.collab.join("!!!")).rejects.toThrow(/not a room id/);
+    await expect(
+      api.collab.create({ transport: "carrier-pigeon" as never })
+    ).rejects.toThrow(/transport must be/);
+    await expect(
+      api.collab.create({ transport: "websocket", url: "http://x" })
+    ).rejects.toThrow(/ws:\/\/ or wss:\/\//);
+    await expect(api.collab.create({ transport: "websocket" })).rejects.toThrow(
+      /No sync server URL/
+    );
+    expect(api.collab.setName("  Ada ")).toMatchObject({ name: "Ada" });
+    expect(() => api.collab.setName("")).toThrow(/name must/);
+    expect(() => api.collab.setName("x".repeat(41))).toThrow(/40 characters/);
+    // Object-style call (MCP) passes the options object itself.
+    const viaTool = (await invokeTool(api, "collab.create", {
+      id: "My Room",
+      transport: "websocket",
+      url: "ws://h:1",
+    })) as { room: string; transport: string };
+    expect(viaTool).toMatchObject({ room: "my-room", transport: "websocket" });
+  });
+});
+
 describe("terminal", () => {
   it("opens a terminal, runs project-shell commands and lists windows", async () => {
     const { api, host } = setup();

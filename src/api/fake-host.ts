@@ -12,6 +12,13 @@ import type { ShellFs } from "@/terminal/fs";
 import { ProjectShell } from "@/terminal/shell";
 import { parseTerminalContent, TerminalSession } from "@/terminal/session";
 import { scanBindings } from "@/data/bindings";
+import {
+  newRoomId,
+  normalizeRoomId,
+  parseRoomLink,
+  roomLink,
+} from "@/collab/room-id";
+import { OFF_STATE, type RoomState } from "@/collab/session";
 import { describeStep } from "@/data/migrate";
 import { DataStore, type DataFs } from "@/data/store";
 import { buildPreset } from "@/wm/presets";
@@ -83,6 +90,8 @@ export interface FakeHost extends CanvasHost {
     /** Board name per section id, for boards drawn on the fake canvas. */
     boardOf: Map<string, string>;
     lineageFocus: string | null;
+    room: RoomState;
+    me: { id: string; name: string; color: string };
   };
 }
 
@@ -162,6 +171,8 @@ export function fakeHost(): FakeHost {
     tour: null,
     boardOf: new Map(),
     lineageFocus: null,
+    room: OFF_STATE,
+    me: { id: "u_fake", name: "Fake User", color: "#2f7fe0" },
   };
 
   const win = (id: string) => state.windows.find((w) => w.id === id);
@@ -885,6 +896,68 @@ export function fakeHost(): FakeHost {
       },
       async setBookmarks(project, list) {
         files(project).set(BOOKMARKS_PATH, serializeBookmarks(list));
+      },
+    },
+    collab: {
+      async create(options) {
+        const id = options.id ? normalizeRoomId(options.id) : newRoomId();
+        if (!id) throw new Error("Not a valid room id");
+        return host.collab.join(id, options);
+      },
+      async join(room, options) {
+        const link = parseRoomLink(room);
+        if (!link) throw new Error(`"${room}" is not a room id or link`);
+        const kind =
+          options.transport?.kind ??
+          (link.sync || options.transport?.url ? "websocket" : "webrtc");
+        const url = link.sync ?? options.transport?.url ?? null;
+        if (kind === "websocket" && !url)
+          throw new Error("No sync server URL: pass one (ws://host:port)");
+        const endpoint =
+          kind === "webrtc" ? (url ?? "wss://y-webrtc-eu.fly.dev") : url!;
+        state.room = {
+          ...OFF_STATE,
+          room: link.id,
+          status: "connected",
+          transport: kind,
+          endpoint,
+          via:
+            kind === "webrtc"
+              ? `WebRTC via ${endpoint}`
+              : `Sync server ${endpoint}`,
+          peers: 0,
+          project: state.activeProject,
+          locked: !!options.password,
+          link: roomLink("http://localhost:3000", {
+            id: link.id,
+            ...(kind === "websocket" ? { sync: endpoint } : {}),
+          }),
+          online: true,
+        };
+        return state.room;
+      },
+      leave() {
+        if (!state.room.room) return false;
+        state.room = OFF_STATE;
+        return true;
+      },
+      status: () => state.room,
+      participants: () =>
+        state.room.room
+          ? [
+              {
+                clientId: 1,
+                ...state.me,
+                agent: false,
+                local: true,
+                window: state.focused,
+                file: null,
+              },
+            ]
+          : [],
+      setName(name) {
+        state.me = { ...state.me, name };
+        return state.me;
       },
     },
     terminal: {
