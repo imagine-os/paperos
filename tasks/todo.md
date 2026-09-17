@@ -104,7 +104,7 @@
 ## Hosting - GitHub Pages
 
 - [x] Static export mode in `next.config.ts` (`PAPEROS_STATIC=1`): `output:
-  "export"`, base path `/paperos`, trailing slashes, unoptimized images,
+"export"`, base path `/paperos`, trailing slashes, unoptimized images,
       API route left out via `pageExtensions`
 - [x] `withBasePath()` helper; legacy `authEndpoint` uses it (the only
       hard-coded absolute URL; links already use `<Link>`)
@@ -210,6 +210,10 @@
   (change it in the JSON file); other unique columns can.
 - Deleting a referenced row asks once, then clears the references (nullify);
   cascade is available through the API only.
+- `e2e/api.spec.ts` (M3) called its module-level `api()` helper inside
+  `page.evaluate` callbacks, which run in the browser and threw
+  `ReferenceError`; the callbacks now read `window.paperos` directly. All 19
+  e2e tests pass against the production build.
 - Playwright's `addInitScript` also runs in the sandboxed preview iframes,
   where `localStorage` throws; the new e2e helper wraps it in try/catch. The
   older `skipFirstRun` helper still logs that page error in the preview (it
