@@ -110,10 +110,11 @@ test("Schema draws the tables and Connections links tables to components", async
       has: page.locator(".pos-window__title", { hasText: "side-menu.json" }),
     })
   ).toBeVisible();
-  // Reverse direction: a page lists its tables (directly and through components).
+  // Reverse direction: a page lists its tables (its own binding and its blocks' bindings).
   await page.getByTestId("connections-source-pages/home.json").click();
   await expect(detail).toContainText("roles");
-  await expect(detail).toContainText("via side-menu");
+  await expect(detail).toContainText("menu_items");
+  await expect(detail).toContainText("MegaMenu");
 });
 
 test("the Data workspace tiles Files, Data, Schema, Connections and Preview", async ({

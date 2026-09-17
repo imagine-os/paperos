@@ -1,3 +1,4 @@
+import { starterDesignFiles } from "@/design/starter";
 import type { FileMap } from "./types";
 
 export const SAMPLE_NAME = "Sample site";
@@ -108,17 +109,18 @@ main {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
+/* Design tokens from design/tokens.json arrive as --ds-* variables in the preview. */
 h1 {
   margin-top: 0;
-  color: #2563eb;
+  color: var(--ds-color-primary, #2563eb);
 }
 
 button {
   font: inherit;
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: var(--ds-radius-md, 8px);
   border: 1px solid #c9c9d1;
-  background: #2563eb;
+  background: var(--ds-color-primary, #2563eb);
   color: white;
   cursor: pointer;
 }
@@ -359,6 +361,17 @@ to browse and edit them, **Schema** for the entity-relationship view and
   page binds to; the Connections window reads them.
 
 Change a label or a role in the Data window and the preview updates.
+
+## Design system and pages
+
+\`design/tokens.json\` holds the colors, type scale, spacing, radius and
+shadows (the **Design** window edits them; they become \`--ds-*\` variables
+in the preview, and \`styles.css\` uses \`--ds-color-primary\`).
+\`design/components/*.json\` is a starter component library and
+\`pages/home.json\`, \`pages/products.json\` and \`pages/admin.json\` compose
+those components on a 12-column grid, bound to the tables above. Open the
+**Page Builder** to edit them, or pick \`pages/home.json\` as the Preview
+entry. See \`design/README.md\`.
 
 Open your own code with **Open** in the top bar: a folder (Chromium), a ZIP,
 or a public GitHub repository URL.
@@ -683,14 +696,8 @@ or a public GitHub repository URL.
         },
       ],
     }),
-    "pages/home.json": json({
-      name: "home",
-      title: "Home",
-      path: "/",
-      file: "index.html",
-      components: ["side-menu", "mega-menu"],
-      bindings: [{ table: "roles", fields: ["name", "level"], mode: "read" }],
-    }),
+    ...samplePages(),
+    ...starterDesignFiles(),
     "plugins/hello.js": `// A PaperOS plugin: an ES module exporting activate(api).
 // Enable it in New window -> Plugins. It runs in this page, like the devtools.
 export const name = "Hello plugin";
@@ -716,5 +723,291 @@ export function activate(api) {
   });
 }
 `,
+  };
+}
+
+const NAV_ITEMS = [
+  { label: "Home", href: "#/" },
+  { label: "Products", href: "#/products" },
+  { label: "Admin", href: "#/admin" },
+];
+
+const nav = (id: string) => ({
+  id,
+  name: "Nav",
+  span: 12,
+  variant: "horizontal",
+  props: { brand: "Sample site", items: NAV_ITEMS },
+});
+
+/** Three pages composed from the starter components and bound to the tables. */
+function samplePages(): FileMap {
+  return {
+    "pages/home.json": json({
+      name: "home",
+      title: "Home",
+      route: "/",
+      description: "Landing page: hero, key figures and the mega menu.",
+      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      components: [
+        nav("nav"),
+        {
+          id: "hero",
+          name: "Hero",
+          span: 12,
+          props: {
+            eyebrow: "Sample site",
+            title: "Hello, PaperOS",
+            subtitle:
+              "This page is composed from design components bound to the project's tables. Edit it in the Page Builder.",
+            ctaLabel: "Browse products",
+            ctaHref: "#/products",
+            secondaryLabel: "Admin",
+            secondaryHref: "#/admin",
+          },
+        },
+        {
+          id: "stats",
+          name: "Grid",
+          span: 12,
+          props: { columns: 3 },
+          children: [
+            {
+              id: "stat-users",
+              name: "Stat",
+              span: 4,
+              props: { label: "Users", delta: "in data/users.json" },
+              bindings: [{ table: "users" }],
+            },
+            {
+              id: "stat-items",
+              name: "Stat",
+              span: 4,
+              props: {
+                label: "Menu items",
+                trend: "up",
+                delta: "nested by parent_id",
+              },
+              bindings: [{ table: "menu_items" }],
+            },
+            {
+              id: "stat-roles",
+              name: "Stat",
+              span: 4,
+              variant: "primary",
+              props: { label: "Roles" },
+              bindings: [{ table: "roles" }],
+            },
+          ],
+        },
+        {
+          id: "mega",
+          name: "MegaMenu",
+          span: 12,
+          props: { groupBy: "category", labelField: "label" },
+          bindings: [
+            {
+              table: "menu_items",
+              fields: [
+                "label",
+                "category",
+                "thumbnail_url",
+                "description",
+                "href",
+              ],
+            },
+          ],
+        },
+      ],
+      links: [
+        { to: "products", label: "Browse products", from: "hero" },
+        { to: "admin", label: "Admin", from: "hero" },
+      ],
+      bindings: [{ table: "roles", fields: ["name", "level"], mode: "read" }],
+    }),
+    "pages/products.json": json({
+      name: "products",
+      title: "Products",
+      route: "/products",
+      description: "The catalog: a table and a list of the product menu items.",
+      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      components: [
+        nav("nav"),
+        {
+          id: "hero",
+          name: "Hero",
+          span: 12,
+          variant: "center",
+          props: {
+            eyebrow: "Catalog",
+            title: "Products",
+            subtitle: "Everything we sell, straight from the menu_items table.",
+            ctaLabel: "Back home",
+            ctaHref: "#/",
+            secondaryLabel: "",
+          },
+        },
+        {
+          id: "catalog",
+          name: "Table",
+          span: 8,
+          variant: "striped",
+          props: { caption: "Catalog items" },
+          bindings: [
+            {
+              table: "menu_items",
+              fields: [
+                "thumbnail_url",
+                "label",
+                "description",
+                "href",
+                "required_role",
+              ],
+              filter: "category=Catalog",
+              order: "sort",
+            },
+          ],
+        },
+        {
+          id: "featured",
+          name: "Card",
+          span: 4,
+          variant: "elevated",
+          props: {
+            title: "Featured",
+            text: "Sub-items of Products, with thumbnails.",
+          },
+          children: [
+            {
+              id: "featured-list",
+              name: "List",
+              span: 12,
+              variant: "plain",
+              props: {
+                titleField: "label",
+                subtitleField: "href",
+                imageField: "thumbnail_url",
+              },
+              bindings: [
+                {
+                  table: "menu_items",
+                  fields: ["label", "href", "thumbnail_url"],
+                  filter: "parent_id=3",
+                  order: "sort",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      links: [
+        { to: "home", label: "Back home", from: "hero" },
+        { to: "admin", label: "Admin", from: "nav" },
+      ],
+    }),
+    "pages/admin.json": json({
+      name: "admin",
+      title: "Admin",
+      route: "/admin",
+      description:
+        "Administration: users table, a form from the users schema, role stats.",
+      device: "desktop",
+      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      components: [
+        nav("nav"),
+        {
+          id: "stats",
+          name: "Grid",
+          span: 12,
+          props: { columns: 3 },
+          children: [
+            {
+              id: "active-users",
+              name: "Stat",
+              span: 4,
+              props: {
+                label: "Active users",
+                filter: "active=true",
+                trend: "up",
+                delta: "of all users",
+              },
+              bindings: [{ table: "users", fields: ["active"] }],
+            },
+            {
+              id: "roles-count",
+              name: "Stat",
+              span: 4,
+              props: { label: "Roles" },
+              bindings: [{ table: "roles" }],
+            },
+            {
+              id: "pages-count",
+              name: "Stat",
+              span: 4,
+              variant: "primary",
+              props: { label: "Published pages", filter: "published=true" },
+              bindings: [{ table: "pages", fields: ["published"] }],
+            },
+          ],
+        },
+        {
+          id: "users",
+          name: "Table",
+          span: 8,
+          props: { caption: "Users" },
+          bindings: [
+            {
+              table: "users",
+              fields: [
+                "avatar",
+                "name",
+                "email",
+                "role_id",
+                "active",
+                "joined",
+              ],
+            },
+          ],
+        },
+        {
+          id: "new-user",
+          name: "Form",
+          span: 4,
+          props: { title: "New user", submitLabel: "Add user" },
+          bindings: [
+            {
+              table: "users",
+              fields: ["name", "email", "role_id", "active"],
+              mode: "write",
+            },
+          ],
+        },
+        {
+          id: "tabs",
+          name: "Tabs",
+          span: 12,
+          props: {
+            items: [
+              {
+                label: "Roles",
+                content:
+                  '<ul class="ds-list ds-list--plain" data-source="roles" data-order="-level"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="name"></strong><small data-field="description"></small></div></li></ul>',
+              },
+              {
+                label: "Pages",
+                content:
+                  '<ul class="ds-list ds-list--plain" data-source="pages"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="title"></strong><small data-field="path"></small></div></li></ul>',
+              },
+            ],
+          },
+          bindings: [
+            { table: "roles", fields: ["name", "description", "level"] },
+            { table: "pages", fields: ["title", "path"] },
+          ],
+        },
+      ],
+      links: [{ to: "home", label: "Home", from: "nav" }],
+      bindings: [{ table: "roles", fields: ["name", "level"], mode: "read" }],
+    }),
   };
 }
