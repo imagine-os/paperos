@@ -3,32 +3,10 @@
 import { stopEventPropagation } from "tldraw";
 import { openFile } from "@/ide/open-file";
 import { getProjectStore } from "@/ide/project";
+import type { CardContent } from "@/map/model";
 import type { WindowKindProps } from "../window-kinds";
 import { openDataWindow, parseContent } from "./data-common";
 import { openDesignWindow, openPagesWindow } from "./design-common";
-
-/** What a project-map node points at. */
-export type CardTarget =
-  | { type: "table"; table: string }
-  | { type: "file"; path: string }
-  | { type: "component"; name: string }
-  | { type: "page"; name: string }
-  | { type: "tokens" }
-  | { type: "folder"; path: string }
-  | { type: "none" };
-
-/** What a Card window keeps in `content`. */
-export interface CardContent {
-  /** Stable key (`table:users`, `file:app.js`, ...) so map regeneration keeps positions. */
-  key?: string;
-  subtitle?: string;
-  icon?: string;
-  /** Section the card belongs to (for styling). */
-  section?: string;
-  /** Small facts shown under the subtitle. */
-  facts?: string[];
-  target?: CardTarget;
-}
 
 const SECTION_TONES: Record<string, string> = {
   data: "data",
@@ -53,7 +31,6 @@ export function CardWindow({ shape, editor }: WindowKindProps) {
         openDataWindow(editor, { table: t.table });
         return;
       case "file":
-      case "folder":
         if (project)
           openFile(editor, { project, path: t.path }, { nearId: shape.id });
         return;
@@ -69,10 +46,7 @@ export function CardWindow({ shape, editor }: WindowKindProps) {
     }
   };
 
-  const canOpen =
-    content.target &&
-    content.target.type !== "none" &&
-    content.target.type !== "folder";
+  const canOpen = content.target && content.target.type !== "none";
 
   return (
     <div
