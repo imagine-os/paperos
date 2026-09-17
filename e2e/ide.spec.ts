@@ -13,7 +13,7 @@ async function waitForIde(page: Page) {
 test("first run opens the sample project in the IDE workspace", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   const kinds = await page
     .locator(".pos-window")
@@ -34,7 +34,7 @@ test("first run opens the sample project in the IDE workspace", async ({
 test("clicking a file opens an editor window next to Files", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await page.locator(".pos-files__row", { hasText: "styles.css" }).click();
   const editors = page.locator(".pos-window[data-kind=editor]");
@@ -55,7 +55,7 @@ test("clicking a file opens an editor window next to Files", async ({
 test("editing index.html updates the preview and Ctrl+S saves", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   const frame = page.frameLocator("iframe.pos-preview__frame");
   await expect(frame.locator("h1")).toHaveText("Hello, PaperOS", {
@@ -89,7 +89,7 @@ test("editing index.html updates the preview and Ctrl+S saves", async ({
 });
 
 test("console shows preview logs and runs snippets", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await expect(page.getByTestId("console-list")).toContainText(
     "Hello from app.js",
@@ -108,7 +108,7 @@ test("console shows preview logs and runs snippets", async ({ page }) => {
 test("Ctrl+K opens the command palette and runs a command", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await page.keyboard.press("Control+k");
   await expect(page.getByTestId("command-palette")).toBeVisible();
@@ -140,7 +140,7 @@ test("Ctrl+K opens the command palette and runs a command", async ({
 test("markdown window renders README.md and the file context menu works", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await page.getByTestId("new-window-menu").click();
   await page.getByTestId("new-window-markdown").click();

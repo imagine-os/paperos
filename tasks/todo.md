@@ -118,6 +118,23 @@
       page renders with the expected auth 404
 - [x] README Hosting section, PLAN decision 24
 
+## Landing page
+
+- [x] `/` is a static sales page (`src/app/page.tsx`, `landing.css`,
+      `landing-visual.tsx`): hero with the product line and three CTAs, an
+      inline-SVG desktop scene (animated on load, reduced-motion aware), a
+      six-tile feature grid, How it works, Built for, an honest Status panel
+      linking to `docs/PLAN.md`, footer; light/dark, 360-1600px, keyboard
+      accessible
+- [x] Desktop moved to `/app` (`src/app/app/page.tsx`); legacy banner links
+      to `/app`; all e2e specs visit `/app`; new `e2e/landing.spec.ts`
+- [x] Visual language documented in `docs/BRAND.md` (palette, type, spacing,
+      radii, shadows, motion) for the design system to adopt
+- [x] Docs: README routes table + hosting, PLAN decision 31
+- [x] Validate: `check`, `build`, `build:static` (index, app, legacy, 404),
+      `out/` served under `/paperos/` in Chromium, screenshots, full e2e
+      against the production build
+
 ## M4 - Data
 
 - [x] Plan written, foundation read (`src/ide/project/`, `src/ide/docs.ts`,

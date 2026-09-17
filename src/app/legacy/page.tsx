@@ -15,7 +15,7 @@ export default function LegacyPage() {
     <div className="legacy-shell">
       <div className="legacy-banner" role="banner">
         <span>Legacy prototype (2025).</span>
-        <Link href="/">Back to PaperOS v2 &rarr;</Link>
+        <Link href="/app">Back to PaperOS v2 &rarr;</Link>
       </div>
       <div className="legacy-canvas">
         <Room>

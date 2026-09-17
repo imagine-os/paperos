@@ -34,7 +34,7 @@ test("Columns tiles three windows side by side across the viewport", async ({
   page,
 }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await openWindows(page, 3);
 
   await page.getByTestId("layout-menu").click();
@@ -69,7 +69,7 @@ test("Columns tiles three windows side by side across the viewport", async ({
 
 test("Alt+3 applies Grid and Alt+1 frees the windows", async ({ page }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await openWindows(page, 4);
   const canvas = (await page.locator(".pos-canvas").boundingBox())!;
   await page.mouse.click(canvas.x + 40, canvas.y + canvas.height / 2);
@@ -86,7 +86,7 @@ test("workspaces are saved, survive a reload and can be switched to", async ({
   page,
 }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await openWindows(page, 3);
   await page.getByTestId("layout-menu").click();
   await page.getByTestId("layout-grid").click();
@@ -122,7 +122,7 @@ test("drag detaches a tiled window; drop swaps on center and inserts on edges", 
   page,
 }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await openWindows(page, 3);
   await page.getByTestId("layout-menu").click();
   await page.getByTestId("layout-columns").click();

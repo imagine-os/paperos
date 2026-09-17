@@ -3,7 +3,7 @@ import { newNoteWindow, skipFirstRun } from "./helpers";
 
 test("desktop renders and can open a window", async ({ page }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   const topbar = page.getByTestId("topbar");
   await expect(topbar).toContainText("PaperOS");
   await expect(topbar).toContainText("v2 preview");

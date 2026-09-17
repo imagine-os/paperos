@@ -20,7 +20,7 @@ test("the script console creates and tiles three windows through the Canvas API"
   page,
 }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByTestId("topbar")).toBeVisible();
   await openKind(page, "script");
   const script = page.getByTestId("script-window");
@@ -85,7 +85,7 @@ test("the script console creates and tiles three windows through the Canvas API"
 
 test("the clock plugin can be enabled and shows a window", async ({ page }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByTestId("topbar")).toBeVisible();
   await openKind(page, "plugins");
   const plugins = page.getByTestId("plugins-window");
@@ -123,7 +123,7 @@ test("the clock plugin can be enabled and shows a window", async ({ page }) => {
 
 test("window.paperos lists windows created from the UI", async ({ page }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.getByTestId("topbar")).toBeVisible();
   await newNoteWindow(page);
   await expect(page.locator(".pos-window")).toHaveCount(1);

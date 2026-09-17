@@ -22,6 +22,20 @@ small Node CLI on your machine. The rest of the roadmap is in
 The 2025 prototype (a tldraw whiteboard with a code editor and a project
 browser) still runs at `/legacy`.
 
+## Routes
+
+| Route     | What it is                                                              |
+| --------- | ----------------------------------------------------------------------- |
+| `/`       | Landing page: what PaperOS is, a link to the demo, status and the plan. |
+| `/app`    | The PaperOS v2 desktop (the working demo).                              |
+| `/legacy` | The 2025 prototype, frozen.                                             |
+
+Hosted at <https://imagine-os.github.io/paperos/> (landing),
+<https://imagine-os.github.io/paperos/app/> (desktop) and
+<https://imagine-os.github.io/paperos/legacy/>. The landing page is a static
+server component (`src/app/page.tsx`, `src/app/landing.css`); its visual
+language is documented in [`docs/BRAND.md`](docs/BRAND.md).
+
 ## Run it
 
 Requirements: Node 20 or newer, npm.
@@ -324,8 +338,8 @@ prototype's optional auth route.
 - **GitHub Pages (static):** <https://imagine-os.github.io/paperos/>. The
   `pages` workflow (`.github/workflows/pages.yml`) runs on every push to
   `main`: `npm run build:static` exports the site to `out/` and
-  `actions/deploy-pages` publishes it. `/` and `/legacy` both work under the
-  `/paperos/` base path. The static build is `next build` with
+  `actions/deploy-pages` publishes it. `/`, `/app` and `/legacy` all work
+  under the `/paperos/` base path. The static build is `next build` with
   `PAPEROS_STATIC=1` (see `next.config.ts`): `output: "export"`,
   `basePath`/`assetPrefix` from `PAPEROS_BASE_PATH` (default `/paperos`),
   trailing slashes, unoptimized images, and no API routes, so the legacy
@@ -447,14 +461,16 @@ src/
   legacy/         The 2025 prototype, moved verbatim (see src/legacy/README.md)
 tools/paperos-mcp/ MCP server + WebSocket bridge CLI (own package, built with tsc)
 scripts/gen-api.mts Generates docs/CANVAS_API.md and the CLI's schema copy
-e2e/              Playwright: smoke, window manager, IDE, API and data tests
+e2e/              Playwright: landing, smoke, window manager, IDE, API and data tests
 docs/PLAN.md      Milestones and architecture decisions
 docs/CANVAS_API.md Generated Canvas API reference; docs/MCP.md the bridge guide
 tasks/todo.md     Working checklist and review notes
 ```
 
 Design tokens live in `src/app/globals.css` as CSS variables (`--pos-*`),
-with a dark set under `prefers-color-scheme: dark`. The tldraw canvas follows
+with a dark set under `prefers-color-scheme: dark`. The landing page has its
+own set (`--land-*` in `src/app/landing.css`), documented in `docs/BRAND.md`
+as the reference for the design system. The tldraw canvas follows
 the same system preference.
 
 tldraw's icons, fonts and translations are bundled from `@tldraw/assets`
@@ -474,5 +490,5 @@ load anything from `cdn.tldraw.com`.
   `src/desktop/desktop.tsx`. Files are already Yjs documents: call
   `attachProvider()` in `src/ide/docs.ts` with a function that connects a
   provider to each `Y.Doc`. No other code depends on where the data lives.
-- **tldraw version:** one `tldraw` version serves both `/` and `/legacy`;
+- **tldraw version:** one `tldraw` version serves both `/app` and `/legacy`;
   bump `tldraw` and `@tldraw/assets` together in `package.json`.

@@ -351,6 +351,16 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
     collaboration: M4 is Data, M5 the page builder, M6 the full-stack sample,
     M7 collaboration (unchanged in content), M8 polish.
 
+31. **The root is a sales page; the desktop lives at `/app`.** `/` is a
+    static server component (`src/app/page.tsx`, `src/app/landing.css`, an
+    inline SVG scene in `src/app/landing-visual.tsx`): no tldraw, no client
+    JavaScript beyond Next's runtime, no external fonts or images, so it is
+    fast and safe to index. The desktop moved to `src/app/app/page.tsx`
+    unchanged; `/legacy` stays. Every internal link is a `<Link>` so the
+    Pages base path applies. The landing's tokens (`--land-*`) are the
+    reference visual language, written up in `docs/BRAND.md` for the design
+    system to adopt (M5).
+
 ## Notes
 
 - The annotated tag `v0-prototype` (at `aa5f51d`) could not be pushed from
