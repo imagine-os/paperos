@@ -6,6 +6,7 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import { BROWSER_TOOLS } from "./browser-tools.js";
 import { LocalTools } from "./local-tools.js";
+import { killAllShells, SHELL_TOOLS } from "./shell-tools.js";
 import {
   BRIDGE_PROTOCOL_VERSION,
   createPendingCalls,
@@ -42,7 +43,7 @@ export class BridgeServer {
       log: this.log,
       push: (message) => this.push(message),
     });
-    for (const t of BROWSER_TOOLS) this.local.register(t);
+    for (const t of [...BROWSER_TOOLS, ...SHELL_TOOLS]) this.local.register(t);
   }
 
   /** Sends a message to the connected tab (streams from local tools); false when there is none. */
@@ -103,6 +104,7 @@ export class BridgeServer {
   close(): Promise<void> {
     return new Promise((resolve) => {
       this.pending.rejectAll("bridge shutting down");
+      killAllShells();
       this.tab?.close();
       this.tab = null;
       if (!this.wss) return resolve();
@@ -160,6 +162,7 @@ export class BridgeServer {
       this.tab = null;
       this.hello = null;
       this.pending.rejectAll("the PaperOS tab disconnected");
+      killAllShells();
       this.log("tab disconnected");
     });
     socket.on("error", (e) => this.log(`socket error: ${e.message}`));

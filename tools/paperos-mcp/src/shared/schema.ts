@@ -114,6 +114,8 @@ const BROWSER_TAB =
   "BrowserTab {id, url, title, active, canGoBack, canGoForward}";
 const BROWSER_INFO = `BrowserInfo {id (window id), title, tabs: ${BROWSER_TAB}[]}`;
 const BOOKMARK = "Bookmark {title, url}";
+const TERMINAL_INFO =
+  "TerminalInfo {id (window id), title, backend: 'project' | 'bridge', prompt, lines}";
 const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
@@ -915,6 +917,76 @@ export const TOOLS: ToolSpec[] = [
     ],
     returns: `${BOOKMARK}[] (the whole list)`,
     mutates: true,
+  },
+
+  // ----- terminal -----
+  {
+    name: "terminal.open",
+    description:
+      "Opens a Terminal window. The project shell runs in the tab over the project's files (ls, cd, cat, grep, find, tree, echo >, open <file>, preview <page>, data <table>, board <name>, layout <preset>, api <expression>, js). The bridge shell (a real shell on the user's machine) can only be started by the person, from the window.",
+    params: [
+      {
+        name: "options",
+        description: "What to open",
+        schema: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Window title" },
+            run: {
+              type: "array",
+              items: { type: "string" },
+              description: "Commands to run right away, in order",
+            },
+          },
+        },
+      },
+    ],
+    returns: TERMINAL_INFO,
+    mutates: true,
+  },
+  {
+    name: "terminal.run",
+    description:
+      "Runs a command line in a Terminal window (the focused or first one when id is omitted; opens one when there is none) and returns its output. In the bridge shell the line is typed into the real shell and whatever it printed within 600 ms is returned.",
+    params: [
+      str("command", "The command line"),
+      str("id", "Terminal window id (default: focused or first)", false),
+    ],
+    returns: "{output, error, prompt}",
+    mutates: true,
+  },
+  {
+    name: "terminal.write",
+    description:
+      "Sends raw input (keystrokes, without an implied newline) to a Terminal window's bridge shell.",
+    params: [
+      str("data", "Text to send (\\n runs a line, \\u0003 is Ctrl+C)"),
+      str("id", "Terminal window id (default: focused or first)", false),
+    ],
+    returns: "{ok: true}",
+    mutates: true,
+  },
+  {
+    name: "terminal.onOutput",
+    description:
+      "Subscribes to a Terminal window's output. The callback gets (text, kind) with kind 'output' | 'error' | 'system'. Returns an unsubscribe function.",
+    params: [
+      {
+        name: "callback",
+        description: "function(text, kind)",
+        required: true,
+        schema: { description: "function" },
+      },
+      str("id", "Terminal window id (default: focused or first)", false),
+    ],
+    returns: "unsubscribe function",
+    browserOnly: true,
+  },
+  {
+    name: "terminal.list",
+    description: "Every Terminal window with its backend and prompt.",
+    params: [],
+    returns: `${TERMINAL_INFO}[]`,
   },
 
   // ----- preview -----

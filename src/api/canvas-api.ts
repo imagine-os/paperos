@@ -93,6 +93,14 @@ export interface BrowserInfo {
   tabs: BrowserTabInfo[];
 }
 
+export interface TerminalInfo {
+  id: string;
+  title: string;
+  backend: "project" | "bridge";
+  prompt: string;
+  lines: number;
+}
+
 export interface CreateWindowOptions {
   kind: string;
   title?: string;
@@ -215,6 +223,19 @@ export interface CanvasApi {
       remove?: boolean;
     }): Promise<Bookmark[]>;
   };
+  terminal: {
+    open(options?: { title?: string; run?: string[] }): TerminalInfo;
+    run(
+      command: string,
+      id?: string
+    ): Promise<{ output: string; error: boolean; prompt: string }>;
+    write(data: string, id?: string): Promise<{ ok: true }>;
+    onOutput(
+      callback: (text: string, kind: string) => void,
+      id?: string
+    ): () => void;
+    list(): TerminalInfo[];
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -335,6 +356,24 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
   const requireBrowser = (id: unknown): string =>
     resolveBrowser(id) ??
     fail("No Browser window is open (browser.open creates one)");
+
+  const terminalInfo = (id: string): TerminalInfo => ({
+    id,
+    title: host.windows.get(id)?.title ?? "Terminal",
+    ...host.terminal.info(id),
+  });
+
+  const resolveTerminal = (id: unknown): string | null => {
+    if (id === undefined || id === null) return host.terminal.resolve();
+    const w = requireWindow(id);
+    if (w.kind !== "terminal")
+      fail(`Window "${w.id}" is not a Terminal window`);
+    return w.id;
+  };
+
+  const requireTerminal = (id: unknown): string =>
+    resolveTerminal(id) ??
+    fail("No Terminal window is open (terminal.open creates one)");
 
   const requireProject = (): string =>
     host.projects.activeId() ??
@@ -874,6 +913,46 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
         await host.browser.setBookmarks(project, next);
         return next;
       },
+    },
+
+    terminal: {
+      open(options = {}) {
+        if (typeof options !== "object" || options === null)
+          fail("options must be an object");
+        const title =
+          options.title === undefined
+            ? undefined
+            : expectString(options.title, "title");
+        if (
+          options.run !== undefined &&
+          (!Array.isArray(options.run) ||
+            options.run.some((r) => typeof r !== "string"))
+        )
+          fail("run must be an array of strings");
+        const content = JSON.stringify({
+          backend: "project",
+          ...(options.run ? { run: options.run } : {}),
+        });
+        return terminalInfo(host.terminal.open(content, title));
+      },
+      async run(command, id) {
+        const line = expectString(command, "command");
+        const tid =
+          resolveTerminal(id) ??
+          host.terminal.open(JSON.stringify({ backend: "project" }));
+        const result = await host.terminal.run(tid, line);
+        return { ...result, prompt: host.terminal.info(tid).prompt };
+      },
+      async write(data, id) {
+        if (typeof data !== "string") fail("data must be a string");
+        await host.terminal.write(requireTerminal(id), data);
+        return { ok: true };
+      },
+      onOutput(callback, id) {
+        if (typeof callback !== "function") fail("callback must be a function");
+        return host.terminal.onOutput(requireTerminal(id), callback);
+      },
+      list: () => host.terminal.list().map(terminalInfo),
     },
 
     preview: {

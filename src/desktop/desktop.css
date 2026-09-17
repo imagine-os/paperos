@@ -2975,3 +2975,121 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Terminal */
+.pos-terminal {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  background: var(--pos-surface);
+  cursor: text;
+}
+
+.pos-terminal .pos-toolbar {
+  cursor: default;
+}
+
+.pos-terminal__hint {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--pos-border);
+  background: var(--pos-surface-2);
+  color: var(--pos-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.pos-terminal__hint code,
+.pos-terminal__confirm code {
+  font-family: var(--pos-mono);
+  font-size: 11px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--pos-accent) 10%, transparent);
+}
+
+.pos-terminal__confirm {
+  margin: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 10px;
+  background: var(--pos-surface-2);
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: default;
+}
+
+.pos-terminal__confirm p {
+  margin: 6px 0 0;
+  color: var(--pos-text-muted);
+}
+
+.pos-terminal__confirm-warn {
+  color: var(--pos-danger) !important;
+  font-size: 12px;
+}
+
+.pos-terminal__confirm-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pos-terminal__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px;
+  font-family: var(--pos-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--pos-text);
+  background: var(--pos-bg);
+}
+
+.pos-terminal__line {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pos-terminal__line[data-kind="input"] {
+  color: var(--pos-accent);
+}
+
+.pos-terminal__line[data-kind="error"] {
+  color: var(--pos-danger);
+}
+
+.pos-terminal__line[data-kind="system"] {
+  color: var(--pos-text-muted);
+  font-style: italic;
+}
+
+.pos-terminal__input-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pos-terminal__prompt {
+  color: var(--pos-accent);
+  white-space: pre;
+  flex: none;
+}
+
+.pos-terminal__prompt:empty {
+  display: none;
+}
+
+.pos-terminal__input {
+  flex: 1;
+  min-width: 40px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  outline: none;
+  padding: 0;
+}

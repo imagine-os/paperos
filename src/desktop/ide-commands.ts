@@ -172,6 +172,43 @@ export function registerIdeCommands(editor: Editor): () => void {
 
   list.push(
     {
+      id: "terminal.open",
+      title: "Open a Terminal (project shell)",
+      group: "Terminal",
+      keywords: "shell command line console cli",
+      run: () =>
+        void openKindWindow(
+          editor,
+          "terminal",
+          JSON.stringify({ backend: "project" }),
+          { title: "Terminal", reuse: false }
+        ),
+    },
+    {
+      id: "terminal.open-here",
+      title: "Open a Terminal in the current file's folder",
+      group: "Terminal",
+      keywords: "shell cd folder directory",
+      run: () => {
+        const id = wm().getFocusedId();
+        const w = id ? wm().getWindow(id) : undefined;
+        const ref = w ? parseFileRef(w.props.content) : null;
+        const dir = ref ? ref.path.split("/").slice(0, -1).join("/") : "";
+        void openKindWindow(
+          editor,
+          "terminal",
+          JSON.stringify({
+            backend: "project",
+            run: dir ? [`cd /${dir}`] : [],
+          }),
+          { title: dir ? `Terminal: /${dir}` : "Terminal", reuse: false }
+        );
+      },
+    }
+  );
+
+  list.push(
+    {
       id: "map.generate",
       title: "Generate project map",
       group: "Map",

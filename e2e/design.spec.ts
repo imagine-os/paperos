@@ -204,7 +204,7 @@ test("map.generate from the Script window builds sections, cards and arrows", as
       .sort()
   );
   expect(sections).toEqual([
-    ["Code", 8],
+    ["Code", 9],
     ["Components", 37],
     ["Data", 4],
     ["Design", 1],

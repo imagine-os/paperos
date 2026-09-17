@@ -424,8 +424,32 @@ export function agentDrivenBoard(): BoardDef {
         notes: "Every tool call shows here as it arrives; Pause holds them.",
       },
       {
+        id: "terminal",
+        title: "3. Terminal: the project as a shell",
+        grid: "single",
+        column: 1,
+        windows: [
+          {
+            id: "term",
+            kind: "terminal",
+            title: "Terminal",
+            content: {
+              backend: "project",
+              run: [
+                "tree pages",
+                "grep -n data-source index.html",
+                "help open",
+              ],
+            },
+            size: { w: 560, h: 380 },
+          },
+        ],
+        notes:
+          "ls, cat, grep, tree over the project files; open, preview, data, board and api reach the canvas. Bridge shell runs a real shell on your machine.",
+      },
+      {
         id: "generated",
-        title: "3. Generated windows",
+        title: "4. Generated windows",
         grid: "grid",
         columns: 2,
         cell: { w: 320, h: 200 },
@@ -488,7 +512,7 @@ export function agentDrivenBoard(): BoardDef {
       },
       {
         id: "map",
-        title: "4. Project map",
+        title: "5. Project map",
         grid: "stack",
         windows: [
           {
@@ -513,6 +537,7 @@ export function agentDrivenBoard(): BoardDef {
     arrows: [
       { from: "code", to: "transcript", label: "the same API over MCP" },
       { from: "transcript", to: "generated", label: "creates windows" },
+      { from: "term", to: "generated", label: "open, data, board" },
       { from: "g1", to: "g3", label: "bound" },
       { from: "g2", to: "g3", label: "bound" },
       { from: "g4", to: "g3", label: "used by" },
@@ -530,6 +555,12 @@ export function agentDrivenBoard(): BoardDef {
         title: "Let an agent do it",
         caption:
           "Over the MCP bridge, Claude calls the same methods; the transcript shows each one.",
+      },
+      {
+        section: "terminal",
+        title: "Type at it",
+        caption:
+          "A shell over the project: ls, grep and tree read the files; open, preview, data and board act on the canvas. Bridge shell is a real shell on your machine, opt-in.",
       },
       {
         section: "generated",

@@ -20,6 +20,7 @@ import {
   type BridgeMessage,
   type CallMessage,
   type PendingCalls,
+  type StreamMessage,
 } from "./bridge-protocol";
 import type { CanvasApi } from "./canvas-api";
 import { invokeTool } from "./invoke";
@@ -91,6 +92,7 @@ export class BridgeClient {
   private readonly now: () => number;
   private readonly storage: BridgeClientOptions["storage"];
   private readonly requests: PendingCalls;
+  private readonly streams = new Map<string, Set<(m: StreamMessage) => void>>();
 
   constructor(
     private readonly api: CanvasApi,
@@ -106,6 +108,23 @@ export class BridgeClient {
     this.requests = createPendingCalls({
       timeoutMs: options.requestTimeoutMs ?? 60_000,
     });
+  }
+
+  /** Listens to a stream channel from the CLI (`shell:<id>`); returns an unsubscribe function. */
+  onStream(
+    channel: string,
+    handler: (message: StreamMessage) => void
+  ): () => void {
+    let set = this.streams.get(channel);
+    if (!set) {
+      set = new Set();
+      this.streams.set(channel, set);
+    }
+    set.add(handler);
+    return () => {
+      set?.delete(handler);
+      if (set && set.size === 0) this.streams.delete(channel);
+    };
   }
 
   /**
@@ -209,6 +228,11 @@ export class BridgeClient {
       if (this.socket !== socket) return;
       this.socket = null;
       this.requests.rejectAll("the agent bridge disconnected");
+      // Shell sessions die with the connection: tell their listeners.
+      for (const [channel, set] of [...this.streams])
+        set.forEach((h) =>
+          h({ type: "stream", channel, event: "disconnected" })
+        );
       if (this.enabled) {
         this.status.set("waiting");
         this.scheduleRetry();
@@ -242,6 +266,10 @@ export class BridgeClient {
     }
     if (message.type === "response") {
       this.requests.settle(message);
+      return;
+    }
+    if (message.type === "stream") {
+      this.streams.get(message.channel)?.forEach((h) => h(message));
       return;
     }
     if (message.type === "call") await this.handleCall(message);

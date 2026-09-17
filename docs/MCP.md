@@ -114,6 +114,30 @@ The tab reaches the same tools over the bridge: the protocol (v2) has
 `browser.screenshot` sent that way; the Terminal's bridge shell (M7) uses the
 same channel.
 
+## A real shell through the bridge
+
+The Terminal window's **Bridge shell** backend runs a shell on your machine.
+The CLI spawns it (`shell.spawn`), forwards what you type (`shell.write`),
+streams its output back to the tab as `stream` messages on channel
+`shell:<id>` and ends it with `shell.kill`. These `shell.*` tools are
+**tab-only**: they are not offered to the agent over MCP (the agent has its
+own shell), and they only run after the person clicks **Start shell** in the
+Terminal window's confirmation, once per tab session.
+
+- Shell: `$SHELL` (or `powershell.exe` / `%COMSPEC%` on Windows), started
+  where the CLI runs (`PAPEROS_SHELL_CWD` overrides the directory).
+- With [`node-pty`](https://www.npmjs.com/package/node-pty) installed next
+  to the CLI (`npm --prefix tools/paperos-mcp install node-pty`) the shell
+  gets a pty: prompts, job control, interactive programs (ANSI codes are
+  stripped for display). Without it the shell runs on pipes in line mode.
+- `PAPEROS_BRIDGE_NO_SHELL=1` makes the CLI refuse every spawn.
+- Shells die when the tab disconnects or the CLI exits.
+
+`paperos.terminal.write()` (and the `terminal_write` MCP tool) can type into
+a running bridge shell, so an agent can drive a shell the person started.
+Treat that like the rest of the bridge: loopback only, no authentication,
+pause the agent from the Agent window when in doubt.
+
 ## Options
 
 | Setting                         | Default     | Notes                                                                              |
@@ -128,7 +152,9 @@ Calls time out after 30 s if the tab does not answer.
 
 The bridge runs Canvas API calls in your browser tab with the tab's
 privileges: whatever the agent asks (write a file, close every window) is
-done. It listens on loopback only and has no authentication, which is the
+done. The bridge shell goes further (a real shell with your user's
+privileges), which is why it is opt-in from the Terminal window and never
+started by an agent. It listens on loopback only and has no authentication, which is the
 usual trade-off for local MCP servers; do not forward the port. Use the
 Agent window's Pause switch when you want to look before the agent acts.
 

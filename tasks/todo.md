@@ -262,17 +262,81 @@
       `browser.fetch` and `browser.screenshot` (Playwright optional), MCP
       tools `browser_fetch` / `browser_screenshot`, docs/MCP.md
 - [x] e2e `e2e/browser.spec.ts`; check, build, build:static, e2e; push Part 1
-- [ ] Terminal: pure project shell in `src/terminal/` (interpreter over a
+- [x] Terminal: pure project shell in `src/terminal/` (interpreter over a
       virtual fs, completion, history), unit tests
-- [ ] Terminal window kind: own terminal component, Project shell and Bridge
+- [x] Terminal window kind: own terminal component, Project shell and Bridge
       shell backends, opt-in confirm for the bridge shell, backend indicator
-- [ ] Bridge `shell.*` tools (node-pty optional, child_process fallback) and
+- [x] Bridge `shell.*` tools (node-pty optional, child_process fallback) and
       `stream` messages; Canvas API `terminal.*`; palette commands;
       "Agent-driven" board step; docs/MCP.md security section
-- [ ] e2e `e2e/terminal.spec.ts`; check, build, build:static, e2e; push Part 2
-- [ ] Docs: CANVAS_API.md, README (Windows), PLAN (M7 done + decisions),
+- [x] e2e `e2e/terminal.spec.ts`; check, build, build:static, e2e; push Part 2
+- [x] Docs: CANVAS_API.md, README (Windows), PLAN (M7 done + decisions),
       landing status, this Review
 - [ ] Screenshots and webm in the scratchpad (`v2shots/m7/`)
+
+## Review (M7)
+
+### What changed
+
+- Browser window kind (`src/desktop/kinds/browser.tsx`) with its pure model
+  in `src/browser/`: addresses (`paperos://preview|docs|legacy|home`, http(s),
+  bare hosts, project paths), tab state kept in the window `content`,
+  bookmarks as `browser/bookmarks.json`, an embed-refusal heuristic
+  (blocked-host list, 8 s timeout, load event) and bundled docs (`?raw`
+  imports of README.md and docs/*.md, loaded on demand). Canvas API
+  `browser.*`, palette commands, a Browser step on "Ship a feature", the
+  sample ships a bookmarks file.
+- Terminal window kind (`src/desktop/kinds/terminal.tsx`) with its model in
+  `src/terminal/`: a pure project shell (tokenizer with quotes, pipes and
+  redirection; ls, cd, pwd, cat, echo, mkdir, touch, rm, mv, cp, find, grep,
+  head, tail, wc, tree, clear, help, history; globs; completion for
+  commands, paths, presets, tables and boards) with PaperOS commands
+  (`open`, `preview`, `data`, `board`, `layout`, `api`, `js` REPL) behind a
+  `ShellHost`; a `TerminalSession` per window (registry by window id) that
+  the component and the Canvas API share; the bridge shell backend over
+  `shell.*` CLI tools with an opt-in confirmation. Canvas API `terminal.*`,
+  palette commands, a Terminal step on "Agent-driven".
+- Bridge protocol v2: `request` / `response` (tab → CLI) and `stream`
+  (CLI → tab). CLI local tools: `browser.fetch`, `browser.screenshot`
+  (Playwright optional; MCP tools `browser_fetch`, `browser_screenshot`) and
+  tab-only `shell.spawn|write|resize|kill|list` (node-pty optional, pipes
+  otherwise, `PAPEROS_BRIDGE_NO_SHELL=1` to refuse).
+- Fixes found on the way: `FileDoc.loaded` so `peekLiveText` falls through
+  to the backend while a document is still seeding; the Boards menu's "on
+  canvas" check is reactive to the store; `.pos-browser` fills the window
+  body.
+- Docs: `docs/CANVAS_API.md` regenerated (`browser.*`, `terminal.*`),
+  `docs/MCP.md` (real browser and real shell through the bridge, security),
+  README (Windows rows, Browser and Terminal sections), PLAN (M7 done,
+  decisions 44-51, collaboration is M8), landing status, CLAUDE.md folder
+  map.
+
+### Verified in a real browser (Chromium, production build)
+
+- `e2e/browser.spec.ts`: the preview renders inside the Browser, tabs open
+  and close, docs link to each other and Back works, a bookmark lands in
+  `browser/bookmarks.json`, github.com shows the refusal card, the API
+  navigates and goes back.
+- `e2e/terminal.spec.ts`: `ls` lists the sample, Tab completes `pages/` and
+  lists candidates, `open index.html` opens an editor, errors are marked,
+  `grep | wc > file` writes a project file, the Bridge shell confirmation
+  appears and cannot start with the bridge off; `terminal.run` from the API
+  opens a window and returns output.
+- The CLI's pipe-mode shell was exercised by hand (`shell.spawn`,
+  `shell.write "echo hello"`, `shell.kill`).
+- Screenshots in the scratchpad `v2shots/m7/`.
+
+### Decisions and notes
+
+- No xterm.js: the terminal is a list of lines plus an input row, ANSI is
+  stripped. Enough for the project shell and line-mode work; full-screen
+  programs would need a real emulator (see PLAN decision 50).
+- Playwright and node-pty are never installed by `npm run mcp:build`; both
+  load with a dynamic import and the tools explain how to install them.
+- The `shell.*` tools are not MCP tools on purpose; agents can only type
+  into a shell the person started.
+- The static export carries the docs as text chunks (about 200 KB, loaded
+  when a docs address opens).
 
 ## Review (M6)
 

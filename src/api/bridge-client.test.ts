@@ -237,3 +237,40 @@ describe("bridge client requests to the CLI", () => {
     await expect(dropped).rejects.toThrow(/disconnected/);
   });
 });
+
+describe("bridge client streams", () => {
+  it("delivers stream messages per channel and a disconnected event on close", async () => {
+    const { client, sockets } = setup();
+    client.start();
+    const s = sockets[0];
+    s.onopen?.();
+    const got: string[] = [];
+    const off = client.onStream("shell:1", (m) =>
+      got.push(`${m.event}:${m.data ?? ""}`)
+    );
+    client.onStream("shell:2", (m) => got.push(`other:${m.event}`));
+    await client.handleIncoming({
+      type: "stream",
+      channel: "shell:1",
+      event: "data",
+      data: "hi",
+    });
+    await client.handleIncoming({
+      type: "stream",
+      channel: "shell:9",
+      event: "data",
+      data: "x",
+    });
+    expect(got).toEqual(["data:hi"]);
+    s.close();
+    expect(got).toEqual(["data:hi", "disconnected:", "other:disconnected"]);
+    off();
+    await client.handleIncoming({
+      type: "stream",
+      channel: "shell:1",
+      event: "data",
+      data: "late",
+    });
+    expect(got).toHaveLength(3);
+  });
+});

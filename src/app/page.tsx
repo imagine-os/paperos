@@ -439,6 +439,7 @@ export default function LandingPage() {
                   </li>
                   <li className="is-done">Full-stack sample project</li>
                   <li className="is-done">Boards and tours</li>
+                  <li className="is-done">Browser and Terminal windows</li>
                 </ul>
               </div>
               <div>

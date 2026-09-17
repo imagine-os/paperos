@@ -4,7 +4,7 @@
  * the file is copied verbatim into the CLI (see scripts/gen-api.ts).
  *
  *   tab    -> bridge : hello, result, event, request
- *   bridge -> tab    : welcome, call, response
+ *   bridge -> tab    : welcome, call, response, stream
  *
  * `call`/`result` run Canvas API tools in the tab for the agent;
  * `request`/`response` go the other way: the tab asks the CLI for something
@@ -62,6 +62,14 @@ export type ResponseMessage =
   | { type: "response"; id: string; ok: true; result: unknown }
   | { type: "response"; id: string; ok: false; error: string };
 
+/** Unsolicited data from a local tool to the tab (shell output on channel `shell:<id>`). */
+export interface StreamMessage {
+  type: "stream";
+  channel: string;
+  event: string;
+  data?: unknown;
+}
+
 export type BridgeMessage =
   | HelloMessage
   | WelcomeMessage
@@ -69,7 +77,8 @@ export type BridgeMessage =
   | ResultMessage
   | EventMessage
   | RequestMessage
-  | ResponseMessage;
+  | ResponseMessage
+  | StreamMessage;
 
 export function encodeMessage(message: BridgeMessage): string {
   return JSON.stringify(message);
@@ -125,6 +134,15 @@ export function decodeMessage(raw: unknown): BridgeMessage | null {
         ? { type, id: data.id, ok: false, error: data.error }
         : null;
     }
+    case "stream":
+      return typeof data.channel === "string" && typeof data.event === "string"
+        ? {
+            type: "stream",
+            channel: data.channel,
+            event: data.event,
+            data: data.data,
+          }
+        : null;
     case "event":
       return typeof data.name === "string" && typeof data.time === "number"
         ? {

@@ -20,6 +20,7 @@ import { PagesWindow } from "./kinds/pages";
 import { CardWindow } from "./kinds/card";
 import { LineageWindow } from "./kinds/lineage";
 import { BrowserWindow } from "./kinds/browser";
+import { TerminalWindow } from "./kinds/terminal";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -106,6 +107,15 @@ registerWindowKind({
   icon: "\u{1F310}",
   defaultSize: { w: 720, h: 520 },
   Component: BrowserWindow,
+});
+
+registerWindowKind({
+  id: "terminal",
+  label: "Terminal",
+  defaultTitle: "Terminal",
+  icon: "\u{2328}",
+  defaultSize: { w: 640, h: 380 },
+  Component: TerminalWindow,
 });
 
 registerWindowKind({

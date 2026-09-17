@@ -8,6 +8,9 @@ import {
   serializeBookmarks,
 } from "@/browser/bookmarks";
 import { parseState, serializeState } from "@/browser/tabs";
+import type { ShellFs } from "@/terminal/fs";
+import { ProjectShell } from "@/terminal/shell";
+import { parseTerminalContent, TerminalSession } from "@/terminal/session";
 import { scanBindings } from "@/data/bindings";
 import { describeStep } from "@/data/migrate";
 import { DataStore, type DataFs } from "@/data/store";
@@ -305,6 +308,54 @@ export function fakeHost(): FakeHost {
     };
   };
 
+  const terminals = new Map<string, TerminalSession>();
+  const shellFs = (p: string): ShellFs => ({
+    entries: () =>
+      [...files(p)].map(([path, text]) => ({
+        path,
+        type: text === null ? ("dir" as const) : ("file" as const),
+      })),
+    read: async (path) => {
+      const t = files(p).get(path);
+      return t === undefined || t === null ? null : t;
+    },
+    write: async (path, text) => void files(p).set(path, text),
+    mkdir: async (path) => void files(p).set(path, null),
+    remove: async (path) => {
+      for (const k of [...files(p).keys()])
+        if (k === path || k.startsWith(`${path}/`)) files(p).delete(k);
+    },
+    rename: async (from, to) => {
+      for (const [k, v] of [...files(p)])
+        if (k === from || k.startsWith(`${from}/`)) {
+          files(p).delete(k);
+          files(p).set(to + k.slice(from.length), v);
+        }
+    },
+    size: (path) => {
+      const t = files(p).get(path);
+      return typeof t === "string" ? t.length : null;
+    },
+  });
+  const terminalSession = (id: string): TerminalSession => {
+    const existing = terminals.get(id);
+    if (existing) return existing;
+    const p = state.activeProject ?? "prj_1";
+    const shell = new ProjectShell(shellFs(p), {
+      openFile: (path) =>
+        void state.opened.push({ project: p, path, kind: "editor" }),
+      preview: (entry) => void (state.previewEntry = entry),
+      openData: (table) => void state.log.push(`data:${table}`),
+      openBoard: (name) => void state.log.push(`board:${name}`),
+      layout: (preset) => void state.log.push(`layout:${preset}`),
+      api: async (expression) => ({ expression }),
+      evalJs: async (code) => `js:${code}`,
+    });
+    const session = new TerminalSession(id, shell, null, "Fake");
+    terminals.set(id, session);
+    return session;
+  };
+
   const host: FakeHost = {
     state,
     windows: {
@@ -321,6 +372,7 @@ export function fakeHost(): FakeHost {
         "connections",
         "card",
         "browser",
+        "terminal",
         "design",
         "pages",
       ],
@@ -834,6 +886,38 @@ export function fakeHost(): FakeHost {
       async setBookmarks(project, list) {
         files(project).set(BOOKMARKS_PATH, serializeBookmarks(list));
       },
+    },
+    terminal: {
+      open(content, title) {
+        const id = host.windows.create({
+          kind: "terminal",
+          title: title ?? "Terminal",
+          content,
+        });
+        const session = terminalSession(id);
+        void session.runInitial(parseTerminalContent(content).run);
+        return id;
+      },
+      resolve(id) {
+        const list = state.windows.filter((w) => w.kind === "terminal");
+        if (id) return list.some((w) => w.id === id) ? id : null;
+        return (
+          list.find((w) => w.id === state.focused)?.id ?? list[0]?.id ?? null
+        );
+      },
+      list: () =>
+        state.windows.filter((w) => w.kind === "terminal").map((w) => w.id),
+      info(id) {
+        const s = terminalSession(id);
+        return {
+          backend: s.backend.get(),
+          prompt: s.prompt(),
+          lines: s.lines.get().length,
+        };
+      },
+      run: (id, command) => terminalSession(id).run(command),
+      write: (id, data) => terminalSession(id).write(data),
+      onOutput: (id, listener) => terminalSession(id).onOutput(listener),
     },
     preview: {
       reload() {

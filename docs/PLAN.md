@@ -254,7 +254,45 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   tables seeded for five tenants, twenty pages in four apps, the showcase
   board; viewport culling for heavy windows.
 
-### M7 - Collaboration
+### M7 - Browser and Terminal windows (done)
+
+- Browser window kind (`src/desktop/kinds/browser.tsx`, model in
+  `src/browser/`): tab strip, address bar with back / forward / reload /
+  home, Go menu, bookmarks as a project file (`browser/bookmarks.json`),
+  "Open in new tab". Internal addresses `paperos://preview/<entry>` (the
+  project rendered by the preview bundler), `paperos://docs/<file>` (README
+  and docs/*.md bundled as text), `paperos://legacy`, `paperos://home`;
+  http(s) in a sandboxed iframe with no referrer. Refusals to embed are
+  judged from a blocked-host list, an 8 s timeout and the load event; the
+  card offers Open in new tab, Try anyway and Screenshot via bridge. Canvas
+  API `browser.*`; commands; a Browser step on "Ship a feature".
+- Terminal window kind (`src/desktop/kinds/terminal.tsx`, model in
+  `src/terminal/`): an own terminal component (no xterm), two backends
+  behind one prompt. The project shell is a pure interpreter over a
+  `ShellFs` (ls, cd, cat, grep, find, tree, head, tail, wc, echo with
+  `>`/`>>`, mkdir, touch, rm, mv, cp, pipes, globs, Tab completion, history)
+  plus PaperOS commands (`open`, `preview`, `data`, `board`, `layout`, `api`,
+  a `js` REPL) that reach the desktop through a `ShellHost`; in the browser
+  the fs is the live documents. The bridge shell is a real shell spawned by
+  the CLI (`shell.*` tab-only tools, node-pty optional, pipes otherwise)
+  streaming over the bridge socket, opt-in with a confirmation. Sessions
+  live outside React (`TerminalSession`, a registry by window id) so
+  `paperos.terminal.*` (open, run, write, onOutput, list) drives the same
+  shell the window shows. A Terminal step on "Agent-driven".
+- Bridge protocol v2: tab → CLI `request` / `response` and CLI → tab
+  `stream`; the CLI gains local tools (`browser.fetch`, `browser.screenshot`
+  as MCP tools `browser_fetch` / `browser_screenshot` with Playwright
+  optional; `shell.*` for the tab only).
+- Tests: 300 unit tests (browser model, shell interpreter and completion,
+  terminal session with a fake bridge, protocol and client, facade) and
+  `e2e/browser.spec.ts`, `e2e/terminal.spec.ts`.
+- Not done, deferred: a full terminal emulator (cursor addressing, colors;
+  ANSI is stripped, so full-screen programs like vim do not render in the
+  bridge shell), embedding sites that refuse framing (impossible without a
+  proxy; the bridge screenshot is the answer), a bridge port setting in the
+  tab.
+
+### M8 - Collaboration
 
 - Multiplayer canvas (tldraw sync or Liveblocks; decide then).
 - Presence: cursors, who is in which window.
@@ -262,7 +300,7 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   `attachProvider()` in `src/ide/docs.ts`; pass its awareness to
   `yCollab` for remote cursors.
 
-### M8 - Polish and plugins
+### M9 - Polish and plugins
 
 - GenMoji plugin (see the original "3D GenMoji Generator" issue), now as a
   PaperOS plugin (`activate(api)`).
@@ -513,3 +551,43 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   `git tag -a v0-prototype aa5f51d -m "2025 prototype before the v2 rebuild" && git push origin v0-prototype`.
 - Next.js 16 is available; this scaffold pins Next 15 (as decided). Upgrading
   is a follow-up once the Window shape work settles.
+
+44. **The Browser is an iframe, refusals are a card, no proxy.** Response
+    headers are not readable cross-origin, so whether a site can be framed
+    is judged from a list of hosts known to refuse, an 8 s load timeout and
+    the frame's `load` event, and the answer for those sites is a card with
+    "Open in new tab" and, through the bridge, a real browser on the user's
+    machine (`browser.screenshot`). A proxy would put PaperOS between the
+    user and third-party sites; that is out.
+45. **Internal addresses are `paperos://` URLs.** The preview, the docs,
+    `/legacy` and the landing are first-class targets with their own scheme
+    so tabs, history, bookmarks and boards treat them like any address.
+    Docs are bundled as text (`?raw` imports, loaded on demand) so they work
+    offline and in the static export.
+46. **Tab state in `content`, bookmarks in the project.** A Browser
+    window's tabs and history are JSON in its `content` prop (decision 14),
+    so workspaces and boards carry them; bookmarks are
+    `browser/bookmarks.json` so they show in Files and travel with the
+    project, with defaults when the file is missing.
+47. **The tab can ask the CLI for things.** Protocol v2 adds `request` /
+    `response` (tab → CLI) and `stream` (CLI → tab) next to the agent's
+    `call` / `result`. Local tools (`browser.*`, `shell.*`) run in the CLI
+    process; `browser.*` are also MCP tools, `shell.*` are tab-only.
+48. **The project shell is a pure interpreter over a `ShellFs`.** Same
+    pattern as `DataFs` and `CanvasHost`: five file operations plus an entry
+    list, bound to the live documents in the browser and to a Map in tests.
+    PaperOS commands (`open`, `preview`, `data`, ...) go through a
+    `ShellHost`, so the interpreter, pipes, redirection and completion are
+    unit tested in Node.
+49. **The bridge shell is opt-in per tab session and never agent-started.**
+    A real shell has the user's privileges. It starts only after the person
+    confirms in the Terminal window; `shell.*` tools are not offered over
+    MCP; `PAPEROS_BRIDGE_NO_SHELL=1` disables them entirely. Agents may type
+    into a shell the person started (`terminal.write`).
+50. **Own terminal component instead of xterm.js.** The scrollback is a
+    list of lines with an input row; ANSI codes are stripped. It keeps the
+    static build free of a 300 KB dependency and is enough for the project
+    shell and line-mode work in the bridge shell. Full-screen programs need
+    a real emulator; that is the upgrade path if it is ever wanted.
+51. **Milestones renumbered again.** M7 became Browser and Terminal
+    (the owner's next ask); collaboration moves to M8, polish to M9.

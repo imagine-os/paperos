@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 76 methods in 17 namespaces.
+API version: 1. 81 methods in 18 namespaces.
 
 ## Where to call it
 
@@ -988,6 +988,79 @@ Returns `Bookmark {title, url}[] (the whole list)`. changes state · MCP tool `b
 | `bookmark.url`    | yes      | `string`                                          | Address                  |
 | `bookmark.title`  | no       | `string`                                          | Title (default: derived) |
 | `bookmark.remove` | no       | `boolean`                                         | Remove instead of add    |
+
+### `terminal`
+
+#### `terminal.open`
+
+```ts
+paperos.terminal.open(options?: {title?: string, run?: string[]})
+```
+
+Opens a Terminal window. The project shell runs in the tab over the project's files (ls, cd, cat, grep, find, tree, echo >, open <file>, preview <page>, data <table>, board <name>, layout <preset>, api <expression>, js). The bridge shell (a real shell on the user's machine) can only be started by the person, from the window.
+
+Returns `TerminalInfo {id (window id), title, backend: 'project' | 'bridge', prompt, lines}`. changes state · MCP tool `terminal_open` · object-style call passes the object itself.
+
+| Parameter       | Required | Type                               | Description                          |
+| --------------- | -------- | ---------------------------------- | ------------------------------------ |
+| `options`       | no       | `{title?: string, run?: string[]}` | What to open                         |
+| `options.title` | no       | `string`                           | Window title                         |
+| `options.run`   | no       | `string[]`                         | Commands to run right away, in order |
+
+#### `terminal.run`
+
+```ts
+paperos.terminal.run(command: string, id?: string)
+```
+
+Runs a command line in a Terminal window (the focused or first one when id is omitted; opens one when there is none) and returns its output. In the bridge shell the line is typed into the real shell and whatever it printed within 600 ms is returned.
+
+Returns `{output, error, prompt}`. changes state · MCP tool `terminal_run`.
+
+| Parameter | Required | Type     | Description                                    |
+| --------- | -------- | -------- | ---------------------------------------------- |
+| `command` | yes      | `string` | The command line                               |
+| `id`      | no       | `string` | Terminal window id (default: focused or first) |
+
+#### `terminal.write`
+
+```ts
+paperos.terminal.write(data: string, id?: string)
+```
+
+Sends raw input (keystrokes, without an implied newline) to a Terminal window's bridge shell.
+
+Returns `{ok: true}`. changes state · MCP tool `terminal_write`.
+
+| Parameter | Required | Type     | Description                                     |
+| --------- | -------- | -------- | ----------------------------------------------- |
+| `data`    | yes      | `string` | Text to send (\n runs a line, \u0003 is Ctrl+C) |
+| `id`      | no       | `string` | Terminal window id (default: focused or first)  |
+
+#### `terminal.onOutput`
+
+```ts
+paperos.terminal.onOutput(callback: function, id?: string)
+```
+
+Subscribes to a Terminal window's output. The callback gets (text, kind) with kind 'output' | 'error' | 'system'. Returns an unsubscribe function.
+
+Returns `unsubscribe function`. read-only · scripts only (takes a callback).
+
+| Parameter  | Required | Type       | Description                                    |
+| ---------- | -------- | ---------- | ---------------------------------------------- |
+| `callback` | yes      | `function` | function(text, kind)                           |
+| `id`       | no       | `string`   | Terminal window id (default: focused or first) |
+
+#### `terminal.list`
+
+```ts
+paperos.terminal.list();
+```
+
+Every Terminal window with its backend and prompt.
+
+Returns `TerminalInfo {id (window id), title, backend: 'project' | 'bridge', prompt, lines}[]`. read-only · MCP tool `terminal_list`.
 
 ### `preview`
 

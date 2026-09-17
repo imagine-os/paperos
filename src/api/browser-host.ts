@@ -17,6 +17,8 @@ import {
   serializeBookmarks,
 } from "@/browser/bookmarks";
 import { parseState, serializeState } from "@/browser/tabs";
+import { getTerminalSession } from "@/terminal/registry";
+import { parseTerminalContent } from "@/terminal/session";
 import { applyPresetWorkspace } from "@/desktop/preset-workspaces";
 import { describeStep } from "@/data/migrate";
 import { getDataStore, scanProjectBindings } from "@/data/project-fs";
@@ -400,6 +402,39 @@ export function createBrowserHost(editor: Editor): CanvasHost {
           projects
         );
       },
+    },
+
+    terminal: {
+      open(content, title) {
+        const id = openKindWindow(editor, "terminal", content, {
+          title,
+          reuse: false,
+        });
+        // Create the session now so terminal.run works before the window renders.
+        void getTerminalSession(editor, id).runInitial(
+          parseTerminalContent(content).run
+        );
+        return id;
+      },
+      resolve(id) {
+        const list = windowsOfKind("terminal");
+        if (id) return list.some((w) => w.id === id) ? id : null;
+        const focused = wm.getFocusedId();
+        return list.find((w) => w.id === focused)?.id ?? list[0]?.id ?? null;
+      },
+      list: () => windowsOfKind("terminal").map((w) => w.id),
+      info(id) {
+        const s = getTerminalSession(editor, id);
+        return {
+          backend: s.backend.get(),
+          prompt: s.prompt(),
+          lines: s.lines.get().length,
+        };
+      },
+      run: (id, command) => getTerminalSession(editor, id).run(command),
+      write: (id, data) => getTerminalSession(editor, id).write(data),
+      onOutput: (id, listener) =>
+        getTerminalSession(editor, id).onOutput(listener),
     },
 
     preview: {

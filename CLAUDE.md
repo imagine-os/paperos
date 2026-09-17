@@ -33,6 +33,9 @@ backend) one-line changes.
 - `src/ide/` the IDE: project model, per-file Yjs documents, preview bundler.
 - `src/data/` the data model: schema, DataStore, bindings scanner, preview
   runtime, ERD layout. Pure TypeScript except `project-fs.ts`.
+- `src/browser/` the Browser window's model (addresses, tabs, bookmarks,
+  embed heuristic); `src/terminal/` the Terminal's project shell, session
+  and registry. Both pure apart from the `*-fs.ts` / `desktop-*` bindings.
 - `src/api/` the Canvas API (schema as data, facade, hosts, bridge client);
   `src/plugins/` the plugin system; `tools/paperos-mcp/` the MCP CLI.
 - `src/lib/` shared helpers (env, bundled tldraw assets).

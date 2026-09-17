@@ -279,6 +279,26 @@ export interface CanvasHost {
     bookmarks(project: string): Promise<Bookmark[]>;
     setBookmarks(project: string, list: Bookmark[]): Promise<void>;
   };
+  terminal: {
+    /** Creates a Terminal window with `content` (see TerminalContent); returns its id. */
+    open(content: string, title?: string): string;
+    resolve(id?: string): string | null;
+    list(): string[];
+    info(id: string): {
+      backend: "project" | "bridge";
+      prompt: string;
+      lines: number;
+    };
+    run(
+      id: string,
+      command: string
+    ): Promise<{ output: string; error: boolean }>;
+    write(id: string, data: string): Promise<void>;
+    onOutput(
+      id: string,
+      listener: (text: string, kind: string) => void
+    ): () => void;
+  };
   preview: {
     reload(): number;
     setEntry(path: string): number;

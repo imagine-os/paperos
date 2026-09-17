@@ -847,3 +847,71 @@ describe("browser", () => {
     ).resolves.toHaveLength(defaults.length + 1);
   });
 });
+
+describe("terminal", () => {
+  it("opens a terminal, runs project-shell commands and lists windows", async () => {
+    const { api, host } = setup();
+    expect(api.terminal.list()).toEqual([]);
+    await expect(api.terminal.write("x")).rejects.toThrow(/No Terminal window/);
+
+    const t = api.terminal.open({ title: "Shell", run: ["cd docs"] });
+    expect(t).toMatchObject({ title: "Shell", backend: "project" });
+    isPlainJson(t);
+    expect(api.windows.get(t.id)?.kind).toBe("terminal");
+    // The initial command ran (cwd moved).
+    expect((await api.terminal.run("pwd")).output).toBe("/docs");
+    const ls = await api.terminal.run("ls /", t.id);
+    expect(ls.error).toBe(false);
+    expect(ls.output).toContain("index.html");
+    expect(ls.prompt).toBe("/docs $");
+    const bad = await api.terminal.run("frob");
+    expect(bad).toMatchObject({ error: true });
+    expect(bad.output).toContain("command not found");
+
+    // PaperOS commands hand off to the host.
+    await api.terminal.run("open /index.html");
+    expect(host.state.opened.at(-1)).toMatchObject({ path: "index.html" });
+    await api.terminal.run("layout grid");
+    expect(host.state.log).toContain("layout:grid");
+    expect((await api.terminal.run("api windows.list()")).output).toContain(
+      '"expression": "windows.list()"'
+    );
+    // Writing through the shell writes the project's files.
+    await api.terminal.run("echo hi > /notes.txt");
+    expect((await api.files.read("notes.txt")).text).toBe("hi\n");
+
+    const got: string[] = [];
+    const off = api.terminal.onOutput((text, kind) =>
+      got.push(`${kind}:${text}`)
+    );
+    await api.terminal.run("echo listened");
+    off();
+    await api.terminal.run("echo not-listened");
+    expect(got).toEqual(["output:listened"]);
+
+    expect(api.terminal.list()).toHaveLength(1);
+    expect(api.terminal.list()[0].lines).toBeGreaterThan(5);
+    const note = api.windows.create({ kind: "note" });
+    expect(
+      () =>
+        api.terminal.list().length && api.terminal.onOutput(() => {}, note.id)
+    ).toThrow(/not a Terminal window/);
+    // No bridge shell in the fake host: write fails clearly.
+    await expect(api.terminal.write("ls\n")).rejects.toThrow(/No bridge shell/);
+    expect(() =>
+      api.terminal.open({ run: [1] as unknown as string[] })
+    ).toThrow(/run/);
+  });
+
+  it("run() with no terminal window opens one", async () => {
+    const { api } = setup();
+    const r = await api.terminal.run("pwd");
+    expect(r.output).toBe("/");
+    expect(api.terminal.list()).toHaveLength(1);
+    await expect(
+      invokeTool(api, "terminal.run", { command: "ls" })
+    ).resolves.toMatchObject({
+      error: false,
+    });
+  });
+});
