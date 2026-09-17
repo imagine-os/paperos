@@ -64,7 +64,8 @@ describe("scanHtml", () => {
 describe("scanJs", () => {
   it("finds paperos.data calls with modes and fields", () => {
     const js = `const roles = paperos.data.roles.list({ orderBy: "level" });
-paperos.data.menu_items.list({ where: { parent_id: null, category: "x" }, orderBy: "-sort" });
+paperos.data.menu_items
+  .list({ where: { parent_id: null, category: "x" }, orderBy: "-sort" });
 paperos.data.tables();
 paperos.data.hydrate(document);
 await paperos.data.users.insert({ email });
@@ -73,8 +74,8 @@ const t = paperos.data.table("pages");`;
     expect(b.map((x) => [x.table, x.mode, x.line, x.fields])).toEqual([
       ["roles", "read", 1, ["level"]],
       ["menu_items", "read", 2, ["parent_id", "category", "sort"]],
-      ["users", "write", 5, []],
-      ["pages", "read", 6, []],
+      ["users", "write", 6, []],
+      ["pages", "read", 7, []],
     ]);
   });
 });

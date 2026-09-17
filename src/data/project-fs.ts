@@ -11,6 +11,7 @@ import {
   writeLiveText,
 } from "@/ide/docs";
 import { getProjectStore, type ProjectStore } from "@/ide/project/store";
+import { scanBindings, type BindingIndex } from "./bindings";
 import { isDataPath } from "./schema";
 import { DataStore, type DataFs } from "./store";
 
@@ -51,6 +52,26 @@ export function projectDataFs(
       };
     },
   };
+}
+
+/** Scans every non-data file of a project for bindings against its current schema. */
+export async function scanProjectBindings(
+  projectId: string,
+  store: ProjectStore = getProjectStore()
+): Promise<BindingIndex> {
+  const session = await store.session(projectId);
+  const paths =
+    session?.files
+      .get()
+      .filter((f) => f.type === "file" && !/^data\//.test(f.path))
+      .map((f) => f.path) ?? [];
+  const texts = await Promise.all(
+    paths.map((p) => readLiveText(projectId, p, store))
+  );
+  return scanBindings(
+    paths.map((path, i) => ({ path, text: texts[i] ?? "" })),
+    await getDataStore(projectId, store).schema()
+  );
 }
 
 const stores = new Map<string, DataStore>();

@@ -172,7 +172,7 @@ export function scanJs(path: string, text: string): Binding[] {
     });
   };
   for (const m of text.matchAll(
-    /paperos\.data\.([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_]+)\s*\(/g
+    /paperos\.data\.([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*([A-Za-z_]+)\s*\(/g
   )) {
     const [, table, method] = m;
     if (RESERVED.has(table)) continue;

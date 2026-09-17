@@ -13,7 +13,7 @@ import { getWorkspaceStore } from "./workspaces";
 export const IDE_INIT_KEY = "paperos-v2:ide-initialized";
 
 /** One window per kind: the first existing one, else a new one. */
-function ensureWindow(
+export function ensureWindow(
   editor: Editor,
   kind: string,
   content = "",

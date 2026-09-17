@@ -6,7 +6,7 @@
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { LanguageDescription } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
-import { Compartment, type Extension } from "@codemirror/state";
+import { Compartment, EditorSelection, type Extension } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, keymap } from "@codemirror/view";
 import { basicSetup } from "codemirror";
@@ -27,6 +27,8 @@ export interface CreateEditorOptions {
 export interface EditorHandle {
   view: EditorView;
   setDark(dark: boolean): void;
+  /** Puts the cursor on a 1-based line and scrolls it into view. */
+  gotoLine(line: number): void;
   destroy(): void;
 }
 
@@ -81,6 +83,15 @@ export async function createEditor(
       view.dispatch({
         effects: theme.reconfigure(dark ? oneDark : lightTheme),
       });
+    },
+    gotoLine(line) {
+      const n = Math.max(1, Math.min(line, view.state.doc.lines));
+      const pos = view.state.doc.line(n).from;
+      view.dispatch({
+        selection: EditorSelection.cursor(pos),
+        effects: EditorView.scrollIntoView(pos, { y: "center" }),
+      });
+      view.focus();
     },
     destroy() {
       view.destroy();

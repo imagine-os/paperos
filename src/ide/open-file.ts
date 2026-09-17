@@ -5,6 +5,7 @@ import { getWindowManager } from "@/wm/window-manager";
 import { placeFileWindow } from "./editor-placement";
 import { encodeFileRef, parseFileRef, sameRef, type FileRef } from "./file-ref";
 import { basename } from "./project/paths";
+import { revealLine } from "./reveal";
 
 export type FileWindowKind = "editor" | "markdown";
 
@@ -43,9 +44,12 @@ export function openFile(
   {
     kind = "editor",
     nearId,
-  }: { kind?: FileWindowKind; nearId?: TLShapeId } = {}
+    line,
+  }: { kind?: FileWindowKind; nearId?: TLShapeId; line?: number } = {}
 ): TLShapeId {
   const wm = getWindowManager(editor);
+  if (line !== undefined && kind === "editor")
+    revealLine(ref.project, ref.path, line);
   const existing = findFileWindow(editor, ref, kind);
   if (existing) {
     wm.focusWindow(existing.id);

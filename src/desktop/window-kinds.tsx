@@ -12,6 +12,9 @@ import { MarkdownWindow } from "./kinds/markdown";
 import { ScriptWindow } from "./kinds/script";
 import { PluginsWindow } from "./kinds/plugins";
 import { AgentWindow } from "./kinds/agent";
+import { DataWindow } from "./kinds/data";
+import { SchemaWindow } from "./kinds/schema";
+import { ConnectionsWindow } from "./kinds/connections";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -99,6 +102,33 @@ registerWindowKind({
   icon: "\u{1F4C4}",
   defaultSize: { w: 520, h: 480 },
   Component: MarkdownWindow,
+});
+
+registerWindowKind({
+  id: "data",
+  label: "Data",
+  defaultTitle: "Data",
+  icon: "\u{1F5C3}",
+  defaultSize: { w: 640, h: 420 },
+  Component: DataWindow,
+});
+
+registerWindowKind({
+  id: "schema",
+  label: "Schema",
+  defaultTitle: "Schema",
+  icon: "\u{1F5FA}",
+  defaultSize: { w: 560, h: 440 },
+  Component: SchemaWindow,
+});
+
+registerWindowKind({
+  id: "connections",
+  label: "Connections",
+  defaultTitle: "Connections",
+  icon: "\u{1F517}",
+  defaultSize: { w: 560, h: 480 },
+  Component: ConnectionsWindow,
 });
 
 registerWindowKind({

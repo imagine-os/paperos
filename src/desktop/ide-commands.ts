@@ -4,6 +4,7 @@ import {
   registerCommandSource,
   type Command,
 } from "@/ide/commands";
+import { parseFileRef } from "@/ide/file-ref";
 import { openFile } from "@/ide/open-file";
 import { getProjectStore } from "@/ide/project";
 import { toggleTheme } from "@/ide/theme";
@@ -11,7 +12,10 @@ import { PRESETS } from "@/wm/presets";
 import type { Side } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
 import { createWindow } from "./create-window";
+import { applyDataWorkspace } from "./data-workspace";
 import { applyIdeWorkspace } from "./ide-workspace";
+import { openConnectionsWindow, parseContent } from "./kinds/data-common";
+import { applyPresetWorkspace } from "./preset-workspaces";
 import {
   canOpenFolder,
   importGithubProject,
@@ -84,8 +88,38 @@ export function registerIdeCommands(editor: Editor): () => void {
       group: "Layout",
       keywords: "reset default",
       run: () => void applyIdeWorkspace(editor),
+    },
+    {
+      id: "layout.data",
+      title: "Apply Data workspace",
+      group: "Layout",
+      keywords: "tables schema connections",
+      run: () => void applyDataWorkspace(editor),
     }
   );
+
+  list.push({
+    id: "data.connections-for-file",
+    title: "Show connections for current file",
+    group: "Data",
+    keywords: "bindings tables usage",
+    run: () => {
+      const id = wm().getFocusedId();
+      const w = id ? wm().getWindow(id) : undefined;
+      if (!w) return;
+      const ref = parseFileRef(w.props.content);
+      if (ref) {
+        openConnectionsWindow(editor, { source: ref.path });
+        return;
+      }
+      if (w.props.kind === "data") {
+        const table = parseContent<{ table?: string }>(w.props.content).table;
+        openConnectionsWindow(editor, table ? { table } : {});
+        return;
+      }
+      openConnectionsWindow(editor, {});
+    },
+  });
 
   for (const [side, name] of SIDES) {
     list.push(
@@ -205,10 +239,7 @@ export function registerIdeCommands(editor: Editor): () => void {
       group: "Workspace",
       keywords: "switch",
       run: () => {
-        if (ws.id === "ws_ide" || (ws.name === "IDE" && !ws.root)) {
-          void applyIdeWorkspace(editor);
-          return;
-        }
+        if (applyPresetWorkspace(editor, ws.id)) return;
         store.setActive(ws.id);
         wm().applyWorkspace(ws);
       },

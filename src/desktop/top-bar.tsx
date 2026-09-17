@@ -10,9 +10,8 @@ import { useSignal } from "@/ide/use-signal";
 import { PRESETS } from "@/wm/presets";
 import type { LayoutPreset } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
-import { IDE_WORKSPACE_ID } from "@/wm/workspace-store";
 import { createWindow } from "./create-window";
-import { applyIdeWorkspace } from "./ide-workspace";
+import { applyPresetWorkspace, PRESET_WORKSPACES } from "./preset-workspaces";
 import { Dropdown, MenuHeading, MenuItem, MenuSeparator } from "./menu";
 import {
   canOpenFolder,
@@ -251,13 +250,10 @@ function WorkspacesMenu({ editor }: { editor: Editor }) {
   const active = workspaces.find((w) => w.id === activeId);
 
   const switchTo = (id: string) => {
+    // Never saved yet: build the preset arrangement (creates the windows).
+    if (applyPresetWorkspace(editor, id)) return;
     const ws = store.get(id);
     if (!ws) return;
-    if (id === IDE_WORKSPACE_ID && !ws.root) {
-      // Never saved yet: build the IDE arrangement (creates the windows).
-      void applyIdeWorkspace(editor);
-      return;
-    }
     store.setActive(id);
     wm.applyWorkspace(ws);
   };
@@ -311,6 +307,16 @@ function WorkspacesMenu({ editor }: { editor: Editor }) {
           onSelect={() => switchTo(w.id)}
         />
       ))}
+      {Object.entries(PRESET_WORKSPACES)
+        .filter(([id]) => !store.get(id))
+        .map(([id, p]) => (
+          <MenuItem
+            key={id}
+            label={p.name}
+            testId={`workspace-${id}`}
+            onSelect={() => switchTo(id)}
+          />
+        ))}
       <MenuSeparator />
       <MenuItem
         label="Save current as..."

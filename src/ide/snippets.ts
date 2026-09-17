@@ -7,6 +7,21 @@ export interface Snippet {
 
 export const SNIPPETS: Snippet[] = [
   {
+    id: "data",
+    title: "Query and change a table",
+    code: `// Tables of the active project, then the top-level menu items by sort order.
+const tables = await paperos.data.tables();
+console.log(tables.map((t) => t.name + " (" + t.rowCount + ")").join(", "));
+const { rows } = await paperos.data.list("menu_items", {
+  filter: "parent_id=null",
+  sort: "sort",
+});
+// Uncomment to rename the first item (the preview and the Data window follow):
+// await paperos.data.update("menu_items", rows[0].id, { label: "Start" });
+return rows.map((r) => r.label);
+`,
+  },
+  {
     id: "grid",
     title: "Tile everything in a grid",
     code: `// Tile every window in a grid and zoom to fit.

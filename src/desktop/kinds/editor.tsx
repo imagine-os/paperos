@@ -9,6 +9,7 @@ import { encodeFileRef, parseFileRef } from "@/ide/file-ref";
 import { fileWindowTitle } from "@/ide/open-file";
 import { pushConsole } from "@/ide/console-store";
 import { getProjectStore } from "@/ide/project";
+import { revealRequest } from "@/ide/reveal";
 import { resolvedTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
 import type { WindowKindProps } from "../window-kinds";
@@ -136,6 +137,16 @@ function BoundEditor({
   useEffect(() => {
     handle?.setDark(theme === "dark");
   }, [handle, theme]);
+
+  // Jump to a line when asked (Connections, paperos.files.open with a line).
+  const reveal = useSignal(revealRequest);
+  const revealed = useRef(0);
+  useEffect(() => {
+    if (!handle || !reveal || reveal.seq === revealed.current) return;
+    if (reveal.project !== project || reveal.path !== path) return;
+    revealed.current = reveal.seq;
+    handle.gotoLine(reveal.line);
+  }, [handle, reveal, project, path]);
 
   useEffect(() => {
     update({ title: fileWindowTitle(path, dirty) });
