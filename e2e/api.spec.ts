@@ -8,7 +8,8 @@ interface ApiShape {
   };
   layout: { getTree(): { preset: string; tiled: string[] } };
 }
-const api = () => (window as unknown as { paperos: ApiShape }).paperos;
+// page.evaluate callbacks run in the browser without this module's scope, so
+// they read window.paperos themselves instead of calling a helper.
 
 async function openKind(page: Page, kind: string) {
   await page.getByTestId("new-window-menu").click();
@@ -54,8 +55,8 @@ test("the script console creates and tiles three windows through the Canvas API"
 
   // The same API is on window.paperos for the devtools.
   const listed = await page.evaluate(() =>
-    api()
-      .windows.list()
+    (window as unknown as { paperos: ApiShape }).paperos.windows
+      .list()
       .map((w) => [w.kind, w.title, w.tiled])
   );
   expect(listed).toEqual(
@@ -66,9 +67,13 @@ test("the script console creates and tiles three windows through the Canvas API"
       ["note", "three", true],
     ])
   );
-  expect(await page.evaluate(() => api().layout.getTree().tiled.length)).toBe(
-    3
-  );
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { paperos: ApiShape }).paperos.layout.getTree()
+          .tiled.length
+    )
+  ).toBe(3);
 
   // The script text survives a reload (it lives in the window's content prop).
   await page.waitForTimeout(800);
@@ -122,7 +127,9 @@ test("window.paperos lists windows created from the UI", async ({ page }) => {
   await expect(page.getByTestId("topbar")).toBeVisible();
   await newNoteWindow(page);
   await expect(page.locator(".pos-window")).toHaveCount(1);
-  const list = await page.evaluate(() => api().windows.list());
+  const list = await page.evaluate(() =>
+    (window as unknown as { paperos: ApiShape }).paperos.windows.list()
+  );
   expect(list).toHaveLength(1);
   expect(list[0]).toMatchObject({ kind: "note", title: "Note", tiled: false });
 });
