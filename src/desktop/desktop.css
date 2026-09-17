@@ -158,6 +158,15 @@
   text-overflow: ellipsis;
 }
 
+.pos-window__connect {
+  cursor: crosshair;
+}
+
+.pos-window__connect:hover {
+  background: var(--pos-accent);
+  color: #fff;
+}
+
 .pos-window__close:hover {
   background: var(--pos-danger);
   color: #fff;

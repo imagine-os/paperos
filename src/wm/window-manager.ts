@@ -6,6 +6,7 @@ import {
   type TLShapeId,
   type TLShapePartial,
 } from "tldraw";
+import { sectionOf, SECTION_HEADER, SECTION_PADDING } from "@/desktop/sections";
 import type { WindowShape } from "@/desktop/window-shape";
 import { dropZone, findNeighbor, readingOrder, zoneRect } from "./geometry";
 import { DEFAULT_LAYOUT_OPTIONS, layout } from "./layout-engine";
@@ -74,6 +75,8 @@ export class WindowManager {
   readonly focusedId = atom<TLShapeId | null>("wm.focused", null);
   readonly dropHint = atom<DropHint | null>("wm.dropHint", null);
   readonly activeWorkspaceId = atom<string | null>("wm.workspace", null);
+  /** The section (frame) the layout region was taken from, or null for the viewport. */
+  readonly regionSectionId = atom<TLShapeId | null>("wm.regionSection", null);
   /** The window whose title is being edited inline (double-click on the title bar). */
   readonly titleEditId = atom<TLShapeId | null>("wm.titleEdit", null);
 
@@ -148,6 +151,44 @@ export class WindowManager {
     };
   }
 
+  /** The section the focused window sits in, if any. */
+  focusedSectionId(): TLShapeId | null {
+    const id = this.getFocusedId();
+    if (!id) return null;
+    return sectionOf(this.editor, id)?.id ?? null;
+  }
+
+  /** A section's inner area (its bounds minus padding and the title band), in page space. */
+  sectionRegion(sectionId: TLShapeId): Rect | null {
+    const b = this.editor.getShapePageBounds(sectionId);
+    if (!b) return null;
+    return {
+      x: b.x + SECTION_PADDING,
+      y: b.y + SECTION_PADDING + SECTION_HEADER,
+      w: Math.max(0, b.w - SECTION_PADDING * 2),
+      h: Math.max(0, b.h - SECTION_PADDING * 2 - SECTION_HEADER),
+    };
+  }
+
+  /**
+   * The region a layout is applied in: the focused window's section when it
+   * is in one (tiling then stays inside the section), else the viewport.
+   */
+  captureRegion(): Rect {
+    const section = this.focusedSectionId();
+    const inner = section ? this.sectionRegion(section) : null;
+    this.regionSectionId.set(inner ? section : null);
+    return inner ?? this.viewportRegion();
+  }
+
+  /** Page-space rectangle of a window (windows in sections have parent-relative x/y). */
+  pageRect(shape: WindowShape): Rect {
+    const b = this.editor.getShapePageBounds(shape.id);
+    return b
+      ? { x: b.x, y: b.y, w: b.w, h: b.h }
+      : { x: shape.x, y: shape.y, w: shape.props.w, h: shape.props.h };
+  }
+
   /** The window that keyboard commands act on. */
   getFocusedId(): TLShapeId | null {
     const focused = this.focusedId.get();
@@ -157,13 +198,21 @@ export class WindowManager {
     return null;
   }
 
-  /** All windows, left to right and top to bottom, so tiling keeps the rough arrangement. */
+  /**
+   * The windows a whole-desktop layout arranges, left to right and top to
+   * bottom so tiling keeps the rough arrangement: the focused section's
+   * windows when one is focused, else the windows that are not in a section.
+   */
   private orderedWindowIds(): TLShapeId[] {
+    const section = this.focusedSectionId();
+    const pageId = this.editor.getCurrentPageId();
+    const candidates = this.getWindows().filter((s) =>
+      section
+        ? sectionOf(this.editor, s.id)?.id === section
+        : s.parentId === pageId
+    );
     return readingOrder(
-      this.getWindows().map((s) => ({
-        id: s.id,
-        rect: { x: s.x, y: s.y, w: s.props.w, h: s.props.h },
-      }))
+      candidates.map((s) => ({ id: s.id, rect: this.pageRect(s) }))
     ).map((i) => i.id as TLShapeId);
   }
 
@@ -176,7 +225,7 @@ export class WindowManager {
     if (preset === "free") {
       this.root.set(null);
     } else {
-      this.region.set(this.viewportRegion());
+      this.region.set(this.captureRegion());
       const current = this.root.get();
       if (preset === "split-tree" && current) {
         // Keep whatever the user built; only add windows that are not in it.
@@ -200,7 +249,7 @@ export class WindowManager {
   applyTree(root: LayoutNode, preset: LayoutPreset = "split-tree") {
     this.editor.markHistoryStoppingPoint("wm tree");
     this.preset.set(preset);
-    this.region.set(this.viewportRegion());
+    this.region.set(this.captureRegion());
     this.root.set(root);
     this.apply();
   }
@@ -208,7 +257,7 @@ export class WindowManager {
   /** Replaces the tree but keeps the region (unlike `applyTree`); the layout becomes a split tree. */
   setTree(root: LayoutNode | null) {
     this.editor.markHistoryStoppingPoint("wm tree");
-    if (root && !this.region.get()) this.region.set(this.viewportRegion());
+    if (root && !this.region.get()) this.region.set(this.captureRegion());
     this.root.set(root);
     if (root) this.preset.set("split-tree");
     this.apply();
@@ -234,7 +283,7 @@ export class WindowManager {
     if (!this.getWindow(id)) return;
     if (this.isTiled(id) && !side) return;
     this.editor.markHistoryStoppingPoint("wm tile");
-    if (!this.region.get()) this.region.set(this.viewportRegion());
+    if (!this.region.get()) this.region.set(this.captureRegion());
     // Tiling into an empty desktop starts a Columns layout.
     if (!side && this.preset.get() === "free" && !this.root.get())
       this.preset.set("columns");
@@ -455,7 +504,7 @@ export class WindowManager {
       });
     }
     this.preset.set(ws.preset);
-    this.region.set(root ? (ws.region ?? this.viewportRegion()) : ws.region);
+    this.region.set(root ? (ws.region ?? this.captureRegion()) : ws.region);
     this.root.set(root);
     this.activeWorkspaceId.set(ws.id);
     this.apply();
@@ -474,25 +523,31 @@ export class WindowManager {
     const existing = new Set(this.getWindows().map((s) => s.id));
     const pruned = pruneTree(this.root.get(), existing);
     if (pruned !== this.root.get()) this.root.set(pruned);
-    if (pruned && !this.region.get()) this.region.set(this.viewportRegion());
+    if (pruned && !this.region.get()) this.region.set(this.captureRegion());
 
     const frames = this.frames.get();
     const partials: TLShapePartial<WindowShape>[] = [];
     for (const shape of this.getWindows()) {
       const rect = frames.windows.get(shape.id);
       if (rect) {
+        const page = this.pageRect(shape);
         if (
-          !near(shape.x, rect.x) ||
-          !near(shape.y, rect.y) ||
-          !near(shape.props.w, rect.w) ||
-          !near(shape.props.h, rect.h) ||
+          !near(page.x, rect.x) ||
+          !near(page.y, rect.y) ||
+          !near(page.w, rect.w) ||
+          !near(page.h, rect.h) ||
           !shape.props.tiled
         ) {
+          // Windows inside a section store parent-relative coordinates.
+          const local = this.editor.getPointInParentSpace(shape.id, {
+            x: rect.x,
+            y: rect.y,
+          });
           partials.push({
             id: shape.id,
             type: "window",
-            x: rect.x,
-            y: rect.y,
+            x: local.x,
+            y: local.y,
             props: { w: rect.w, h: rect.h, tiled: true },
           });
         }
@@ -567,7 +622,10 @@ export class WindowManager {
     this.reflowTimer = setTimeout(() => {
       this.reflowTimer = null;
       if (!this.root.get()) return;
-      this.region.set(this.viewportRegion());
+      const section = this.regionSectionId.get();
+      const inner = section ? this.sectionRegion(section) : null;
+      if (section && !inner) this.regionSectionId.set(null);
+      this.region.set(inner ?? this.viewportRegion());
       const preset = this.preset.get();
       if (isFlatPreset(preset)) {
         this.root.set(

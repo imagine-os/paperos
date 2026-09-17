@@ -308,6 +308,32 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
           <div className="pos-window__controls">
             <button
               type="button"
+              className="pos-window__button pos-window__connect"
+              aria-label="Connect: drag an arrow to another window"
+              title="Connect: drag to another window"
+              data-testid="window-connect"
+              // Switch to the arrow tool and let the pointer event reach the
+              // canvas, so the drag that follows draws an arrow bound to this window.
+              onPointerDown={() => editor.setCurrentTool("arrow")}
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="12"
+                height="12"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 10 10 2M5 2h5v5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
               className="pos-window__button"
               aria-label="Window menu"
               title="Window menu"
