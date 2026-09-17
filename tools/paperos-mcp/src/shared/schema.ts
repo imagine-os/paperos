@@ -617,7 +617,11 @@ export const TOOLS: ToolSpec[] = [
       "Removes an arrow by id, or every arrow between two windows when a second window id is given.",
     params: [
       str("id", "Arrow id, or the first window id"),
-      str("toWindowId", "The other window (removes the arrows between the two)", false),
+      str(
+        "toWindowId",
+        "The other window (removes the arrows between the two)",
+        false
+      ),
     ],
     returns: "{removed: number}",
     mutates: true,
@@ -639,7 +643,8 @@ export const TOOLS: ToolSpec[] = [
       str("title", "Section title"),
       {
         name: "windowIds",
-        description: "Windows to put in the section (the frame fits around them)",
+        description:
+          "Windows to put in the section (the frame fits around them)",
         required: true,
         schema: { type: "array", items: { type: "string" } },
       },
@@ -649,7 +654,8 @@ export const TOOLS: ToolSpec[] = [
   },
   {
     name: "sections.list",
-    description: "Every section on the page with its bounds and the windows inside.",
+    description:
+      "Every section on the page with its bounds and the windows inside.",
     params: [],
     returns: `${SECTION_INFO}[]`,
   },

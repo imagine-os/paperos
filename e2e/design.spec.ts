@@ -46,7 +46,7 @@ async function openKind(page: Page, kind: string) {
 test("the Design window shows the gallery and a token change recolors the preview", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   const preview = page.frameLocator("iframe.pos-preview__frame");
   await expect(preview.locator("h1")).toHaveText("Hello, PaperOS", {
@@ -109,7 +109,7 @@ test("the Design window shows the gallery and a token change recolors the previe
 test("the Page Builder adds a component and the device preview shows it", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await openKind(page, "pages");
   const builder = page.getByTestId("pages-window");
@@ -158,7 +158,7 @@ test("the Page Builder adds a component and the device preview shows it", async 
 test("map.generate from the Script window builds sections, cards and arrows", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await waitForIde(page);
   await openKind(page, "script");
   const script = page.getByTestId("script-window");
@@ -214,7 +214,7 @@ test("an arrow can be drawn between two windows with the connect handle", async 
   page,
 }) => {
   await skipFirstRun(page);
-  await page.goto("/");
+  await page.goto("/app");
   await expect(page.locator(".tl-canvas")).toBeVisible();
   const ids = await page.evaluate(() => {
     const api = (window as unknown as { paperos: ApiShape }).paperos;

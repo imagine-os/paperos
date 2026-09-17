@@ -434,13 +434,15 @@ export default function LandingPage() {
                   </li>
                   <li className="is-done">Local MCP bridge for agents</li>
                   <li className="is-done">Data: tables, schema, connections</li>
+                  <li className="is-done">
+                    Design system, page builder, project map
+                  </li>
                 </ul>
               </div>
               <div>
                 <h3>Next</h3>
                 <ul>
-                  <li className="is-now">Design system and page builder</li>
-                  <li>Full-stack sample project</li>
+                  <li className="is-now">Full-stack sample project</li>
                   <li>Real-time collaboration</li>
                   <li>Polish and a plugin catalogue</li>
                 </ul>

@@ -87,6 +87,8 @@ export function layoutMap(
     const cols = section.horizontal
       ? Math.max(1, fresh.length)
       : o.columns(fresh.length);
+    // A row of cards carries arrows between neighbors: leave room for their labels.
+    const gapX = section.horizontal ? o.gapX * 4 : o.gapX;
     const colW = Math.max(...list.map((n) => size(n).w), o.card.w);
     // New nodes go under the kept ones (or at the section's top when nothing is kept).
     const anchorX = placed.length
@@ -101,7 +103,7 @@ export function layoutMap(
       const row = i % rows;
       const s = size(n);
       let rect: Rect = {
-        x: anchorX + col * (colW + o.gapX),
+        x: anchorX + col * (colW + gapX),
         y: startY + row * (o.card.h + o.gapY),
         w: s.w,
         h: s.h,
