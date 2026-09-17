@@ -16,7 +16,9 @@ import {
 } from "@/data/schema";
 import type { DataStore } from "@/data/store";
 import type { WindowKindProps } from "../window-kinds";
+import { EmptyState } from "./empty-state";
 import {
+  addFirstTable,
   openDataWindow,
   parseContent,
   useActiveData,
@@ -130,6 +132,8 @@ export function SchemaWindow({ shape, editor, update }: WindowKindProps) {
           shapeId={shape.id}
           onOpenTable={(t) => openDataWindow(editor, { table: t })}
           onCreate={() => void store.ensureSchema().then(() => setTab("edit"))}
+          onAddTable={() => void addFirstTable(store)}
+          onEdit={() => setTab("edit")}
         />
       )}
       {project && store && tab === "edit" && (
@@ -153,12 +157,16 @@ function Erd({
   shapeId,
   onOpenTable,
   onCreate,
+  onAddTable,
+  onEdit,
 }: {
   schema: DataSchema;
   hasSchema: boolean;
   shapeId: string;
   onOpenTable: (table: string) => void;
   onCreate: () => void;
+  onAddTable: () => void;
+  onEdit: () => void;
 }) {
   const layout = useMemo(() => layoutErd(schema), [schema]);
   const host = useRef<HTMLDivElement>(null);
@@ -327,8 +335,27 @@ function Erd({
         </button>
       </div>
       {layout.nodes.length === 0 && (
-        <div className="pos-files__hint pos-erd__hint">
-          No tables yet. Use Edit to add one.
+        <div className="pos-erd__hint">
+          <EmptyState
+            icon={"\u{1F5FA}"}
+            title="No tables yet"
+            testId="schema-empty"
+            actions={[
+              {
+                label: "Add a table",
+                primary: true,
+                testId: "schema-add-table",
+                onClick: onAddTable,
+              },
+              { label: "Edit schema.json", onClick: onEdit },
+            ]}
+          >
+            <p>
+              The diagram draws one box per table and a line per reference.
+              Start with an <code>items</code> table, then rename it and add
+              columns in Edit.
+            </p>
+          </EmptyState>
         </div>
       )}
     </div>

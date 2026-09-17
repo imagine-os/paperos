@@ -35,11 +35,13 @@ import type { WindowKindProps } from "../window-kinds";
 import { Dropdown, MenuItem } from "../menu";
 import { parseContent } from "./data-common";
 import {
+  createStarterDesign,
   isDesignMessage,
   openDesignWindow,
   useDesign,
   type PagesWindowContent,
 } from "./design-common";
+import { EmptyState } from "./empty-state";
 import { PropEditor } from "./prop-editor";
 
 const PREVIEW_DEBOUNCE_MS = 250;
@@ -130,9 +132,7 @@ export function PagesWindow({ shape, editor, update }: WindowKindProps) {
               </button>
             </div>
             {design.components.length === 0 && (
-              <div className="pos-files__hint">
-                No component library. Open the Design window to create one.
-              </div>
+              <div className="pos-files__hint">No component library yet.</div>
             )}
           </aside>
           {page ? (
@@ -160,12 +160,53 @@ export function PagesWindow({ shape, editor, update }: WindowKindProps) {
                 openDesignWindow(editor, { tab: "components", component })
               }
             />
+          ) : loading ? (
+            <div className="pos-files__hint">Loading…</div>
+          ) : design.components.length === 0 ? (
+            <EmptyState
+              icon={"\u{1F4D0}"}
+              title="No component library yet"
+              testId="pages-no-library"
+              actions={[
+                {
+                  label: "Create the starter library",
+                  primary: true,
+                  testId: "pages-create-library",
+                  onClick: () => createStarterDesign(project),
+                },
+                {
+                  label: "Open Design",
+                  onClick: () =>
+                    openDesignWindow(editor, { tab: "components" }),
+                },
+              ]}
+            >
+              <p>
+                Pages are composed from components in{" "}
+                <code>design/components/*.json</code>. The starter library has
+                35 of them, styled by <code>design/tokens.json</code>.
+              </p>
+            </EmptyState>
           ) : (
-            <div className="pos-files__hint">
-              {loading
-                ? "Loading…"
-                : "No pages yet. Create one to start composing."}
-            </div>
+            <EmptyState
+              icon={"\u{1F4D0}"}
+              title="No pages yet"
+              testId="pages-empty"
+              actions={[
+                {
+                  label: "New page",
+                  primary: true,
+                  testId: "pages-create-first",
+                  onClick: newPage,
+                },
+              ]}
+            >
+              <p>
+                A page is a 12-column grid of component blocks, bound to tables,
+                previewed per device. It is saved as{" "}
+                <code>pages/&lt;name&gt;.json</code>.
+              </p>
+            </EmptyState>
           )}
         </div>
       )}

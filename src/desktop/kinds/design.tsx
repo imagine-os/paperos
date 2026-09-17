@@ -30,6 +30,7 @@ import type { WindowKindProps } from "../window-kinds";
 import { Dropdown, MenuItem } from "../menu";
 import { parseContent } from "./data-common";
 import {
+  createStarterDesign,
   isDesignMessage,
   openPagesWindow,
   useDesign,
@@ -55,9 +56,7 @@ export function DesignWindow({ shape, editor, update }: WindowKindProps) {
     update({ content: JSON.stringify({ ...content, ...patch }) });
 
   const createStarter = async () => {
-    if (!project) return;
-    for (const [path, text] of Object.entries(starterDesignFiles()))
-      await writeDesignFile(project, path, text);
+    if (project) await createStarterDesign(project);
   };
 
   return (

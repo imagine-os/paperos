@@ -17,7 +17,9 @@ import type { SortSpec } from "@/data/query";
 import { openFile } from "@/ide/open-file";
 import type { WindowKindProps } from "../window-kinds";
 import { Dropdown, MenuItem } from "../menu";
+import { EmptyState } from "./empty-state";
 import {
+  addFirstTable,
   downloadText,
   openConnectionsWindow,
   openSchemaWindow,
@@ -115,10 +117,8 @@ export function DataWindow({ shape, editor, update }: WindowKindProps) {
                 <span className="pos-data__count">{t.rowCount}</span>
               </button>
             ))}
-            {tables.value.length === 0 && (
-              <div className="pos-files__hint">
-                No tables. Add one in Schema.
-              </div>
+            {tables.value.length === 0 && !tables.loading && (
+              <div className="pos-files__hint">No tables yet.</div>
             )}
             <button
               type="button"
@@ -137,6 +137,31 @@ export function DataWindow({ shape, editor, update }: WindowKindProps) {
               </div>
             )}
           </aside>
+          {!table && store && !tables.loading && (
+            <EmptyState
+              icon={"\u{1F5C3}"}
+              title="No tables yet"
+              testId="data-empty"
+              actions={[
+                {
+                  label: "Add a table",
+                  primary: true,
+                  testId: "data-add-table",
+                  onClick: async () => select(await addFirstTable(store)),
+                },
+                {
+                  label: "Open Schema",
+                  onClick: () => openSchemaWindow(editor),
+                },
+              ]}
+            >
+              <p>
+                Tables are JSON files under <code>data/</code>. Start with an{" "}
+                <code>items</code> table and shape it in Schema, or import a CSV
+                once a table exists.
+              </p>
+            </EmptyState>
+          )}
           {table && store && (
             <TableGrid
               key={`${project}:${table}`}

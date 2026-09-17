@@ -19,6 +19,12 @@ export interface TourStepInfo extends TourState {
   caption: string;
   first: boolean;
   last: boolean;
+  /** A chrome element the step frames instead of a section (CSS selector). */
+  target?: string;
+  /** The board whose section the step shows (the tour's own when absent). */
+  sectionBoard: string;
+  /** The step's closing button, when it has one. */
+  action?: { label: string; command: string };
 }
 
 export function startTour(board: BoardDef, step = 0): TourState | null {
@@ -51,7 +57,16 @@ export function describeStep(board: BoardDef, state: TourState): TourStepInfo {
     caption: s.caption,
     first: state.step === 0,
     last: state.step === state.total - 1,
+    ...(s.target ? { target: s.target } : {}),
+    sectionBoard: s.board ?? board.name,
+    ...(s.action ? { action: s.action } : {}),
   };
+}
+
+/** The command a step runs when entered, if any. */
+export function stepCommand(board: BoardDef, state: TourState): string | null {
+  const steps = tourSteps(board);
+  return steps[state.step]?.run ?? null;
 }
 
 /** Keys that drive a tour: next, previous or stop. */

@@ -40,7 +40,10 @@ import {
 import { importDroppedItems, isProjectDrop } from "./project-actions";
 import { TopBar } from "./top-bar";
 import { WM_ACTION_IDS, wmActions } from "./wm-actions";
+import { StartHere } from "./start-here";
 import { TourOverlay } from "./tour-overlay";
+import { openKindWindow } from "./kinds/data-common";
+import { startWelcomeTour, urlHasIntent, welcomeSeen } from "./welcome-tour";
 import { WmOverlay } from "./wm-overlay";
 import { WindowShapeUtil } from "./window-shape";
 import { WindowTool } from "./window-tool";
@@ -102,12 +105,7 @@ const components: TLComponents = {
     if (onlyWindows) return null;
     return <DefaultStylePanel {...props} />;
   },
-  InFrontOfTheCanvas: () => (
-    <>
-      <WmOverlay />
-      <TourOverlay />
-    </>
-  ),
+  InFrontOfTheCanvas: () => <WmOverlay />,
 };
 
 /** The PaperOS desktop: a top bar and a full-bleed, persistent tldraw canvas. */
@@ -141,13 +139,21 @@ export function Desktop() {
           `Join room "${id}"?\n\nIts canvas and project replace what you see here. Your own project stays in the Open menu.`
         ),
     });
-    // First run: open the sample project in the IDE arrangement.
+    // First run: open the sample project in the IDE arrangement, then the
+    // welcome tour (once per browser; links with a room or board skip it).
+    const tourWanted = !joining && !welcomeSeen() && !urlHasIntent();
     if (isFirstRun()) {
       markInitialized();
       const hasWindows = editor
         .getCurrentPageShapes()
         .some((s) => s.type === "window");
-      if (!hasWindows && !joining) void applyIdeWorkspace(editor);
+      if (!hasWindows && !joining)
+        void applyIdeWorkspace(editor).then(() => {
+          if (tourWanted) void startWelcomeTour(editor);
+        });
+      else if (tourWanted) void startWelcomeTour(editor);
+    } else if (tourWanted) {
+      void startWelcomeTour(editor);
     }
     return () => {
       collab.uninstall(editor);
@@ -158,7 +164,8 @@ export function Desktop() {
     };
   }, [editor]);
 
-  // Ctrl+S outside an editor: never let the browser offer to save the page.
+  // Ctrl+S outside an editor: never let the browser offer to save the page
+  // (bubble phase, so CodeMirror's own Ctrl+S runs first).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (
@@ -171,6 +178,20 @@ export function Desktop() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // `?` outside a text field opens the keyboard map.
+  useEffect(() => {
+    if (!editor) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "?" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openKindWindow(editor, "keys", "", { reuse: true });
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [editor]);
 
   const onDragOver = (e: React.DragEvent) => {
     if (!isProjectDrop(e.dataTransfer)) return;
@@ -216,7 +237,22 @@ export function Desktop() {
           }}
         />
       </div>
+      <StartHere editor={editor} />
+      <TourOverlay editor={editor} />
       <CommandPalette editor={editor} />
     </div>
+  );
+}
+
+/** True when a key press belongs to a text field or an editor, not the desktop. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  const t = target as HTMLElement | null;
+  if (!t || typeof t.closest !== "function") return false;
+  return (
+    t.tagName === "INPUT" ||
+    t.tagName === "TEXTAREA" ||
+    t.tagName === "SELECT" ||
+    t.isContentEditable ||
+    t.closest(".cm-editor, .pos-terminal, [contenteditable]") !== null
   );
 }

@@ -1,6 +1,9 @@
 import { expect, test, type FrameLocator, type Page } from "@playwright/test";
+import { skipWelcome } from "./helpers";
 
 async function waitForIde(page: Page) {
+  await skipWelcome(page);
+  await page.goto("/app");
   await expect(page.locator(".pos-window[data-kind=files]")).toBeVisible({
     timeout: 20000,
   });
@@ -26,7 +29,6 @@ async function openKind(page: Page, kind: string) {
 test("the sample menus come from data and the Data window edits them live", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   const frame = await menusRendered(page);
   await expect(frame.locator("#mega-menu .mega__col")).toHaveCount(4);
@@ -69,7 +71,6 @@ test("the sample menus come from data and the Data window edits them live", asyn
 test("switching the role in the page hides restricted menu items", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   const frame = await menusRendered(page);
   await expect(frame.locator("#side-menu")).toContainText("Settings");
@@ -86,7 +87,6 @@ test("switching the role in the page hides restricted menu items", async ({
 test("Schema draws the tables and Connections links tables to components", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   await openKind(page, "schema");
   const erd = page.getByTestId("schema-erd");
@@ -123,6 +123,7 @@ test("the Data workspace tiles Files, Data, Schema, Connections and Preview", as
   await page.addInitScript(() => {
     try {
       window.localStorage.setItem("paperos-v2:ide-initialized", "test");
+      window.localStorage.setItem("paperos-v2:welcome-seen", "test");
     } catch {
       // Sandboxed preview frames have no storage.
     }

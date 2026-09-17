@@ -30,6 +30,15 @@ export const WM_ACTION_IDS = [
   "ide-command-palette",
 ] as const;
 
+/** The layout presets' shortcuts as menus and the palette show them. */
+export const PRESET_SHORTCUTS: Partial<Record<LayoutPreset, string>> = {
+  free: "Alt+1",
+  columns: "Alt+2",
+  grid: "Alt+3",
+  "bento-1-2": "Alt+4",
+  "split-tree": "Alt+5",
+};
+
 const PRESET_KEYS: [string, LayoutPreset, string][] = [
   ["wm-layout-free", "free", "alt+1"],
   ["wm-layout-columns", "columns", "alt+2"],

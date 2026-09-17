@@ -1,15 +1,43 @@
 "use client";
 
-/** Static description of PaperOS v2. */
-export function AboutWindow() {
+import { stopEventPropagation } from "tldraw";
+import { openKindWindow } from "./data-common";
+import { startWelcomeTour } from "../welcome-tour";
+import type { WindowKindProps } from "../window-kinds";
+
+/** What PaperOS v2 is, with the ways in: the tour and the keyboard map. */
+export function AboutWindow({ editor }: WindowKindProps) {
   return (
-    <div className="pos-about">
+    <div
+      className="pos-about"
+      data-testid="about-window"
+      onPointerDown={stopEventPropagation}
+      onWheel={stopEventPropagation}
+    >
       <h2>PaperOS v2</h2>
       <p>
         A zoomable canvas that behaves like an OS desktop. Windows are the one
         primitive: everything you open lives in a window you can move, resize
         and arrange.
       </p>
+      <div className="pos-about__actions">
+        <button
+          type="button"
+          className="pos-button pos-button--small pos-button--primary"
+          data-testid="about-take-tour"
+          onClick={() => void startWelcomeTour(editor)}
+        >
+          Take the tour
+        </button>
+        <button
+          type="button"
+          className="pos-button pos-button--small"
+          data-testid="about-keyboard"
+          onClick={() => openKindWindow(editor, "keys", "", { reuse: true })}
+        >
+          Keyboard shortcuts <kbd>?</kbd>
+        </button>
+      </div>
       <ul>
         <li>
           Press <kbd>w</kbd> and click the canvas, or use New window, to open a
@@ -31,9 +59,14 @@ export function AboutWindow() {
           add commands and window kinds; the <strong>Agent bridge</strong> lets
           an MCP agent drive the canvas.
         </li>
+        <li>
+          <strong>Share</strong> opens a live room: cursors, shared windows and
+          files, no account.
+        </li>
       </ul>
       <p className="pos-about__muted">
-        Coming next: collaboration (shared canvas, cursors, shared documents).
+        Local-first: projects, documents and the canvas live in this browser.
+        The plan and every decision are in the repository&apos;s docs.
       </p>
     </div>
   );

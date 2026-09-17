@@ -1,3 +1,51 @@
+# M9 - Polish
+
+Goal: the live demo feels finished for a first-time visitor. Three commits,
+each pushed on its own.
+
+## Commit 1 - First-run experience
+
+- [x] Tour steps gain `target` (a top-bar element), `run` (a command), `board`
+      (another board's section) and `action` (a closing button); the overlay
+      moves above the whole desktop so it can frame the top bar.
+- [x] Welcome tour (8 steps): IDE workspace, Open, Layout, New window +
+      Commands, Share + Agent bridge, a board, Data lineage, "Open the Small
+      Business SaaS sample". Shown once (`paperos-v2:welcome-seen`), "Take
+      the tour" in About and the palette.
+- [x] "Start here" card on an empty canvas: Open sample, Play a board, Watch
+      the tour.
+- [x] Keyboard map window kind `keys`: built from the command registry and
+      tldraw's actions/tools plus the editor and terminal keys, grouped,
+      searchable, `?` and the palette open it. Unit test: no registered
+      shortcut is missing.
+- [x] Empty states with one-click fixes: Preview (create index.html), Files
+      (open the sample), Pages (create the starter library), Data / Schema
+      (add a first table), Boards menu (save the canvas as a board).
+- [x] e2e `onboarding.spec.ts`; helpers skip the welcome tour in the specs
+      that start fresh.
+
+## Commit 2 - Performance and robustness
+
+- [ ] Measure before: /app cold time to interactive, JS transferred, largest
+      chunks; 60-window pan frame time.
+- [ ] Code-split heavy window kinds (Design, Page Builder, Data, Schema,
+      Connections, Lineage, Browser, Terminal, Share, Script, Plugins, Agent).
+- [ ] Culling for arrows/labels at low zoom; throttled store persistence.
+- [ ] Error boundary per window (Reload window card); global "Something
+      broke" toast with Copy details.
+- [ ] Persistence: schema version in the project store, migration hook,
+      "Reset local data" in About with a confirm.
+- [ ] Measure after; write both in the Review.
+
+## Commit 3 - Accessibility and landing refresh
+
+- [ ] axe-core via Playwright on /, /app, a board, Data, Share; fix
+      serious/critical; focus order and rings; aria labels on icon buttons;
+      reduced motion; preset token contrast.
+- [ ] Landing: screenshot carousel from `public/shots/` (`npm run shots`),
+      "What's inside" grid, Status from the plan, deep links (`?board=`).
+- [ ] README, PLAN (M9 done, decisions), todo Review, CLAUDE.md folder map.
+
 # M8 - Collaboration
 
 - [x] Transport: `src/collab/` with room ids, transport selection (y-webrtc

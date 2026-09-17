@@ -40,7 +40,9 @@ import {
   openFolderProject,
   openSampleProject,
 } from "./project-actions";
+import { startWelcomeTour } from "./welcome-tour";
 import { listWindowKinds } from "./window-kinds";
+import { PRESET_SHORTCUTS } from "./wm-actions";
 import { getWorkspaceStore } from "./workspaces";
 
 const SIDES: [Side, string][] = [
@@ -77,6 +79,7 @@ export function registerIdeCommands(editor: Editor): () => void {
       title: `Layout: ${p.label}`,
       group: "Layout",
       keywords: "tile arrange",
+      shortcut: PRESET_SHORTCUTS[p.id],
       run: () => wm().applyPreset(p.id),
     });
   }
@@ -421,15 +424,43 @@ export function registerIdeCommands(editor: Editor): () => void {
     }
   );
 
-  list.push({
-    id: "view.toggle-theme",
-    title: "Toggle light / dark theme",
-    group: "View",
-    keywords: "dark light mode appearance",
-    run: () => {
-      toggleTheme();
+  list.push(
+    {
+      id: "view.toggle-theme",
+      title: "Toggle light / dark theme",
+      group: "View",
+      keywords: "dark light mode appearance",
+      run: () => {
+        toggleTheme();
+      },
     },
-  });
+    {
+      id: "help.tour",
+      title: "Take the tour",
+      group: "Help",
+      keywords: "welcome onboarding intro guide start",
+      run: () => startWelcomeTour(editor),
+    },
+    {
+      id: "help.keys",
+      title: "Keyboard shortcuts",
+      group: "Help",
+      keywords: "keys keymap hotkeys bindings",
+      shortcut: "?",
+      run: () => {
+        openKindWindow(editor, "keys", "", { reuse: true });
+      },
+    },
+    {
+      id: "help.about",
+      title: "About PaperOS",
+      group: "Help",
+      keywords: "version info",
+      run: () => {
+        openKindWindow(editor, "about", "", { reuse: true });
+      },
+    }
+  );
 
   const offStatic = registerCommands(list);
 
@@ -491,12 +522,11 @@ export function registerIdeCommands(editor: Editor): () => void {
       title: `Open board: ${b.title}`,
       group: "Boards",
       keywords: "board flow sections arrange",
-      run: () => {
+      run: async () => {
         const project = getProjectStore().getActiveId();
         if (!project) return;
-        void readBoard(project, b.name).then((board) =>
-          openBoard(editor, board, { project })
-        );
+        const board = await readBoard(project, b.name);
+        openBoard(editor, board, { project });
       },
     })),
     ...boardNames.map((b) => ({
@@ -525,9 +555,9 @@ export function registerIdeCommands(editor: Editor): () => void {
       title: "Data lineage",
       group: "Boards",
       keywords: "data lineage tables components pages sources bindings",
-      run: () => {
+      run: async () => {
         const project = getProjectStore().getActiveId();
-        if (project) void openLineage(editor, { project });
+        if (project) await openLineage(editor, { project });
       },
     },
     ...pageNames.map((p) => ({

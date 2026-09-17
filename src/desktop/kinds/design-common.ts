@@ -1,5 +1,8 @@
 "use client";
 
+import { starterDesignFiles } from "@/design/starter";
+import { writeDesignFile } from "@/design/project-design";
+
 import { useEffect, useState } from "react";
 import type { Editor, TLShapeId } from "tldraw";
 import { loadDesign, type DesignModel } from "@/design/project-design";
@@ -89,4 +92,10 @@ export function isDesignMessage(data: unknown): data is DesignMessage {
     data !== null &&
     (data as DesignMessage).source === "paperos-design"
   );
+}
+
+/** One-click fix for a project without a design system: tokens, the starter library and the guide. */
+export async function createStarterDesign(project: string): Promise<void> {
+  for (const [path, text] of Object.entries(starterDesignFiles()))
+    await writeDesignFile(project, path, text);
 }

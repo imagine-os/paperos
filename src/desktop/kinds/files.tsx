@@ -18,6 +18,7 @@ import {
 } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
 import type { WindowKindProps } from "../window-kinds";
+import { EmptyState } from "./empty-state";
 import { Dropdown, MenuItem, MenuSeparator } from "../menu";
 import {
   canOpenFolder,
@@ -233,9 +234,33 @@ export function FilesWindow({ shape, editor }: WindowKindProps) {
           <div className="pos-files__hint">Loading projects...</div>
         )}
         {state.status === "ready" && !project && (
-          <div className="pos-files__hint">
-            No project. Use Open to add one.
-          </div>
+          <EmptyState
+            icon={"\u{1F5C2}"}
+            title="No project yet"
+            testId="files-empty"
+            actions={[
+              {
+                label: "Open the sample project",
+                primary: true,
+                testId: "files-open-sample",
+                onClick: () => openSampleProject(),
+              },
+              ...(canOpenFolder()
+                ? [
+                    {
+                      label: "Open folder...",
+                      onClick: () => openFolderProject(),
+                    },
+                  ]
+                : []),
+              { label: "Import ZIP...", onClick: () => importZipProject() },
+            ]}
+          >
+            <p>
+              A project is a folder of files. It stays in this browser; folders
+              opened from disk are read and written in place.
+            </p>
+          </EmptyState>
         )}
         {project && permission !== "granted" && (
           <div className="pos-files__hint">

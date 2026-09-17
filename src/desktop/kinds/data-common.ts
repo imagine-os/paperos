@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor, TLShapeId } from "tldraw";
 import { getDataStore } from "@/data/project-fs";
+import { newTable } from "@/data/schema";
 import type { DataStore } from "@/data/store";
 import { getProjectStore } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
@@ -189,4 +190,29 @@ export function pickTextFile(
     input.oncancel = () => resolve(null);
     input.click();
   });
+}
+
+/** The table an empty data model starts with: `items` (id, name, done). */
+export const FIRST_TABLE = "items";
+
+/**
+ * One-click fix for a project without tables: creates `data/schema.json`
+ * when it is missing, adds the `items` table and two rows. Returns the
+ * table's name.
+ */
+export async function addFirstTable(store: DataStore): Promise<string> {
+  await store.ensureSchema();
+  const schema = await store.schema();
+  if (schema.tables.some((t) => t.name === FIRST_TABLE)) return FIRST_TABLE;
+  const table = newTable(FIRST_TABLE);
+  table.display = "name";
+  table.description = "A starter table. Rename it, add columns in Schema.";
+  table.columns.push(
+    { name: "name", type: "string", required: true },
+    { name: "done", type: "boolean", default: false }
+  );
+  await store.setSchema({ tables: [...schema.tables, table] });
+  await store.insert(FIRST_TABLE, { id: 1, name: "First item", done: true });
+  await store.insert(FIRST_TABLE, { id: 2, name: "Second item", done: false });
+  return FIRST_TABLE;
 }

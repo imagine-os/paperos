@@ -6,6 +6,7 @@
  * are in `tour.ts`.
  */
 import { atom, type Editor, type TLArrowShape, type TLShapeId } from "tldraw";
+import { runCommand } from "@/ide/commands";
 import type { Rect } from "@/wm/types";
 import {
   BOARD_COLOR_META,
@@ -18,6 +19,7 @@ import {
   describeStep,
   moveTour,
   startTour,
+  stepCommand,
   tourKeyAction,
   type TourState,
   type TourStepInfo,
@@ -29,6 +31,17 @@ export interface TourRuntime extends TourStepInfo {
 }
 
 export const TOUR_ANIMATION_MS = 600;
+
+/** Camera moves are instant when the person asked for reduced motion. */
+export function tourAnimationMs(): number {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+    return 0;
+  return TOUR_ANIMATION_MS;
+}
 
 export class TourController {
   readonly state = atom<TourRuntime | null>("tour.state", null);
@@ -74,6 +87,15 @@ export class TourController {
     return this.show({ animate: true });
   }
 
+  /** Runs the step's closing action (a command) and ends the tour. */
+  async finish(): Promise<boolean> {
+    const action = this.state.get()?.action;
+    this.stop();
+    if (!action) return false;
+    await runCommand(action.command);
+    return true;
+  }
+
   stop({ keepCamera = false }: { keepCamera?: boolean } = {}): boolean {
     const was = this.tour !== null;
     this.unhighlight();
@@ -90,31 +112,46 @@ export class TourController {
     this.stop({ keepCamera: true });
   }
 
+  /**
+   * Shows the current step: runs its command first when it has one (the
+   * caption appears at once, the camera follows when the command is done),
+   * zooms to the section unless the step frames a chrome element, and
+   * highlights the section's arrows.
+   */
   private show({ animate }: { animate: boolean }): TourRuntime | null {
     if (!this.board || !this.tour) return null;
-    const info = describeStep(this.board, this.tour);
-    const bounds = boardSectionBounds(
-      this.editor,
-      this.board.name,
-      info.section
-    );
-    if (bounds) {
-      this.editor.zoomToBounds(bounds, {
-        inset: 56,
-        animation: animate ? { duration: TOUR_ANIMATION_MS } : undefined,
-      });
-    }
-    this.highlight(info.section);
-    const runtime: TourRuntime = { ...info, bounds };
-    this.state.set(runtime);
-    return runtime;
+    const tour = this.tour;
+    const info = describeStep(this.board, tour);
+    const command = stepCommand(this.board, tour);
+    const place = (): TourRuntime | null => {
+      if (this.tour !== tour) return null;
+      const bounds = info.target
+        ? null
+        : boardSectionBounds(this.editor, info.sectionBoard, info.section);
+      if (bounds) {
+        const ms = tourAnimationMs();
+        this.editor.zoomToBounds(bounds, {
+          inset: 56,
+          animation: animate && ms > 0 ? { duration: ms } : undefined,
+        });
+      }
+      this.highlight(info.sectionBoard, info.section);
+      const runtime: TourRuntime = { ...info, bounds };
+      this.state.set(runtime);
+      return runtime;
+    };
+    if (!command) return place();
+    this.unhighlight();
+    const pending: TourRuntime = { ...info, bounds: null };
+    this.state.set(pending);
+    void runCommand(command).then(place, place);
+    return pending;
   }
 
   /** The active section's arrows turn orange and thicker; the rest go back to their board color. */
-  private highlight(sectionId: string) {
-    if (!this.board) return;
+  private highlight(boardName: string, sectionId: string) {
     this.unhighlight();
-    const ids = boardSectionArrows(this.editor, this.board.name, sectionId);
+    const ids = boardSectionArrows(this.editor, boardName, sectionId);
     if (!ids.length) return;
     this.editor.run(
       () => {

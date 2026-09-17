@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { skipFirstRun } from "./helpers";
+import { skipFirstRun, skipWelcome } from "./helpers";
 
 /** The Canvas API as these tests read it through `window.paperos`. */
 interface ApiShape {
@@ -29,6 +29,8 @@ interface ApiShape {
 }
 
 async function waitForIde(page: Page) {
+  await skipWelcome(page);
+  await page.goto("/app");
   await expect(page.locator(".pos-window[data-kind=files]")).toBeVisible({
     timeout: 20000,
   });
@@ -46,7 +48,6 @@ async function openKind(page: Page, kind: string) {
 test("the Design window shows the gallery and a token change recolors the preview", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   const preview = page.frameLocator("iframe.pos-preview__frame");
   await expect(preview.locator("h1")).toHaveText("Hello, PaperOS", {
@@ -122,7 +123,6 @@ test("the Design window shows the gallery and a token change recolors the previe
 test("the Page Builder adds a component and the device preview shows it", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   await openKind(page, "pages");
   const builder = page.getByTestId("pages-window");
@@ -171,7 +171,6 @@ test("the Page Builder adds a component and the device preview shows it", async 
 test("map.generate from the Script window builds sections, cards and arrows", async ({
   page,
 }) => {
-  await page.goto("/app");
   await waitForIde(page);
   await openKind(page, "script");
   const script = page.getByTestId("script-window");

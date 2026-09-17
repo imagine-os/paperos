@@ -1,4 +1,5 @@
 .pos-desktop {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -26,7 +27,8 @@
   background: var(--pos-surface);
   border-bottom: 1px solid var(--pos-border);
   flex: none;
-  z-index: 10;
+  /* Above the Start here card (20) so menus stay clickable; below tours (300). */
+  z-index: 30;
 }
 
 .pos-topbar__brand {
@@ -3298,4 +3300,206 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+/* Tour caption next to a framed chrome element (top bar) */
+.pos-tour__caption[data-placement="top"] {
+  top: calc(var(--pos-topbar-h) + 28px);
+  bottom: auto;
+}
+
+.pos-tour__highlight[data-target="chrome"] {
+  border-radius: 10px;
+  outline-offset: 2px;
+}
+
+/* Empty and error states inside window bodies */
+.pos-empty {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 24px;
+  text-align: center;
+  color: var(--pos-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: auto;
+}
+
+.pos-empty__icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.pos-empty__title {
+  color: var(--pos-text);
+  font-size: 14px;
+}
+
+.pos-empty[data-tone="error"] .pos-empty__title {
+  color: var(--pos-danger);
+}
+
+.pos-empty__text {
+  max-width: 420px;
+}
+
+.pos-empty__text p {
+  margin: 0 0 6px;
+}
+
+.pos-empty__text code {
+  font-family: var(--pos-mono);
+  font-size: 12px;
+}
+
+.pos-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Start here card on an empty canvas */
+.pos-start {
+  position: absolute;
+  inset: var(--pos-topbar-h) 0 0 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.pos-start__card {
+  pointer-events: all;
+  width: min(460px, calc(100% - 32px));
+  padding: 22px 24px 18px;
+  border-radius: 16px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  border: 1px solid var(--pos-border-strong);
+  box-shadow: var(--pos-shadow);
+  font-family: var(--pos-font);
+  text-align: center;
+}
+
+.pos-start__kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pos-accent);
+  margin-bottom: 6px;
+}
+
+.pos-start__title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pos-start__text {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--pos-text-muted);
+}
+
+.pos-start__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pos-start__hint {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--pos-text-muted);
+}
+
+.pos-start__hint kbd,
+.pos-keys kbd {
+  font-family: var(--pos-mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--pos-border-strong);
+  border-bottom-width: 2px;
+  background: var(--pos-surface-2);
+  color: var(--pos-text);
+}
+
+/* About window actions */
+.pos-about__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+/* Keyboard map window */
+.pos-keys {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  font-size: 13px;
+}
+
+.pos-keys__search {
+  flex: 1;
+}
+
+.pos-keys__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0 8px;
+}
+
+.pos-keys__group {
+  padding: 6px 12px 4px;
+}
+
+.pos-keys__group h3 {
+  margin: 0 0 4px;
+}
+
+.pos-keys__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pos-keys__table td {
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--pos-border);
+  vertical-align: middle;
+}
+
+.pos-keys__table tr:last-child td {
+  border-bottom: none;
+}
+
+.pos-keys__label {
+  color: var(--pos-text);
+}
+
+.pos-keys__keys {
+  text-align: right;
+  white-space: nowrap;
+  width: 40%;
+}
+
+.pos-keys__keys kbd + kbd {
+  margin-left: 3px;
 }

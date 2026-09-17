@@ -83,6 +83,17 @@ export interface BoardStepSpec {
   section: string;
   title?: string;
   caption: string;
+  /**
+   * A CSS selector in the desktop chrome (a top-bar button, say): the tour
+   * frames that element instead of the section's frame.
+   */
+  target?: string;
+  /** A palette command run when the step is entered (opens a board, a window...). */
+  run?: string;
+  /** Look the section up on this board instead of the tour's own board. */
+  board?: string;
+  /** A closing button on the step: runs the command and ends the tour. */
+  action?: { label: string; command: string };
 }
 
 export interface BoardDef {
@@ -249,13 +260,31 @@ export function parseBoard(
         errors.push(`${where}.steps[${i}]: needs "section"`);
         return;
       }
-      if (!sections.some((x) => x.id === q.section))
+      // Steps that frame chrome, point at another board or only close the
+      // tour need no section of their own.
+      if (
+        typeof q.board !== "string" &&
+        typeof q.target !== "string" &&
+        q.action === undefined &&
+        !sections.some((x) => x.id === q.section)
+      )
         errors.push(`${where}.steps[${i}]: unknown section "${q.section}"`);
       const step: BoardStepSpec = {
         section: q.section,
         caption: typeof q.caption === "string" ? q.caption : "",
       };
       if (typeof q.title === "string") step.title = q.title;
+      if (typeof q.target === "string") step.target = q.target;
+      if (typeof q.run === "string") step.run = q.run;
+      if (typeof q.board === "string") step.board = q.board;
+      const action = q.action as Record<string, unknown> | undefined;
+      if (
+        action &&
+        typeof action === "object" &&
+        typeof action.label === "string" &&
+        typeof action.command === "string"
+      )
+        step.action = { label: action.label, command: action.command };
       steps.push(step);
     });
 

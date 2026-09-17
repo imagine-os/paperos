@@ -22,6 +22,7 @@ import { LineageWindow } from "./kinds/lineage";
 import { BrowserWindow } from "./kinds/browser";
 import { TerminalWindow } from "./kinds/terminal";
 import { ShareWindow } from "./kinds/share";
+import { KeysWindow } from "./kinds/keys";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -250,6 +251,15 @@ registerWindowKind({
   defaultSize: { w: 300, h: 260 },
   hidden: true,
   Component: LineageWindow,
+});
+
+registerWindowKind({
+  id: "keys",
+  label: "Keyboard shortcuts",
+  defaultTitle: "Keyboard shortcuts",
+  icon: "\u{2328}",
+  defaultSize: { w: 520, h: 560 },
+  Component: KeysWindow,
 });
 
 registerWindowKind({

@@ -15,7 +15,26 @@ import { getProjectStore } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
 import { hintTable } from "@/lineage/open";
 import type { WindowKindProps } from "../window-kinds";
+import { openSampleProject } from "../project-actions";
 import { isDesignMessage } from "./design-common";
+import { EmptyState } from "./empty-state";
+
+/** What "Create index.html" writes into a project without an HTML entry. */
+export const STARTER_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>New page</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 40px; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <h1>Hello from PaperOS</h1>
+    <p>Edit <code>index.html</code> in an Editor window; this preview follows.</p>
+  </body>
+</html>
+`;
 
 /** `pages/x.json?tenant=2` with `sources=1` added or removed. */
 export function withQueryFlag(
@@ -239,12 +258,45 @@ export function PreviewWindow({ shape, editor, update }: WindowKindProps) {
           srcDoc={srcdoc}
           onWheel={stopEventPropagation}
         />
+      ) : project ? (
+        paths.length > 0 || changes > 0 ? (
+          <EmptyState
+            icon={"\u25B6"}
+            title="Nothing to preview yet"
+            testId="preview-empty"
+            actions={[
+              {
+                label: "Create index.html",
+                primary: true,
+                testId: "preview-create-index",
+                onClick: () =>
+                  store.createFile(project, "index.html", STARTER_HTML),
+              },
+            ]}
+          >
+            <p>
+              The preview renders an HTML file or a <code>pages/*.json</code>{" "}
+              page from the project. This project has neither.
+            </p>
+          </EmptyState>
+        ) : (
+          <div className="pos-files__hint">Loading…</div>
+        )
       ) : (
-        <div className="pos-files__hint">
-          {project
-            ? "No HTML file in this project. Add an index.html to preview it."
-            : "No project is open."}
-        </div>
+        <EmptyState
+          icon={"\u25B6"}
+          title="No project is open"
+          testId="preview-no-project"
+          actions={[
+            {
+              label: "Open the sample project",
+              primary: true,
+              onClick: () => openSampleProject(),
+            },
+          ]}
+        >
+          <p>Open a folder, the sample, a ZIP or a GitHub repository.</p>
+        </EmptyState>
       )}
     </div>
   );

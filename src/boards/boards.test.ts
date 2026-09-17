@@ -9,7 +9,13 @@ import {
   validateBoard,
   type BoardDef,
 } from "./model";
-import { describeStep, moveTour, startTour, tourKeyAction } from "./tour";
+import {
+  describeStep,
+  moveTour,
+  startTour,
+  stepCommand,
+  tourKeyAction,
+} from "./tour";
 
 const sample = (): BoardDef => ({
   name: "demo",
@@ -277,6 +283,62 @@ describe("tour", () => {
     expect(startTour({ ...b, sections: [], steps: [] })).toBeNull();
   });
 
+  it("steps can frame chrome, run a command, point at another board and close with an action", () => {
+    const { board, errors } = parseBoard(
+      JSON.stringify({
+        name: "welcome",
+        title: "Welcome",
+        sections: [],
+        steps: [
+          {
+            section: "open",
+            target: "[data-testid=open-menu]",
+            caption: "Open",
+          },
+          {
+            section: "data",
+            board: "build-product",
+            run: "board.open.build-product",
+            caption: "Board",
+          },
+          {
+            section: "end",
+            caption: "Bye",
+            action: {
+              label: "Open the SaaS sample",
+              command: "project.open-saas",
+            },
+          },
+          { section: "nowhere", caption: "bad" },
+        ],
+      })
+    );
+    expect(errors).toEqual(['board.steps[3]: unknown section "nowhere"']);
+    const b = board!;
+    const s0 = startTour(b)!;
+    expect(describeStep(b, s0)).toMatchObject({
+      target: "[data-testid=open-menu]",
+      sectionBoard: "welcome",
+    });
+    expect(stepCommand(b, s0)).toBeNull();
+    const s1 = moveTour(s0, 1)!;
+    expect(describeStep(b, s1)).toMatchObject({
+      section: "data",
+      sectionBoard: "build-product",
+    });
+    expect(describeStep(b, s1).target).toBeUndefined();
+    expect(stepCommand(b, s1)).toBe("board.open.build-product");
+    const s2 = moveTour(s1, 1)!;
+    expect(describeStep(b, s2).action).toEqual({
+      label: "Open the SaaS sample",
+      command: "project.open-saas",
+    });
+    // Round trip keeps the extras.
+    const again = parseBoard(serializeBoard(b)).board!;
+    expect(again.steps[1].run).toBe("board.open.build-product");
+    expect(again.steps[2].action?.command).toBe("project.open-saas");
+  });
+
   it("maps keys to actions", () => {
     expect(tourKeyAction("ArrowRight")).toBe("next");
     expect(tourKeyAction(" ")).toBe("next");
@@ -303,7 +365,8 @@ describe("sample boards", () => {
       const l = layoutBoard(board!);
       for (const a of l.windows)
         for (const b of l.windows)
-          if (a !== b) expect(overlaps(a, b), `${path}: ${a.id} / ${b.id}`).toBe(false);
+          if (a !== b)
+            expect(overlaps(a, b), `${path}: ${a.id} / ${b.id}`).toBe(false);
       // Left to right: every column starts right of the previous one.
       const xs = l.sections.map((s) => s.column);
       expect([...xs].sort((a, b) => a - b)).toEqual(xs);

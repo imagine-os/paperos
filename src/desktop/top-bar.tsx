@@ -22,7 +22,6 @@ import { togglePalette } from "@/ide/palette-state";
 import { resolvedTheme, toggleTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
 import { PRESETS } from "@/wm/presets";
-import type { LayoutPreset } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
 import { createWindow } from "./create-window";
 import { applyPresetWorkspace, PRESET_WORKSPACES } from "./preset-workspaces";
@@ -34,16 +33,10 @@ import {
   openFolderProject,
   openSampleProject,
 } from "./project-actions";
+import { startWelcomeTour } from "./welcome-tour";
+import { PRESET_SHORTCUTS } from "./wm-actions";
 import { listWindowKinds, windowKindsChanged } from "./window-kinds";
 import { getWorkspaceStore } from "./workspaces";
-
-const PRESET_SHORTCUTS: Partial<Record<LayoutPreset, string>> = {
-  free: "Alt+1",
-  columns: "Alt+2",
-  grid: "Alt+3",
-  "bento-1-2": "Alt+4",
-  "split-tree": "Alt+5",
-};
 
 export function TopBar({ editor }: { editor: Editor | null }) {
   const theme = useSignal(resolvedTheme);
@@ -102,14 +95,32 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         >
           {theme === "dark" ? "\u2600" : "\u263D"}
         </button>
-        <button
-          type="button"
-          className="pos-button pos-topbar__about"
-          disabled={!editor}
-          onClick={() => editor && createWindow(editor, { kind: "about" })}
-        >
-          About
-        </button>
+        {editor ? (
+          <Dropdown label="About" testId="about-menu" align="right">
+            <MenuItem
+              label="About PaperOS"
+              testId="about-open"
+              onSelect={() => createWindow(editor, { kind: "about" })}
+            />
+            <MenuItem
+              label="Take the tour"
+              testId="about-tour"
+              onSelect={() => void startWelcomeTour(editor)}
+            />
+            <MenuItem
+              label="Keyboard shortcuts"
+              shortcut="?"
+              testId="about-keys"
+              onSelect={() =>
+                openKindWindow(editor, "keys", "", { reuse: true })
+              }
+            />
+          </Dropdown>
+        ) : (
+          <Dropdown label="About" disabled>
+            {null}
+          </Dropdown>
+        )}
         <Link className="pos-topbar__link" href="/legacy">
           Legacy prototype
         </Link>
