@@ -1,4 +1,5 @@
 import { starterDesignFiles } from "@/design/starter";
+import { sampleBoardFiles } from "./sample-boards";
 import type { FileMap } from "./types";
 
 export const SAMPLE_NAME = "Sample site";
@@ -383,6 +384,13 @@ those components on a 12-column grid, bound to the tables above. Open the
 **Page Builder** to edit them, or pick \`pages/home.json\` as the Preview
 entry. See \`design/README.md\`.
 
+## Boards
+
+\`boards/*.json\` are saved arrangements: sections laid out left to right,
+each a frame of windows, with labeled arrows and a tour. The **Boards**
+menu opens them ("Build a product", "Ship a feature", "Agent-driven") and
+plays the tour; "Save canvas as board" writes a new one.
+
 Open your own code with **Open** in the top bar: a folder (Chromium), a ZIP,
 or a public GitHub repository URL.
 `,
@@ -708,6 +716,7 @@ or a public GitHub repository URL.
     }),
     ...samplePages(),
     ...starterDesignFiles(),
+    ...sampleBoardFiles(),
     "plugins/hello.js": `// A PaperOS plugin: an ES module exporting activate(api).
 // Enable it in New window -> Plugins. It runs in this page, like the devtools.
 export const name = "Hello plugin";

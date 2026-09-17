@@ -2568,3 +2568,79 @@
 .pos-card__open {
   align-self: flex-end;
 }
+
+/* Tour mode (boards): highlight around the active section, caption card */
+.pos-tour {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.pos-tour__highlight {
+  position: absolute;
+  border-radius: 14px;
+  outline: 3px solid var(--pos-accent);
+  outline-offset: 6px;
+  box-shadow:
+    0 0 0 9999px color-mix(in srgb, var(--pos-bg) 45%, transparent),
+    0 0 0 1px var(--pos-accent);
+  transition:
+    left 120ms,
+    top 120ms,
+    width 120ms,
+    height 120ms;
+}
+
+.pos-tour__caption {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  padding: 14px 18px 12px;
+  border-radius: 14px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  border: 1px solid var(--pos-border-strong);
+  box-shadow: var(--pos-shadow);
+  pointer-events: all;
+  font-family: var(--pos-font);
+}
+
+.pos-tour__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pos-text-muted);
+  margin-bottom: 4px;
+}
+
+.pos-tour__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pos-tour__text {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pos-text-muted);
+}
+
+.pos-tour__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pos-tour__hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--pos-text-muted);
+}

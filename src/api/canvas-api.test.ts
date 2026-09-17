@@ -409,6 +409,124 @@ describe("flow, sections and map", () => {
   });
 });
 
+describe("boards", () => {
+  const boardFile = JSON.stringify({
+    name: "demo",
+    title: "Demo board",
+    sections: [
+      {
+        id: "a",
+        title: "A",
+        grid: "columns",
+        windows: [
+          { id: "n1", kind: "note", content: "one" },
+          { id: "n2", kind: "note", content: "two" },
+        ],
+      },
+      {
+        id: "b",
+        title: "B",
+        grid: "single",
+        windows: [{ id: "d", kind: "data", content: { table: "roles" } }],
+      },
+    ],
+    arrows: [{ from: "n2", to: "d", label: "feeds" }],
+    steps: [
+      { section: "a", title: "First", caption: "Two notes." },
+      { section: "b", caption: "One table." },
+    ],
+  });
+
+  it("lists, opens, saves and plays boards", async () => {
+    const { api, host, events } = setup();
+    host.state.files.get("prj_1")!.set("boards/demo.json", boardFile);
+    const list = await api.boards.list();
+    expect(list).toEqual([
+      {
+        name: "demo",
+        title: "Demo board",
+        path: "boards/demo.json",
+        sections: 2,
+        windows: 3,
+        onCanvas: false,
+      },
+    ]);
+    const seen: string[] = [];
+    events.on("board.opened", (e) => seen.push(String(e.payload.name)));
+    const opened = await api.boards.open("boards/demo.json", {
+      origin: { x: 100, y: 100 },
+    });
+    isPlainJson(opened);
+    expect(opened).toMatchObject({
+      name: "demo",
+      sections: 2,
+      windows: 3,
+      arrows: 1,
+      workspace: { name: "Board: Demo board" },
+    });
+    expect(opened.bounds.x).toBe(100);
+    expect(api.windows.list()).toHaveLength(3);
+    expect(api.sections.list().map((s) => s.title)).toEqual(["A", "B"]);
+    expect(api.flow.list()[0].label).toBe("feeds");
+    expect(seen).toEqual(["demo"]);
+    expect((await api.boards.list())[0].onCanvas).toBe(true);
+    // Opening again replaces the earlier copy.
+    await api.boards.open("demo");
+    expect(api.windows.list()).toHaveLength(3);
+    expect(api.sections.list()).toHaveLength(2);
+
+    // The tour walks the steps and stops after the last one.
+    const t0 = await api.boards.play("demo");
+    expect(t0).toMatchObject({
+      board: "demo",
+      step: 0,
+      total: 2,
+      section: "a",
+      stepTitle: "First",
+      caption: "Two notes.",
+      first: true,
+      last: false,
+    });
+    const t1 = api.boards.step();
+    expect(t1).toMatchObject({ step: 1, section: "b", last: true });
+    expect(api.boards.step(-1)?.step).toBe(0);
+    expect(api.boards.step(5)).toBeNull();
+    expect(api.boards.stop()).toEqual({ stopped: false });
+    await api.boards.play("demo", 1);
+    expect(api.boards.stop()).toEqual({ stopped: true });
+
+    // Saving captures what is on the canvas.
+    const saved = await api.boards.save("snapshot", "My snapshot");
+    expect(saved).toMatchObject({
+      name: "snapshot",
+      title: "My snapshot",
+      path: "boards/snapshot.json",
+      sections: 2,
+      windows: 3,
+    });
+    expect(
+      host.state.files.get("prj_1")!.get("boards/snapshot.json")
+    ).toContain('"grid": "free"');
+    expect((await api.boards.list()).map((b) => b.name)).toEqual([
+      "demo",
+      "snapshot",
+    ]);
+  });
+
+  it("validates names and needs a project", async () => {
+    const { api, host } = setup();
+    await expect(api.boards.open("no such")).rejects.toThrow(
+      /not a board name/
+    );
+    await expect(api.boards.open("missing")).rejects.toThrow(/No board/);
+    await expect(api.boards.play()).rejects.toThrow(/No board on the canvas/);
+    // @ts-expect-error bad delta
+    expect(() => api.boards.step("x")).toThrow(/delta must be a finite number/);
+    host.state.activeProject = null;
+    await expect(api.boards.list()).rejects.toThrow(/No project/);
+  });
+});
+
 describe("preview, console, commands, canvas", () => {
   it("covers the small namespaces", async () => {
     const { api, host } = setup();

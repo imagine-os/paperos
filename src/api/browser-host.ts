@@ -19,6 +19,18 @@ import { connectWindows, disconnectWindows, listFlows } from "@/desktop/flow";
 import { createSection, getSection, listSections } from "@/desktop/sections";
 import { getWorkspaceStore } from "@/desktop/workspaces";
 import { generateMap } from "@/map/generate";
+import {
+  boardsOnCanvas,
+  listBoards,
+  openBoard,
+  readBoard,
+  saveBoard,
+} from "@/boards/build";
+import {
+  boardIsOnCanvas,
+  getTourController,
+  type TourRuntime,
+} from "@/boards/tour-controller";
 import { listCommands, runCommand } from "@/ide/commands";
 import {
   clearConsole,
@@ -32,7 +44,28 @@ import { getProjectStore } from "@/ide/project/store";
 import type { ProjectMeta } from "@/ide/project/types";
 import { swapWindows } from "@/wm/operations";
 import { getWindowManager } from "@/wm/window-manager";
-import type { CanvasHost, ProjectRecord, WindowRecord } from "./host";
+import type {
+  CanvasHost,
+  ProjectRecord,
+  TourRecord,
+  WindowRecord,
+} from "./host";
+
+function tourRecord(t: TourRuntime | null): TourRecord | null {
+  if (!t) return null;
+  return {
+    board: t.board,
+    title: t.title,
+    step: t.step,
+    total: t.total,
+    section: t.section,
+    sectionTitle: t.sectionTitle,
+    stepTitle: t.stepTitle,
+    caption: t.caption,
+    first: t.first,
+    last: t.last,
+  };
+}
 
 /** Windows inside a section (frame) have parent-relative x/y; the API speaks page space. */
 function record(editor: Editor, s: WindowShape): WindowRecord {
@@ -279,6 +312,39 @@ export function createBrowserHost(editor: Editor): CanvasHost {
 
     map: {
       generate: (_project, regenerate) => generateMap(editor, { regenerate }),
+    },
+
+    boards: {
+      list: (p) => listBoards(p, editor, projects),
+      async open(p, name, origin) {
+        const board = await readBoard(p, name, projects);
+        return openBoard(editor, board, { project: p, origin });
+      },
+      async save(p, name, title) {
+        const board = await saveBoard(editor, p, name, title, projects);
+        return {
+          name: board.name,
+          title: board.title,
+          path: `boards/${board.name}.json`,
+          sections: board.sections.length,
+          windows: board.sections.reduce((n, s) => n + s.windows.length, 0),
+          onCanvas: true,
+        };
+      },
+      async play(p, name, step) {
+        const target = name ?? boardsOnCanvas(editor)[0];
+        if (!target)
+          throw new Error(
+            "No board on the canvas: pass a board name (see boards.list)"
+          );
+        const board = await readBoard(p, target, projects);
+        if (!boardIsOnCanvas(editor, board.name))
+          openBoard(editor, board, { project: p });
+        return tourRecord(getTourController(editor).play(board, step));
+      },
+      step: (delta) => tourRecord(getTourController(editor).step(delta)),
+      stop: () => getTourController(editor).stop(),
+      current: () => tourRecord(getTourController(editor).current),
     },
 
     preview: {

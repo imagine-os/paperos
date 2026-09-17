@@ -39,6 +39,7 @@ import {
 import { importDroppedItems, isProjectDrop } from "./project-actions";
 import { TopBar } from "./top-bar";
 import { WM_ACTION_IDS, wmActions } from "./wm-actions";
+import { TourOverlay } from "./tour-overlay";
 import { WmOverlay } from "./wm-overlay";
 import { WindowShapeUtil } from "./window-shape";
 import { WindowTool } from "./window-tool";
@@ -100,7 +101,12 @@ const components: TLComponents = {
     if (onlyWindows) return null;
     return <DefaultStylePanel {...props} />;
   },
-  InFrontOfTheCanvas: WmOverlay,
+  InFrontOfTheCanvas: () => (
+    <>
+      <WmOverlay />
+      <TourOverlay />
+    </>
+  ),
 };
 
 /** The PaperOS desktop: a top bar and a full-bleed, persistent tldraw canvas. */

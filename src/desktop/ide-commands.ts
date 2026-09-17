@@ -12,6 +12,13 @@ import { PRESETS } from "@/wm/presets";
 import type { Side } from "@/wm/types";
 import { getWindowManager } from "@/wm/window-manager";
 import { generateMap } from "@/map/generate";
+import {
+  boardsOnCanvas,
+  listBoards,
+  openBoard,
+  readBoard,
+} from "@/boards/build";
+import { getTourController } from "@/boards/tour-controller";
 import { createWindow } from "./create-window";
 import { applyDataWorkspace } from "./data-workspace";
 import { applyDesignWorkspace } from "./design-workspace";
@@ -320,6 +327,58 @@ export function registerIdeCommands(editor: Editor): () => void {
     }));
   });
 
+  // Boards of the active project: open and play. The list is refreshed on demand.
+  let boardNames: { name: string; title: string }[] = [];
+  const refreshBoards = () => {
+    const project = getProjectStore().getActiveId();
+    if (!project) {
+      boardNames = [];
+      return;
+    }
+    void listBoards(project, editor).then((list) => {
+      boardNames = list.map((b) => ({ name: b.name, title: b.title }));
+    });
+  };
+  refreshBoards();
+  const offBoardRefresh = getProjectStore().changes.subscribe(refreshBoards);
+  const offBoardProject = getProjectStore().state.subscribe(refreshBoards);
+  const offBoards = registerCommandSource(() => [
+    ...boardNames.map((b) => ({
+      id: `board.open.${b.name}`,
+      title: `Open board: ${b.title}`,
+      group: "Boards",
+      keywords: "board flow sections arrange",
+      run: () => {
+        const project = getProjectStore().getActiveId();
+        if (!project) return;
+        void readBoard(project, b.name).then((board) =>
+          openBoard(editor, board, { project })
+        );
+      },
+    })),
+    ...boardNames.map((b) => ({
+      id: `board.play.${b.name}`,
+      title: `Play board: ${b.title}`,
+      group: "Boards",
+      keywords: "tour present camera",
+      run: () => {
+        const project = getProjectStore().getActiveId();
+        if (!project) return;
+        void readBoard(project, b.name).then((board) => {
+          if (!boardsOnCanvas(editor).includes(b.name))
+            openBoard(editor, board, { project });
+          getTourController(editor).play(board);
+        });
+      },
+    })),
+    {
+      id: "board.stop",
+      title: "Stop board tour",
+      group: "Boards",
+      run: () => void getTourController(editor).stop(),
+    },
+  ]);
+
   const offProjects = registerCommandSource(() =>
     getProjectStore()
       .list()
@@ -335,6 +394,9 @@ export function registerIdeCommands(editor: Editor): () => void {
     offStatic();
     offFiles();
     offWorkspaces();
+    offBoards();
+    offBoardRefresh();
+    offBoardProject();
     offProjects();
   };
 }

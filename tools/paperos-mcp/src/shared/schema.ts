@@ -55,6 +55,8 @@ export const EVENT_NAMES = [
   "command.run",
   "project.changed",
   "data.changed",
+  "board.opened",
+  "tour.changed",
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
@@ -98,6 +100,12 @@ const FLOW_INFO = "FlowInfo {id, from, to, label}";
 const SECTION_INFO = "SectionInfo {id, title, x, y, w, h, windowIds}";
 const MAP_RESULT =
   "MapResult {sections, nodes, edges, kept, bounds: {x, y, w, h}, workspace: {id, name} | null}";
+const BOARD_INFO =
+  "BoardInfo {name, title, path, description?, sections, windows, onCanvas}";
+const BOARD_RESULT =
+  "BoardResult {name, title, sections, windows, arrows, bounds: {x, y, w, h}, workspace: {id, name} | null}";
+const TOUR_INFO =
+  "TourInfo {board, title, step, total, section, sectionTitle, stepTitle, caption, first, last} or null when no tour is playing";
 const LAYOUT_STATE =
   "LayoutState {preset, root (layout tree or null), region, tiled: window ids}";
 const WORKSPACE_INFO = "WorkspaceInfo {id, name, preset, windowCount, active}";
@@ -675,6 +683,87 @@ export const TOOLS: ToolSpec[] = [
       "Rebuilds the project map from the current project, keeping the position of every card that still has a subject; new cards take free slots, gone ones are removed, arrows are redrawn.",
     params: [],
     returns: MAP_RESULT,
+    mutates: true,
+  },
+
+  // ----- boards (saved arrangements of sections, left to right, with a tour) -----
+  {
+    name: "boards.list",
+    description:
+      "The boards of the active project (boards/*.json): saved arrangements of sections laid out left to right, each holding windows or a grid of windows, with arrows and a tour. onCanvas says whether a board is drawn on the current page.",
+    params: [],
+    returns: `${BOARD_INFO}[]`,
+  },
+  {
+    name: "boards.open",
+    description:
+      "Draws a board on the canvas: one frame per section, the windows inside (tiled by the section's grid), the arrows between them; replaces an earlier copy of the same board, zooms to it and saves a 'Board: <title>' workspace.",
+    params: [
+      str("name", "Board name (boards/<name>.json)"),
+      {
+        name: "options",
+        description: "Where to draw it",
+        schema: {
+          type: "object",
+          properties: {
+            origin: {
+              type: "object",
+              description:
+                "Top-left corner in page units (default: right of everything, or where the board already is)",
+              properties: { x: { type: "number" }, y: { type: "number" } },
+            },
+          },
+        },
+      },
+    ],
+    returns: BOARD_RESULT,
+    mutates: true,
+  },
+  {
+    name: "boards.save",
+    description:
+      "Captures the current page as a board file: every section (frame) with its windows and their positions, loose windows as a 'Canvas' section, arrows with labels, one tour step per section. Writes boards/<name>.json.",
+    params: [
+      str("name", "Board name (letters, digits, - and _)"),
+      str("title", "Board title (default: the name)", false),
+    ],
+    returns: BOARD_INFO,
+    mutates: true,
+  },
+  {
+    name: "boards.play",
+    description:
+      "Starts the tour of a board: the camera animates to its first section, which is highlighted with its arrows, and a caption shows the step. Opens the board first when it is not on the canvas. Arrow keys step, Escape stops.",
+    params: [
+      str("name", "Board name (default: the board on the canvas)", false),
+      {
+        name: "step",
+        description: "Step to start at (0-based, default 0)",
+        schema: { type: "integer" },
+      },
+    ],
+    returns: TOUR_INFO,
+    mutates: true,
+  },
+  {
+    name: "boards.step",
+    description:
+      "Moves the playing tour by delta steps (default 1; negative goes back). Stepping past the last section ends the tour.",
+    params: [
+      {
+        name: "delta",
+        description: "Steps to move (default 1)",
+        schema: { type: "integer" },
+      },
+    ],
+    returns: TOUR_INFO,
+    mutates: true,
+  },
+  {
+    name: "boards.stop",
+    description: "Ends the tour and removes the highlight.",
+    params: [],
+    returns: "{stopped: boolean}",
     mutates: true,
   },
 

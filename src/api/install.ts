@@ -10,6 +10,7 @@ import { onCommandRun } from "@/ide/commands";
 import { getProjectStore } from "@/ide/project/store";
 import { collectWindowIds } from "@/wm/tree";
 import { getWindowManager } from "@/wm/window-manager";
+import { getTourController } from "@/boards/tour-controller";
 import { createBrowserHost } from "./browser-host";
 import { createCanvasApi, type CanvasApi } from "./canvas-api";
 import { createEventBus, type EventBus } from "./events";
@@ -103,6 +104,24 @@ export function installCanvasApi(editor: Editor): InstalledApi {
   );
 
   offs.push(onCommandRun((id) => events.emit("command.run", { id })));
+
+  // tour.changed: each step of a board tour (and its end).
+  const tour = getTourController(editor);
+  let lastTour = "";
+  offs.push(
+    react("api.tour", () => {
+      const t = tour.state.get();
+      const key = t ? `${t.board}:${t.step}` : "";
+      if (key === lastTour) return;
+      lastTour = key;
+      events.emit(
+        "tour.changed",
+        t
+          ? { board: t.board, step: t.step, total: t.total, section: t.section }
+          : { board: null, step: -1 }
+      );
+    })
+  );
 
   // data.changed follows the active project's DataStore.
   let offData: (() => void) | null = null;

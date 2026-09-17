@@ -15,10 +15,13 @@ import { collectWindowIds } from "@/wm/tree";
 import type { LayoutNode, LayoutPreset, Rect, Side } from "@/wm/types";
 import type { CanvasEvent, EventBus } from "./events";
 import type {
+  BoardOpenRecord,
+  BoardRecord,
   CanvasHost,
   FlowRecord,
   MapRecord,
   SectionRecord,
+  TourRecord,
   WindowRecord,
 } from "./host";
 import { LAYOUT_PRESETS, SIDES, type EventName } from "./schema";
@@ -148,6 +151,17 @@ export interface CanvasApi {
     generate(): Promise<MapRecord>;
     regenerate(): Promise<MapRecord>;
   };
+  boards: {
+    list(): Promise<BoardRecord[]>;
+    open(
+      name: string,
+      options?: { origin?: { x: number; y: number } }
+    ): Promise<BoardOpenRecord>;
+    save(name: string, title?: string): Promise<BoardRecord>;
+    play(name?: string, step?: number): Promise<TourRecord | null>;
+    step(delta?: number): TourRecord | null;
+    stop(): { stopped: boolean };
+  };
   preview: {
     reload(): { reloaded: number };
     setEntry(path: string): { entry: string };
@@ -261,6 +275,15 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
     if (typeof v !== "object" || v === null || Array.isArray(v))
       fail(`${what} must be an object`);
     return v as Record<string, unknown>;
+  };
+
+  const expectBoardName = (v: unknown): string => {
+    const n = expectString(v, "name")
+      .replace(/^boards\//, "")
+      .replace(/\.json$/, "");
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(n))
+      fail(`"${n}" is not a board name (letters, digits, - and _)`);
+    return n;
   };
 
   const expectId = (v: unknown): RowId => {
@@ -633,6 +656,49 @@ export function createCanvasApi(host: CanvasHost, events: EventBus): CanvasApi {
       async regenerate() {
         return host.map.generate(requireProject(), true);
       },
+    },
+
+    boards: {
+      async list() {
+        return host.boards.list(requireProject());
+      },
+      async open(name, options = {}) {
+        const n = expectBoardName(name);
+        if (options !== null && typeof options !== "object")
+          fail("options must be an object");
+        const o = options.origin;
+        const origin =
+          o === undefined
+            ? undefined
+            : {
+                x: expectNumber(o.x, "origin.x"),
+                y: expectNumber(o.y, "origin.y"),
+              };
+        const result = await host.boards.open(requireProject(), n, origin);
+        events.emit("board.opened", {
+          name: result.name,
+          sections: result.sections,
+          windows: result.windows,
+        });
+        return result;
+      },
+      async save(name, title) {
+        const n = expectBoardName(name);
+        if (title !== undefined) expectString(title, "title");
+        return host.boards.save(requireProject(), n, title);
+      },
+      async play(name, step = 0) {
+        const n = name === undefined ? undefined : expectBoardName(name);
+        return host.boards.play(
+          requireProject(),
+          n,
+          Math.trunc(expectNumber(step, "step"))
+        );
+      },
+      step(delta = 1) {
+        return host.boards.step(Math.trunc(expectNumber(delta, "delta")));
+      },
+      stop: () => ({ stopped: host.boards.stop() }),
     },
 
     preview: {

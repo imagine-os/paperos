@@ -74,6 +74,39 @@ export interface SectionRecord {
   windowIds: string[];
 }
 
+export interface BoardRecord {
+  name: string;
+  title: string;
+  path: string;
+  description?: string;
+  sections: number;
+  windows: number;
+  onCanvas: boolean;
+}
+
+export interface BoardOpenRecord {
+  name: string;
+  title: string;
+  sections: number;
+  windows: number;
+  arrows: number;
+  bounds: Rect;
+  workspace: { id: string; name: string } | null;
+}
+
+export interface TourRecord {
+  board: string;
+  title: string;
+  step: number;
+  total: number;
+  section: string;
+  sectionTitle: string;
+  stepTitle: string;
+  caption: string;
+  first: boolean;
+  last: boolean;
+}
+
 export interface MapRecord {
   sections: number;
   nodes: number;
@@ -188,6 +221,24 @@ export interface CanvasHost {
   };
   map: {
     generate(project: string, regenerate: boolean): Promise<MapRecord>;
+  };
+  boards: {
+    list(project: string): Promise<BoardRecord[]>;
+    open(
+      project: string,
+      name: string,
+      origin?: { x: number; y: number }
+    ): Promise<BoardOpenRecord>;
+    save(project: string, name: string, title?: string): Promise<BoardRecord>;
+    /** Plays a board's tour (opening it first when needed); null when the board has no steps. */
+    play(
+      project: string,
+      name: string | undefined,
+      step: number
+    ): Promise<TourRecord | null>;
+    step(delta: number): TourRecord | null;
+    stop(): boolean;
+    current(): TourRecord | null;
   };
   preview: {
     reload(): number;

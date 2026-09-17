@@ -4,6 +4,17 @@ import Link from "next/link";
 import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { useValue, type Editor } from "tldraw";
 import { getBridgeClient } from "@/api/bridge-client";
+import {
+  boardsOnCanvas,
+  listBoards,
+  openBoard,
+  readBoard,
+  saveBoard,
+  type BoardInfo,
+} from "@/boards/build";
+import { getTourController } from "@/boards/tour-controller";
+import { docsChanged } from "@/ide/docs";
+import { getProjectStore } from "@/ide/project";
 import { togglePalette } from "@/ide/palette-state";
 import { resolvedTheme, toggleTheme } from "@/ide/theme";
 import { useSignal } from "@/ide/use-signal";
@@ -45,6 +56,7 @@ export function TopBar({ editor }: { editor: Editor | null }) {
           <>
             <LayoutMenu editor={editor} />
             <WorkspacesMenu editor={editor} />
+            <BoardsMenu editor={editor} />
             <NewWindowMenu editor={editor} />
           </>
         ) : (
@@ -53,6 +65,9 @@ export function TopBar({ editor }: { editor: Editor | null }) {
               {null}
             </Dropdown>
             <Dropdown label="Workspaces" disabled>
+              {null}
+            </Dropdown>
+            <Dropdown label="Boards" disabled>
               {null}
             </Dropdown>
             <Dropdown label="New window" disabled>
@@ -233,6 +248,106 @@ function LayoutMenu({ editor }: { editor: Editor }) {
         label="Focus mode"
         shortcut="Alt+F"
         onSelect={() => wm.focusMode()}
+      />
+    </Dropdown>
+  );
+}
+
+/** Boards of the active project: open, play the tour, save the canvas as a board. */
+function BoardsMenu({ editor }: { editor: Editor }) {
+  const projects = getProjectStore();
+  const state = useSignal(projects.state);
+  const changes = useSignal(projects.changes);
+  const docTick = useSignal(docsChanged);
+  const project = state.activeId;
+  const [boards, setBoards] = useState<BoardInfo[]>([]);
+  const tour = getTourController(editor);
+  const playing = useValue(tour.state);
+  useEffect(() => {
+    let cancelled = false;
+    if (!project) {
+      setBoards([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      void listBoards(project, editor).then((list) => {
+        if (!cancelled) setBoards(list);
+      });
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [project, changes, docTick, editor]);
+
+  const open = async (name: string) => {
+    if (!project) return;
+    openBoard(editor, await readBoard(project, name), { project });
+  };
+  const play = async (name: string) => {
+    if (!project) return;
+    const board = await readBoard(project, name);
+    if (!boardsOnCanvas(editor).includes(name))
+      openBoard(editor, board, { project });
+    tour.play(board);
+  };
+  const save = async () => {
+    if (!project) return;
+    const title = window.prompt("Board title", "My board");
+    if (!title) return;
+    const name = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    if (!name) return;
+    await saveBoard(editor, project, name, title);
+  };
+
+  return (
+    <Dropdown
+      label={
+        playing
+          ? `Boards: playing ${playing.step + 1}/${playing.total}`
+          : "Boards"
+      }
+      testId="boards-menu"
+    >
+      {boards.length > 0 && <MenuHeading>Open</MenuHeading>}
+      {boards.map((b) => (
+        <MenuItem
+          key={b.name}
+          label={`${b.title} (${b.sections} sections)`}
+          checked={b.onCanvas}
+          testId={`board-open-${b.name}`}
+          onSelect={() => void open(b.name)}
+        />
+      ))}
+      {boards.length > 0 && <MenuHeading>Play tour</MenuHeading>}
+      {boards.map((b) => (
+        <MenuItem
+          key={`play-${b.name}`}
+          label={`▶ ${b.title}`}
+          testId={`board-play-${b.name}`}
+          onSelect={() => void play(b.name)}
+        />
+      ))}
+      {boards.length === 0 && (
+        <div className="pos-menu__heading">
+          {project ? "No boards/*.json in this project" : "No project open"}
+        </div>
+      )}
+      <MenuSeparator />
+      <MenuItem
+        label="Stop tour"
+        disabled={!playing}
+        testId="board-stop"
+        onSelect={() => tour.stop()}
+      />
+      <MenuItem
+        label="Save canvas as board..."
+        disabled={!project}
+        testId="board-save"
+        onSelect={() => void save()}
       />
     </Dropdown>
   );

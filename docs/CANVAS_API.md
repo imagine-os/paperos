@@ -10,7 +10,7 @@ Scripts in the **Script** window, plugins and the MCP bridge all use the same
 API, and every method returns plain JSON, so results can be logged, stored or
 sent to an agent unchanged.
 
-API version: 1. 59 methods in 14 namespaces.
+API version: 1. 65 methods in 15 namespaces.
 
 ## Where to call it
 
@@ -61,7 +61,7 @@ a callback (the MCP bridge). Each event is `{seq, name, time, payload}`.
 | `project.changed` | `{id, name}`                                                             |
 | `data.changed`    | `{project}` (a table or the schema changed)                              |
 
-(8 events.)
+(10 events.)
 
 ## Examples
 
@@ -746,6 +746,88 @@ Rebuilds the project map from the current project, keeping the position of every
 
 Returns `MapResult {sections, nodes, edges, kept, bounds: {x, y, w, h}, workspace: {id, name} | null}`. changes state · MCP tool `map_regenerate`.
 
+### `boards`
+
+#### `boards.list`
+
+```ts
+paperos.boards.list();
+```
+
+The boards of the active project (boards/*.json): saved arrangements of sections laid out left to right, each holding windows or a grid of windows, with arrows and a tour. onCanvas says whether a board is drawn on the current page.
+
+Returns `BoardInfo {name, title, path, description?, sections, windows, onCanvas}[]`. read-only · MCP tool `boards_list`.
+
+#### `boards.open`
+
+```ts
+paperos.boards.open(name: string, options?: {origin?: {x?: number, y?: number}})
+```
+
+Draws a board on the canvas: one frame per section, the windows inside (tiled by the section's grid), the arrows between them; replaces an earlier copy of the same board, zooms to it and saves a 'Board: <title>' workspace.
+
+Returns `BoardResult {name, title, sections, windows, arrows, bounds: {x, y, w, h}, workspace: {id, name} | null}`. changes state · MCP tool `boards_open`.
+
+| Parameter        | Required | Type                                  | Description                                                                                 |
+| ---------------- | -------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `name`           | yes      | `string`                              | Board name (boards/<name>.json)                                                             |
+| `options`        | no       | `{origin?: {x?: number, y?: number}}` | Where to draw it                                                                            |
+| `options.origin` | no       | `{x?: number, y?: number}`            | Top-left corner in page units (default: right of everything, or where the board already is) |
+
+#### `boards.save`
+
+```ts
+paperos.boards.save(name: string, title?: string)
+```
+
+Captures the current page as a board file: every section (frame) with its windows and their positions, loose windows as a 'Canvas' section, arrows with labels, one tour step per section. Writes boards/<name>.json.
+
+Returns `BoardInfo {name, title, path, description?, sections, windows, onCanvas}`. changes state · MCP tool `boards_save`.
+
+| Parameter | Required | Type     | Description                           |
+| --------- | -------- | -------- | ------------------------------------- |
+| `name`    | yes      | `string` | Board name (letters, digits, - and _) |
+| `title`   | no       | `string` | Board title (default: the name)       |
+
+#### `boards.play`
+
+```ts
+paperos.boards.play(name?: string, step?: integer)
+```
+
+Starts the tour of a board: the camera animates to its first section, which is highlighted with its arrows, and a caption shows the step. Opens the board first when it is not on the canvas. Arrow keys step, Escape stops.
+
+Returns `TourInfo {board, title, step, total, section, sectionTitle, stepTitle, caption, first, last} or null when no tour is playing`. changes state · MCP tool `boards_play`.
+
+| Parameter | Required | Type      | Description                                   |
+| --------- | -------- | --------- | --------------------------------------------- |
+| `name`    | no       | `string`  | Board name (default: the board on the canvas) |
+| `step`    | no       | `integer` | Step to start at (0-based, default 0)         |
+
+#### `boards.step`
+
+```ts
+paperos.boards.step(delta?: integer)
+```
+
+Moves the playing tour by delta steps (default 1; negative goes back). Stepping past the last section ends the tour.
+
+Returns `TourInfo {board, title, step, total, section, sectionTitle, stepTitle, caption, first, last} or null when no tour is playing`. changes state · MCP tool `boards_step`.
+
+| Parameter | Required | Type      | Description               |
+| --------- | -------- | --------- | ------------------------- |
+| `delta`   | no       | `integer` | Steps to move (default 1) |
+
+#### `boards.stop`
+
+```ts
+paperos.boards.stop();
+```
+
+Ends the tour and removes the highlight.
+
+Returns `{stopped: boolean}`. changes state · MCP tool `boards_stop`.
+
 ### `preview`
 
 #### `preview.reload`
@@ -890,17 +972,17 @@ Returns `{dataUrl, width, height}`. read-only · MCP tool `canvas_screenshot` ·
 #### `events.on`
 
 ```ts
-paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | 'data.changed' | '*', callback: function)
+paperos.events.on(name: 'window.created' | 'window.closed' | 'window.focused' | 'layout.changed' | 'file.changed' | 'command.run' | 'project.changed' | 'data.changed' | 'board.opened' | 'tour.changed' | '*', callback: function)
 ```
 
 Subscribes to an event ('*' for all). The callback gets {name, time, payload}. Returns an unsubscribe function.
 
 Returns `unsubscribe function`. read-only · scripts only (takes a callback).
 
-| Parameter  | Required | Type                                                                                                                                                           | Description       |
-| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| 'data.changed' \| '*'` | Event name or '*' |
-| `callback` | yes      | `function`                                                                                                                                                     | function(event)   |
+| Parameter  | Required | Type                                                                                                                                                                                               | Description       |
+| ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `name`     | yes      | `'window.created' \| 'window.closed' \| 'window.focused' \| 'layout.changed' \| 'file.changed' \| 'command.run' \| 'project.changed' \| 'data.changed' \| 'board.opened' \| 'tour.changed' \| '*'` | Event name or '*' |
+| `callback` | yes      | `function`                                                                                                                                                                                         | function(event)   |
 
 #### `events.list`
 

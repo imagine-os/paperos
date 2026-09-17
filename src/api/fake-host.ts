@@ -14,6 +14,20 @@ import { parsePage } from "@/design/pages";
 import { parseTokens } from "@/design/tokens";
 import { layoutMap } from "@/map/layout";
 import { buildProjectMap } from "@/map/model";
+import { layoutBoard } from "@/boards/layout";
+import {
+  boardFromPath,
+  boardPath,
+  parseBoard,
+  serializeBoard,
+  type BoardDef,
+} from "@/boards/model";
+import {
+  describeStep as describeTourStep,
+  moveTour,
+  startTour,
+  type TourState,
+} from "@/boards/tour";
 import type {
   CanvasHost,
   CommandRecord,
@@ -46,6 +60,9 @@ export interface FakeHost extends CanvasHost {
     flows: FlowRecord[];
     sections: SectionRecord[];
     log: string[];
+    tour: { board: BoardDef; state: TourState } | null;
+    /** Board name per section id, for boards drawn on the fake canvas. */
+    boardOf: Map<string, string>;
   };
 }
 
@@ -122,6 +139,8 @@ export function fakeHost(): FakeHost {
     flows: [],
     sections: [],
     log: [],
+    tour: null,
+    boardOf: new Map(),
   };
 
   const win = (id: string) => state.windows.find((w) => w.id === id);
@@ -512,6 +531,176 @@ export function fakeHost(): FakeHost {
           workspace: { id: ws.id, name: ws.name },
         };
       },
+    },
+    boards: {
+      async list(p) {
+        const out = [];
+        for (const [path, text] of files(p)) {
+          if (!boardFromPath(path) || text === null) continue;
+          const { board } = parseBoard(text, path);
+          if (!board) continue;
+          out.push({
+            name: board.name,
+            title: board.title,
+            path,
+            sections: board.sections.length,
+            windows: board.sections.reduce((n, s) => n + s.windows.length, 0),
+            onCanvas: [...state.boardOf.values()].includes(board.name),
+          });
+        }
+        return out;
+      },
+      async open(p, name, origin) {
+        const text = files(p).get(boardPath(name));
+        if (text === null || text === undefined)
+          throw new Error(`No board "${name}" (${boardPath(name)})`);
+        const { board } = parseBoard(text, boardPath(name));
+        if (!board) throw new Error(`Cannot read ${boardPath(name)}`);
+        // Replace an earlier copy.
+        const old = [...state.boardOf.entries()]
+          .filter(([, b]) => b === name)
+          .map(([id]) => id);
+        for (const id of old) {
+          const sec = state.sections.find((s) => s.id === id);
+          if (sec) {
+            for (const w of sec.windowIds) host.windows.close(w);
+            state.sections = state.sections.filter((s) => s.id !== id);
+          }
+          state.boardOf.delete(id);
+        }
+        const layout = layoutBoard(board, { origin: origin ?? { x: 0, y: 0 } });
+        const ids = new Map<string, string>();
+        for (const s of layout.sections) {
+          const id = `shape:board${++counter}`;
+          ids.set(s.id, id);
+          state.boardOf.set(id, name);
+          state.sections.push({
+            id,
+            title: s.title,
+            x: s.x,
+            y: s.y,
+            w: s.w,
+            h: s.h,
+            windowIds: [],
+          });
+        }
+        for (const w of layout.windows) {
+          const spec = board.sections
+            .flatMap((s) => s.windows)
+            .find((x) => x.id === w.id)!;
+          const id = host.windows.create({
+            kind: spec.kind,
+            title: spec.title ?? spec.kind,
+            content:
+              typeof spec.content === "string"
+                ? spec.content
+                : JSON.stringify(spec.content ?? ""),
+            at: { x: w.x, y: w.y },
+            size: { w: w.w, h: w.h },
+          });
+          const sectionId = ids.get(w.section)!;
+          win(id)!.section = sectionId;
+          state.sections.find((s) => s.id === sectionId)!.windowIds.push(id);
+          ids.set(w.id, id);
+        }
+        let arrows = 0;
+        for (const a of board.arrows) {
+          const from = ids.get(a.from);
+          const to = ids.get(a.to);
+          if (!from || !to) continue;
+          state.flows.push({
+            id: `shape:board${++counter}`,
+            from,
+            to,
+            label: a.label ?? "",
+          });
+          arrows++;
+        }
+        state.camera = { x: -layout.bounds.x, y: -layout.bounds.y, z: 0.25 };
+        const ws = host.workspaces.save(`Board: ${board.title}`);
+        return {
+          name: board.name,
+          title: board.title,
+          sections: layout.sections.length,
+          windows: layout.windows.length,
+          arrows,
+          bounds: layout.bounds,
+          workspace: { id: ws.id, name: ws.name },
+        };
+      },
+      async save(p, name, title) {
+        const board: BoardDef = {
+          name,
+          title: title ?? name,
+          sections: state.sections.map((s) => ({
+            id: s.id.replace("shape:", ""),
+            title: s.title,
+            grid: "free" as const,
+            windows: s.windowIds.map((id) => {
+              const w = win(id)!;
+              return {
+                id: id.replace("shape:", ""),
+                kind: w.kind,
+                title: w.title,
+                content: w.content,
+                size: { w: w.w, h: w.h },
+                at: { x: w.x - s.x, y: w.y - s.y },
+              };
+            }),
+          })),
+          arrows: state.flows
+            .filter((f) => f.from && f.to)
+            .map((f) => ({
+              from: f.from!.replace("shape:", ""),
+              to: f.to!.replace("shape:", ""),
+              label: f.label,
+            })),
+          steps: [],
+        };
+        files(p).set(boardPath(name), serializeBoard(board));
+        return {
+          name,
+          title: board.title,
+          path: boardPath(name),
+          sections: board.sections.length,
+          windows: board.sections.reduce((n, s) => n + s.windows.length, 0),
+          onCanvas: true,
+        };
+      },
+      async play(p, name, step) {
+        const target = name ?? [...state.boardOf.values()][0];
+        if (!target) throw new Error("No board on the canvas");
+        const text = files(p).get(boardPath(target));
+        if (!text) throw new Error(`No board "${target}"`);
+        const board = parseBoard(text, boardPath(target)).board!;
+        if (![...state.boardOf.values()].includes(target))
+          await host.boards.open(p, target);
+        const st = startTour(board, step);
+        if (!st) return null;
+        state.tour = { board, state: st };
+        state.log.push(`tour:${target}:${st.step}`);
+        return describeTourStep(board, st);
+      },
+      step(delta) {
+        if (!state.tour) return null;
+        const next = moveTour(state.tour.state, delta);
+        if (!next) {
+          state.tour = null;
+          return null;
+        }
+        state.tour.state = next;
+        state.log.push(`tour:${next.board}:${next.step}`);
+        return describeTourStep(state.tour.board, next);
+      },
+      stop() {
+        const was = state.tour !== null;
+        state.tour = null;
+        return was;
+      },
+      current: () =>
+        state.tour
+          ? describeTourStep(state.tour.board, state.tour.state)
+          : null,
     },
     preview: {
       reload() {
