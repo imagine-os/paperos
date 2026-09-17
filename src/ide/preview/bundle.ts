@@ -40,6 +40,31 @@ export interface BundleOptions {
   list?: () => string[] | Promise<string[]>;
   /** Mark page blocks with `data-block` (the Page Builder's preview). */
   markBlocks?: boolean;
+  /**
+   * Initial preview context (`paperos.data.context`): `{tenant: "2", role: "3"}`
+   * from a `?tenant=2&role=3` entry query. `@tenant` in filters reads it.
+   */
+  context?: Record<string, string>;
+  /** Force the document's color scheme (`<html data-theme>`). */
+  theme?: "light" | "dark";
+}
+
+/** Splits `pages/home.json?tenant=2` into the path and its query as an object. */
+export function splitEntry(entry: string): {
+  path: string;
+  query: Record<string, string>;
+} {
+  const at = entry.indexOf("?");
+  if (at === -1) return { path: entry, query: {} };
+  const query: Record<string, string> = {};
+  for (const part of entry.slice(at + 1).split("&")) {
+    if (!part) continue;
+    const eq = part.indexOf("=");
+    const k = decodeURIComponent(eq === -1 ? part : part.slice(0, eq));
+    const v = eq === -1 ? "" : decodeURIComponent(part.slice(eq + 1));
+    if (k) query[k] = v;
+  }
+  return { path: entry.slice(0, at), query };
 }
 
 export interface BundleResult {
@@ -201,6 +226,7 @@ function runtimeSchema(schema: DataSchema) {
         name: c.name,
         type: c.type,
         ref: c.ref,
+        ...(c.required ? { required: true } : {}),
       })),
     })),
   };
@@ -307,6 +333,7 @@ export async function bundle(
       html = renderPage(page, core, {
         css: design.css ?? BASE_CSS,
         markBlocks: options.markBlocks,
+        theme: options.theme,
       });
     }
   } else {
@@ -378,6 +405,9 @@ export async function bundle(
   let bridge = `<script data-paperos="bridge">${CONSOLE_BRIDGE}</script>`;
   const data = await dataScript(cached, deps, schema);
   if (data) bridge += `\n<script data-paperos="data">${data}</script>`;
+  const context = options.context ?? {};
+  if (data && Object.keys(context).length)
+    bridge += `\n<script data-paperos="context">Object.assign(paperos.data.context, ${JSON.stringify(context).replace(/<\//g, "<\\/")});</script>`;
   if (design.css && !isPagePath(entry))
     bridge += `\n<style data-paperos="tokens">${escapeClose("style", design.css)}</style>`;
   if (design.payload)

@@ -84,7 +84,13 @@ describe("page files", () => {
     ]);
     expect(page?.route).toBe("/");
     expect(pageFromPath("pages/home.json")).toBe("home");
-    expect(pageFromPath("pages/x/home.json")).toBeNull();
+    // Pages can live in folders (page sets such as apps/customer).
+    expect(pageFromPath("pages/x/home.json")).toBe("x/home");
+    expect(pageFromPath("pages/apps/customer/home.json")).toBe(
+      "apps/customer/home"
+    );
+    expect(pageFromPath("pages/x/.json")).toBeNull();
+    expect(pageFromPath("design/components/Card.json")).toBeNull();
   });
 
   it("validates against the library and the other pages", () => {
@@ -185,7 +191,9 @@ describe("page files", () => {
     expect(html).toContain(
       '<div class="ds-col" style="grid-column: span 12" data-block="hero" data-block-name="Hero">'
     );
-    expect(html).toContain('<h1 class="ds-hero__title">Welcome</h1>');
+    expect(html).toContain(
+      '<h1 class="ds-hero__title ds-hero__title--gradient">Welcome</h1>'
+    );
     expect(html).toContain("--ds-block-columns: 2");
     expect(html).toContain('data-block="b1"');
     expect(html).toContain("inner");

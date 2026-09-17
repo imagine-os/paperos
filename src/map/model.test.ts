@@ -88,7 +88,7 @@ describe("buildProjectMap", () => {
     });
     expect(keys.has(nodeKey.flow("products"))).toBe(true);
     expect(graph.nodes.find((n) => n.key === "design:tokens")?.subtitle).toBe(
-      "8 colors · 7 sizes · 8 spaces"
+      "18 colors · 7 sizes · 10 spaces"
     );
     expect(new Set(graph.nodes.map((n) => n.key)).size).toBe(
       graph.nodes.length
@@ -192,9 +192,9 @@ describe("layoutMap", () => {
         if (a !== b) expect(overlaps(a, b), `${a.key} / ${b.key}`).toBe(false);
     expect(l.nodes).toHaveLength(graph.nodes.length);
     expect(l.bounds.w).toBeGreaterThan(0);
-    // The component section has more than 8 nodes, so it uses two columns.
+    // The component section has more than 20 nodes, so it uses three columns.
     const comps = l.nodes.filter((n) => n.section === "components");
-    expect(new Set(comps.map((n) => n.x)).size).toBe(2);
+    expect(new Set(comps.map((n) => n.x)).size).toBe(3);
     // UX flows read left to right: one row.
     const flows = l.nodes.filter((n) => n.section === "flows");
     expect(flows.length).toBe(3);

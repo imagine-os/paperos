@@ -9,6 +9,7 @@ import {
   type ComponentDef,
 } from "@/design/components";
 import { galleryDocument } from "@/design/gallery";
+import { applyThemePreset, THEME_PRESETS } from "@/design/presets";
 import { newBlockId, pagePath, parsePage, serializePage } from "@/design/pages";
 import { writeDesignFile, type DesignModel } from "@/design/project-design";
 import { starterDesignFiles } from "@/design/starter";
@@ -82,6 +83,32 @@ export function DesignWindow({ shape, editor, update }: WindowKindProps) {
             </button>
           ))}
         </div>
+        {project && design?.hasTokens && (
+          <Dropdown
+            label={`Preset: ${
+              THEME_PRESETS.find((p) => p.id === design.tokens.preset)?.name ??
+              "Custom"
+            }`}
+            small
+            testId="design-presets"
+          >
+            {THEME_PRESETS.map((p) => (
+              <MenuItem
+                key={p.id}
+                label={`${p.name}: ${p.description}`}
+                checked={design.tokens.preset === p.id}
+                testId={`design-preset-${p.id}`}
+                onSelect={() =>
+                  void writeDesignFile(
+                    project,
+                    TOKENS_PATH,
+                    serializeTokens(applyThemePreset(design.tokens, p.id))
+                  )
+                }
+              />
+            ))}
+          </Dropdown>
+        )}
         <span className="pos-toolbar__status">
           {loading && !design ? "Loading…" : ""}
           {design && design.tokenErrors.length > 0 && (
@@ -253,7 +280,7 @@ function TokensTab({
       },
     });
   const setScale = (
-    group: "spacing" | "radius" | "shadow" | "breakpoint",
+    group: "spacing" | "radius" | "shadow" | "breakpoint" | "motion",
     key: string,
     value: string
   ) => change({ ...draft, [group]: { ...draft[group], [key]: value } });
@@ -282,9 +309,16 @@ function TokensTab({
       galleryDocument({
         tokens: draft,
         components: design.components.filter((c) =>
-          ["Button", "Card", "Badge", "Stat", "Table", "Form", "Hero"].includes(
-            c.name
-          )
+          [
+            "Hero",
+            "Button",
+            "Badge",
+            "KpiGrid",
+            "Card",
+            "Table",
+            "Form",
+            "Chart",
+          ].includes(c.name)
         ),
         schema: design.schema,
         tables: design.tables,
@@ -377,6 +411,20 @@ function TokensTab({
                 />
               </label>
             ))}
+            {Object.entries(draft.typography.letterSpacing ?? {}).map(
+              ([k, v]) => (
+                <label key={k} className="pos-tokens__mini">
+                  <span style={{ letterSpacing: v }}>track {k}</span>
+                  <input
+                    className="pos-input pos-tokens__value"
+                    value={v}
+                    onChange={(e) =>
+                      setType("letterSpacing", k, e.target.value)
+                    }
+                  />
+                </label>
+              )
+            )}
           </div>
         </section>
         <section>
@@ -426,6 +474,19 @@ function TokensTab({
               <span
                 className="pos-tokens__shadow"
                 style={{ boxShadow: draft.shadow[k] }}
+              />
+            </label>
+          ))}
+        </section>
+        <section>
+          <div className="pos-data__heading">Motion</div>
+          {Object.entries(draft.motion ?? {}).map(([k, v]) => (
+            <label key={k} className="pos-tokens__row">
+              <span className="pos-tokens__name">{k}</span>
+              <input
+                className="pos-input pos-tokens__wide"
+                value={v}
+                onChange={(e) => setScale("motion", k, e.target.value)}
               />
             </label>
           ))}

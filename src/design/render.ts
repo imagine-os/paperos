@@ -39,7 +39,12 @@ export interface RenderPayload {
       name: string;
       primaryKey: string;
       display?: string;
-      columns: { name: string; type: string; ref?: string }[];
+      columns: {
+        name: string;
+        type: string;
+        ref?: string;
+        required?: boolean;
+      }[];
     }[];
   };
   /** Page routes, for `href="#/route"` navigation: route -> page name. */
@@ -277,20 +282,34 @@ export function designCore(payload: RenderPayload): DesignCore {
   ): Record<string, unknown> => {
     const def = byName[name];
     const out: Record<string, unknown> = {};
+    const defaults: Record<string, unknown> = {};
+    let variantProps: Record<string, unknown> | null = null;
     if (def) {
       for (const p of def.props)
-        if (p.default !== undefined) out[p.name] = p.default;
+        if (p.default !== undefined) defaults[p.name] = out[p.name] = p.default;
       const v = variant || (props && (props as any).variant);
       if (v) {
         const found = def.variants.find((x) => x.name === v);
-        if (found) Object.assign(out, found.props);
+        if (found) {
+          variantProps = found.props;
+          Object.assign(out, found.props);
+        }
         out.variant = v;
       }
     }
     if (props)
-      for (const k of Object.keys(props))
+      for (const k of Object.keys(props)) {
+        // A prop left at its default does not undo what the variant set.
+        if (
+          variantProps &&
+          k in variantProps &&
+          k in defaults &&
+          JSON.stringify(props[k]) === JSON.stringify(defaults[k])
+        )
+          continue;
         if (props[k] !== undefined && props[k] !== "") out[k] = props[k];
         else if (!(k in out)) out[k] = props[k];
+      }
     if (def) {
       for (const p of def.props) {
         if (p.type !== "fields" && p.type !== "field") continue;
@@ -343,6 +362,7 @@ export function designCore(payload: RenderPayload): DesignCore {
             isRef: type === "ref",
             isImage: type === "image",
             isBoolean: type === "boolean",
+            required: !!(col && col.required),
             key: f === table.primaryKey,
           };
         });
@@ -388,7 +408,11 @@ export function designCore(payload: RenderPayload): DesignCore {
  * The browser side: hydrates `<ds-component name="Card" props='{...}'>`
  * and `<div data-component="Card" data-prop-title="...">` elements, exposes
  * `paperos.design` and turns `href="#/route"` clicks into navigation
- * messages for the Preview window.
+ * messages for the Preview window. It also draws what templates cannot
+ * (`enhance()`: icons, avatar initials, charts and calendars from the bound
+ * tables, role gates), keeps the preview context (`setContext({tenant,
+ * role})`: `@key` filters, the tenant's brand colors, gated rows and blocks)
+ * and toggles the theme (`setTheme`, `[data-toggle-theme]`).
  */
 export function designRuntime(
   win: any,
@@ -481,6 +505,7 @@ export function designRuntime(
           else data.hydrate(n);
         }
     }
+    if (count) enhance(r);
     return count;
   };
 
@@ -500,26 +525,709 @@ export function designRuntime(
     }
   };
 
+  const dataApi = (): any => (win.paperos && win.paperos.data) || null;
+
+  // ----- icons (inline SVG, 24px grid, stroke = currentColor) -----
+  const ICON_PATHS: Record<string, string> = {
+    home: '<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/>',
+    calendar:
+      '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    users:
+      '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M15 5a3.5 3.5 0 0 1 0 7M17.5 14.5A6 6 0 0 1 21.5 20"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    box: '<path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/>',
+    cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+    chart: '<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    phone:
+      '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+    linkedin:
+      '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7v.5M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/>',
+    megaphone:
+      '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1zM14 9a3 3 0 0 1 0 6M17 6a7 7 0 0 1 0 12"/>',
+    image:
+      '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+    tag: '<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="8" cy="8" r="1.5"/>',
+    receipt:
+      '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM8 8h8M8 12h8M8 16h5"/>',
+    star: '<path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.3 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/>',
+    chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    check: '<path d="m5 12 5 5L20 7"/>',
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    sparkles:
+      '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>',
+    book: '<path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM4 17h14"/>',
+    pen: '<path d="m4 20 1.5-5L16 4.5l3.5 3.5L9 18.5zM14 6.5l3.5 3.5"/>',
+    file: '<path d="M6 2h8l5 5v15H6zM14 2v5h5"/>',
+    scissors:
+      '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 20 19M8.5 16.5 20 5"/>',
+    utensils:
+      '<path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18M17 3c-2 2-2 6-2 8h4V3zM17 11v10"/>',
+    hammer: '<path d="m14 4 6 6-2 2-6-6zM12 6 4 14l2 2 2 2 8-8"/>',
+    cart: '<path d="M3 4h2l2.5 11h10L20 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="16" cy="20" r="1.5"/>',
+    heart:
+      '<path d="M12 21s-8-5.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.5-8 11-8 11z"/>',
+    map: '<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    money:
+      '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>',
+    briefcase:
+      '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
+    target:
+      '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    send: '<path d="m3 11 18-8-8 18-2-8z"/>',
+  };
+  const icons: Record<string, string> = {};
+  for (const k of Object.keys(ICON_PATHS))
+    icons[k] =
+      '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICON_PATHS[k] +
+      "</svg>";
+
+  const qsa = (root: any, selector: string): any[] => {
+    try {
+      return Array.prototype.slice.call(root.querySelectorAll(selector));
+    } catch {
+      return [];
+    }
+  };
+
+  // ----- context: tenant and role -----
+  const ctxOf = (): Record<string, unknown> => {
+    const d = dataApi();
+    return d ? d.context || (d.context = {}) : {};
+  };
+  const rowOf = (table: string, id: unknown): any => {
+    const d = dataApi();
+    return d && d[table] && typeof d[table].get === "function"
+      ? d[table].get(id)
+      : null;
+  };
+  const roleLevel = (id: unknown): number | null => {
+    const r = rowOf("roles", id);
+    return r && typeof r.level === "number" ? r.level : null;
+  };
+  const roleByName = (name: string): any => {
+    const d = dataApi();
+    const rows: any[] = d && d.roles ? d.roles.list() : [];
+    const n = String(name).toLowerCase();
+    return (
+      rows.find((r) => String(r.name).toLowerCase() === n) ||
+      rows.find((r) => String(r.id) === String(name)) ||
+      null
+    );
+  };
+  /** Rows with `required_role` are hidden from lower roles; menu rows with a `business_type` from other businesses. */
+  const gate = (_table: string, row: any): boolean => {
+    const d = dataApi();
+    if (!d || !row || typeof row !== "object" || !("required_role" in row))
+      return true;
+    if (row.required_role !== null && row.required_role !== undefined) {
+      const needed = roleLevel(row.required_role);
+      const ctx = ctxOf();
+      const have = ctx.role !== undefined ? roleLevel(ctx.role) : null;
+      if (needed !== null && (have === null || have < needed)) return false;
+    }
+    const business = ctxOf().business;
+    if (row.business_type && business && row.business_type !== business)
+      return false;
+    return true;
+  };
+  const applyTenantTheme = () => {
+    const d = dataApi();
+    const root = doc && doc.documentElement;
+    if (!d || !root || !root.style) return;
+    const ctx = ctxOf();
+    const t = ctx.tenant !== undefined ? rowOf("tenants", ctx.tenant) : null;
+    const map: Record<string, string> = {
+      brand_primary: "--ds-color-primary",
+      brand_accent: "--ds-color-accent",
+      brand_accent2: "--ds-color-accent2",
+    };
+    for (const k of Object.keys(map)) {
+      if (t && t[k]) root.style.setProperty(map[k], String(t[k]));
+      else root.style.removeProperty(map[k]);
+    }
+    if (t) {
+      root.setAttribute("data-tenant", String(t.id));
+      if (t.business_type) ctx.business = t.business_type;
+    } else root.removeAttribute("data-tenant");
+  };
+  const applyGates = (root?: any) => {
+    const r = root || doc;
+    if (!r) return;
+    const ctx = ctxOf();
+    const have = ctx.role !== undefined ? roleLevel(ctx.role) : null;
+    for (const el of qsa(r, "[data-min-role]")) {
+      const role = roleByName(el.getAttribute("data-min-role"));
+      const needed = role && typeof role.level === "number" ? role.level : null;
+      const denied = needed !== null && (have === null || have < needed);
+      el.hidden = denied;
+      const name = el.getAttribute("data-min-role");
+      for (const d of qsa(r, "[data-gate-denied]"))
+        if (d.getAttribute("data-gate-denied") === name) d.hidden = !denied;
+    }
+  };
+  const syncSelects = (root?: any) => {
+    const r = root || doc;
+    if (!r) return;
+    const ctx = ctxOf();
+    for (const sel of qsa(r, "[data-set-context]")) {
+      const key = sel.getAttribute("data-set-context");
+      const want = ctx[key];
+      const options: any[] = Array.prototype.slice.call(sel.options || []);
+      for (const o of options)
+        o.selected =
+          want !== undefined &&
+          String(o.getAttribute("data-id")) === String(want);
+    }
+  };
+
+  // ----- avatars: initials and a per-name hue -----
+  const initialsOf = (name: string): string => {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "";
+    const first = parts[0].charAt(0);
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+    return (first + last).toUpperCase();
+  };
+  const hueOf = (name: string): number => {
+    let h = 0;
+    const s = String(name || "");
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return h;
+  };
+  const enhanceAvatars = (r: any) => {
+    for (const el of qsa(r, ".ds-avatar[data-name]")) {
+      const name = el.getAttribute("data-name") || "";
+      const target =
+        el.querySelector && el.querySelector(".ds-avatar__initials");
+      if (target && !String(target.textContent || "").trim())
+        target.textContent = initialsOf(name);
+      if (!el.hasAttribute("data-hue") && name) {
+        el.setAttribute("data-hue", String(hueOf(name)));
+        if (el.style)
+          el.style.setProperty("--ds-avatar-hue", String(hueOf(name)));
+      }
+    }
+  };
+  const enhanceIcons = (r: any) => {
+    for (const el of qsa(r, "[data-icon]")) {
+      const name = el.getAttribute("data-icon");
+      if (name && icons[name] && el.getAttribute("data-icon-drawn") !== name) {
+        el.innerHTML = icons[name];
+        el.setAttribute("data-icon-drawn", name);
+      }
+    }
+  };
+
+  // ----- charts and calendars: drawn from the bound table -----
+  const resolveFilter = (filter: string): string => {
+    const ctx = ctxOf();
+    return String(filter || "").replace(
+      /@([A-Za-z_][A-Za-z0-9_]*)/g,
+      (_m, key: string) => {
+        const v = ctx[key];
+        if (v === undefined || v === null) return "null";
+        const t = String(v);
+        return /\s/.test(t) ? '"' + t + '"' : t;
+      }
+    );
+  };
+  const rowsOf = (table: string, filter: string): any[] => {
+    const d = dataApi();
+    if (!d || !table || !d[table]) return [];
+    let rows: any[] = d[table].list({ filter: resolveFilter(filter) });
+    const visible = d.options && d.options.visible;
+    if (typeof visible === "function")
+      rows = rows.filter((row) => visible(table, row) !== false);
+    return rows;
+  };
+  const num = (v: unknown): number => {
+    const n =
+      typeof v === "number"
+        ? v
+        : parseFloat(
+            String(v === undefined || v === null ? "" : v).replace(
+              /[^0-9.-]/g,
+              ""
+            )
+          );
+    return isFinite(n) ? n : 0;
+  };
+  const MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const MONTHS_LONG = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const fmtValue = (v: number, format: string): string => {
+    if (format === "currency")
+      return (
+        "$" +
+        (v >= 1000
+          ? Math.round(v).toLocaleString()
+          : (Math.round(v * 100) / 100).toLocaleString())
+      );
+    if (format === "compact")
+      return v >= 1000
+        ? (v / 1000).toFixed(1).replace(/\.0$/, "") + "k"
+        : String(Math.round(v));
+    return String(Math.round(v * 100) / 100);
+  };
+  const chartSeries = (el: any): { label: string; value: number }[] => {
+    const table = el.getAttribute("data-table");
+    if (table) {
+      const x = el.getAttribute("data-x");
+      const y = el.getAttribute("data-y");
+      let rows = rowsOf(table, el.getAttribute("data-filter") || "");
+      if (!x)
+        return [
+          {
+            label: table,
+            value: y ? rows.reduce((a, r) => a + num(r[y]), 0) : rows.length,
+          },
+        ];
+      const dateLike =
+        rows.length > 0 &&
+        rows.every((r) => /^\d{4}-\d{2}(-\d{2})?/.test(String(r[x] || "")));
+      if (dateLike)
+        rows = rows
+          .slice()
+          .sort((a, b) => String(a[x]).localeCompare(String(b[x])));
+      const years = new Set(rows.map((r) => String(r[x]).slice(0, 4)));
+      const buckets: Record<string, number> = {};
+      const order: string[] = [];
+      for (const r of rows) {
+        const raw = String(r[x] === undefined || r[x] === null ? "" : r[x]);
+        let key = raw;
+        if (dateLike) {
+          const m = Number(raw.slice(5, 7)) - 1;
+          key = MONTHS[m] + (years.size > 1 ? " " + raw.slice(2, 4) : "");
+        }
+        if (!(key in buckets)) {
+          buckets[key] = 0;
+          order.push(key);
+        }
+        buckets[key] += y ? num(r[y]) : 1;
+      }
+      return order.slice(0, 14).map((k) => ({ label: k, value: buckets[k] }));
+    }
+    try {
+      const list = JSON.parse(el.getAttribute("data-values") || "[]");
+      return Array.isArray(list)
+        ? list.map((v: any) => ({
+            label: String(
+              v.label !== undefined ? v.label : v.x !== undefined ? v.x : ""
+            ),
+            value: num(v.value !== undefined ? v.value : v.y),
+          }))
+        : [];
+    } catch {
+      return [];
+    }
+  };
+  let chartSeq = 0;
+  const drawChart = (el: any) => {
+    const body = el.querySelector && el.querySelector(".ds-chart__body");
+    if (!body) return;
+    const series = chartSeries(el);
+    const format = el.getAttribute("data-format") || "number";
+    const total = series.reduce((a, s) => a + s.value, 0);
+    const totalEl = el.querySelector(".ds-chart__total");
+    if (totalEl)
+      totalEl.textContent =
+        el.getAttribute("data-show-total") === "false"
+          ? ""
+          : fmtValue(total, format);
+    if (!series.length) {
+      body.innerHTML = '<div class="ds-chart__empty">No data</div>';
+      return;
+    }
+    const W = Math.max(240, Math.min(1400, num(el.clientWidth) - 40 || 600));
+    const H = Math.max(80, num(el.getAttribute("data-height")) || 180);
+    const padL = 8,
+      padR = 8,
+      padT = 22,
+      padB = 26;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+    const max = Math.max(1, ...series.map((s) => s.value));
+    const id = "dsc" + ++chartSeq;
+    const kind = el.getAttribute("data-chart") === "line" ? "line" : "bars";
+    const esc = api.escape;
+    let svg =
+      '<svg class="ds-chart__svg" viewBox="0 0 ' +
+      W +
+      " " +
+      H +
+      '" role="img"><defs>' +
+      '<linearGradient id="' +
+      id +
+      '-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: var(--ds-color-primary)"/><stop offset="1" style="stop-color: var(--ds-color-accent)"/></linearGradient>' +
+      '<linearGradient id="' +
+      id +
+      '-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: var(--ds-color-primary); stop-opacity: 0.35"/><stop offset="1" style="stop-color: var(--ds-color-primary); stop-opacity: 0"/></linearGradient></defs>';
+    for (let g = 1; g <= 3; g++) {
+      const gy = padT + innerH - (innerH * g) / 3;
+      svg +=
+        '<line class="ds-chart__grid" x1="' +
+        padL +
+        '" x2="' +
+        (W - padR) +
+        '" y1="' +
+        gy.toFixed(1) +
+        '" y2="' +
+        gy.toFixed(1) +
+        '"/>';
+    }
+    const n = series.length;
+    const step = innerW / n;
+    if (kind === "bars") {
+      const bw = Math.max(6, Math.min(72, step * 0.62));
+      series.forEach((s, i) => {
+        const h = (s.value / max) * innerH;
+        const x = padL + i * step + (step - bw) / 2;
+        const y = padT + innerH - h;
+        svg +=
+          '<rect class="ds-chart__bar" x="' +
+          x.toFixed(1) +
+          '" y="' +
+          y.toFixed(1) +
+          '" width="' +
+          bw.toFixed(1) +
+          '" height="' +
+          Math.max(0, h).toFixed(1) +
+          '" rx="4" fill="url(#' +
+          id +
+          '-g)"><title>' +
+          esc(s.label) +
+          ": " +
+          esc(fmtValue(s.value, format)) +
+          "</title></rect>";
+        if (n <= 12)
+          svg +=
+            '<text class="ds-chart__value" x="' +
+            (x + bw / 2).toFixed(1) +
+            '" y="' +
+            (y - 6).toFixed(1) +
+            '" text-anchor="middle">' +
+            esc(fmtValue(s.value, format)) +
+            "</text>";
+      });
+    } else {
+      const pts = series.map((s, i) => {
+        const x = padL + i * step + step / 2;
+        const y = padT + innerH - (s.value / max) * innerH;
+        return [x, y];
+      });
+      const line = pts
+        .map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1))
+        .join(" ");
+      const area =
+        "M" +
+        pts[0][0].toFixed(1) +
+        "," +
+        (padT + innerH) +
+        " L" +
+        line.replace(/ /g, " L") +
+        " L" +
+        pts[pts.length - 1][0].toFixed(1) +
+        "," +
+        (padT + innerH) +
+        " Z";
+      svg +=
+        '<path class="ds-chart__area" d="' +
+        area +
+        '" fill="url(#' +
+        id +
+        '-a)"/>';
+      svg += '<polyline class="ds-chart__line" points="' + line + '"/>';
+      pts.forEach((p, i) => {
+        svg +=
+          '<circle class="ds-chart__dot" cx="' +
+          p[0].toFixed(1) +
+          '" cy="' +
+          p[1].toFixed(1) +
+          '" r="3.5"><title>' +
+          esc(series[i].label) +
+          ": " +
+          esc(fmtValue(series[i].value, format)) +
+          "</title></circle>";
+      });
+    }
+    series.forEach((s, i) => {
+      if (n > 12 && i % 2 === 1) return;
+      svg +=
+        '<text class="ds-chart__label" x="' +
+        (padL + i * step + step / 2).toFixed(1) +
+        '" y="' +
+        (H - 8) +
+        '" text-anchor="middle">' +
+        esc(s.label) +
+        "</text>";
+    });
+    svg += "</svg>";
+    body.innerHTML = svg;
+  };
+
+  const TONES = ["primary", "accent", "accent2", "ok", "muted"];
+  const drawCalendar = (el: any) => {
+    const grid = el.querySelector && el.querySelector(".ds-calendar__grid");
+    if (!grid) return;
+    const table = el.getAttribute("data-table");
+    const dateField = el.getAttribute("data-date");
+    const titleField = el.getAttribute("data-title");
+    const toneField = el.getAttribute("data-tone");
+    const d = dataApi();
+    const rows =
+      table && dateField
+        ? rowsOf(table, el.getAttribute("data-filter") || "")
+        : [];
+    const dated = rows
+      .map((r) => ({ row: r, date: String(r[dateField] || "").slice(0, 10) }))
+      .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let month = el.getAttribute("data-month") || "";
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      if (dated.length) {
+        // The month with the most events (the seed data's "current" month).
+        const counts: Record<string, number> = {};
+        for (const e of dated)
+          counts[e.date.slice(0, 7)] = (counts[e.date.slice(0, 7)] || 0) + 1;
+        month = Object.keys(counts).sort(
+          (a, b) => counts[b] - counts[a] || a.localeCompare(b)
+        )[0];
+      } else {
+        const now = new Date();
+        month =
+          now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+      }
+    }
+    const year = Number(month.slice(0, 4));
+    const mi = Number(month.slice(5, 7)) - 1;
+    const first = new Date(Date.UTC(year, mi, 1));
+    const daysInMonth = new Date(Date.UTC(year, mi + 1, 0)).getUTCDate();
+    const lead = (first.getUTCDay() + 6) % 7; // Monday first
+    const inMonth = dated.filter((e) => e.date.slice(0, 7) === month);
+    const head = el.querySelector(".ds-calendar__month");
+    if (head) head.textContent = MONTHS_LONG[mi] + " " + year;
+    const count = el.querySelector(".ds-calendar__count");
+    if (count)
+      count.textContent = inMonth.length
+        ? inMonth.length + " " + (table || "events")
+        : "";
+    const tones: Record<string, string> = {};
+    let toneIdx = 0;
+    const toneOf = (row: any): string => {
+      if (!toneField) return "primary";
+      const v = String(
+        row[toneField] === undefined || row[toneField] === null
+          ? ""
+          : row[toneField]
+      ).toLowerCase();
+      if (
+        ["cancelled", "canceled", "lost", "draft", "no-show"].indexOf(v) !== -1
+      )
+        return "muted";
+      if (
+        ["done", "completed", "paid", "won", "published", "confirmed"].indexOf(
+          v
+        ) !== -1
+      )
+        return "ok";
+      if (!(v in tones)) tones[v] = TONES[toneIdx++ % TONES.length];
+      return tones[v];
+    };
+    const label = (row: any): string => {
+      if (
+        titleField &&
+        row[titleField] !== undefined &&
+        row[titleField] !== null
+      )
+        return String(row[titleField]);
+      return d && d[table] ? d[table].display(row) : "";
+    };
+    const today = new Date();
+    const todayKey =
+      today.getFullYear() +
+      "-" +
+      String(today.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getDate()).padStart(2, "0");
+    const esc = api.escape;
+    let html = "";
+    for (const dow of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+      html += '<div class="ds-calendar__dow">' + dow + "</div>";
+    for (let i = 0; i < lead; i++)
+      html += '<div class="ds-calendar__day ds-calendar__day--pad"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = month + "-" + String(day).padStart(2, "0");
+      const events = inMonth.filter((e) => e.date === key);
+      html +=
+        '<div class="ds-calendar__day' +
+        (key === todayKey ? " ds-calendar__day--today" : "") +
+        '" data-date="' +
+        key +
+        '"><span class="ds-calendar__num">' +
+        day +
+        "</span>";
+      events.slice(0, 3).forEach((e) => {
+        html +=
+          '<span class="ds-calendar__event" data-tone="' +
+          toneOf(e.row) +
+          '" title="' +
+          esc(label(e.row)) +
+          '">' +
+          esc(label(e.row)) +
+          "</span>";
+      });
+      if (events.length > 3)
+        html +=
+          '<span class="ds-calendar__more">+' +
+          (events.length - 3) +
+          " more</span>";
+      html += "</div>";
+    }
+    grid.innerHTML = html;
+  };
+
+  /** Draws what templates cannot: icons, initials, charts, calendars, gates. Safe to run again. */
+  const enhance = (root?: any): void => {
+    const r = root || doc;
+    if (!r || !r.querySelectorAll) return;
+    try {
+      enhanceIcons(r);
+      enhanceAvatars(r);
+      for (const el of qsa(r, "[data-chart]")) drawChart(el);
+      for (const el of qsa(r, "[data-calendar]")) drawCalendar(el);
+      applyGates(r);
+      syncSelects(r);
+    } catch (e) {
+      try {
+        if (win.console && win.console.warn)
+          win.console.warn("design enhance:", e);
+      } catch {
+        /* no console */
+      }
+    }
+  };
+
+  const setContext = (ctx: Record<string, unknown>) => {
+    const d = dataApi();
+    if (!d) return;
+    Object.assign(ctxOf(), ctx || {});
+    applyTenantTheme();
+    if (typeof d.hydrate === "function") d.hydrate();
+    enhance();
+  };
+
+  const setTheme = (theme?: string) => {
+    const root = doc && doc.documentElement;
+    if (!root) return;
+    const current =
+      root.getAttribute("data-theme") ||
+      (win.matchMedia && win.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light");
+    const next = theme || (current === "dark" ? "light" : "dark");
+    root.setAttribute("data-theme", next);
+    return next;
+  };
+
   const design = {
     render: api.render,
     template: api.template,
     resolveProps: api.resolveProps,
     components: () => (payload.components || []).map((c) => c.name),
     routes: payload.routes || {},
+    icons,
     hydrate,
+    enhance,
+    setContext,
+    context: ctxOf,
+    setTheme,
+    initials: initialsOf,
     navigate,
     autoHydrate: true,
   };
   win.paperos = win.paperos || {};
   win.paperos.design = design;
 
+  // Defaults: the first tenant and the highest role, unless the page set them (?tenant=, ?role=).
+  {
+    const d = dataApi();
+    if (d) {
+      const ctx = ctxOf();
+      if (ctx.tenant === undefined && d.tenants) {
+        const firstTenant = d.tenants.list({ orderBy: "id" })[0];
+        if (firstTenant) ctx.tenant = firstTenant.id;
+      }
+      if (ctx.role === undefined && d.roles) {
+        const top = d.roles.list({ orderBy: "-level" })[0];
+        if (top) ctx.role = top.id;
+      }
+      if (d.options && typeof d.options.visible !== "function")
+        d.options.visible = gate;
+      if (d.icons && typeof d.icons === "object")
+        for (const k of Object.keys(icons))
+          if (!(k in d.icons)) d.icons[k] = icons[k];
+      applyTenantTheme();
+    }
+  }
+
   if (doc && typeof doc.addEventListener === "function") {
     const run = () => {
       if (design.autoHydrate !== false) hydrate();
+      enhance();
     };
     if (doc.readyState === "loading")
       doc.addEventListener("DOMContentLoaded", run);
     else run();
+    doc.addEventListener("change", (e: any) => {
+      const t = e.target;
+      if (!t || !t.getAttribute) return;
+      const key = t.getAttribute("data-set-context");
+      if (!key) return;
+      const opt = t.selectedOptions && t.selectedOptions[0];
+      const value =
+        opt && opt.getAttribute("data-id") !== null
+          ? opt.getAttribute("data-id")
+          : t.value;
+      const patch: Record<string, unknown> = {};
+      patch[key] = value;
+      setContext(patch);
+    });
     doc.addEventListener("click", (e: any) => {
       let el = e.target;
       while (
@@ -558,7 +1266,7 @@ export function designRuntime(
         /* not in a frame */
       }
     });
-    // Tabs and modals need a little behavior.
+    // Tabs, modals and the theme toggle need a little behavior.
     doc.addEventListener("click", (e: any) => {
       const t = e.target;
       if (!t || !t.closest) return;
@@ -591,6 +1299,9 @@ export function designRuntime(
         const modal = id ? doc.getElementById(id) : null;
         if (modal) modal.setAttribute("data-open", "true");
       }
+      const toggle = t.closest("[data-toggle-theme]");
+      if (toggle)
+        setTheme(toggle.getAttribute("data-toggle-theme") || undefined);
     });
   }
   return design;

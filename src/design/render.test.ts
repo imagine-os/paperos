@@ -97,6 +97,23 @@ describe("component rendering", () => {
     expect(c.render("Button", { href: "#/x", variant: "outline" })).toContain(
       '<a class="ds-button ds-button--outline ds-button--md" href="#/x">Button</a>'
     );
+    // A prop left at its default (the gallery passes every default) does not undo the variant.
+    const badge = STARTER_COMPONENTS.find((d) => d.name === "Badge")!;
+    expect(
+      c.render("Badge", defaultProps(badge), undefined, "danger")
+    ).toContain("ds-badge--danger");
+    expect(
+      c.render("Badge", defaultProps(badge), undefined, "danger")
+    ).toContain("Blocked");
+    // An explicit non-default value still wins over the variant.
+    expect(
+      c.render(
+        "Badge",
+        { ...defaultProps(badge), text: "Mine" },
+        undefined,
+        "danger"
+      )
+    ).toContain(">Mine<");
     expect(c.render("Nope")).toContain("Unknown component: Nope");
     expect(c.has("Card")).toBe(true);
   });
@@ -172,7 +189,9 @@ describe("component rendering", () => {
           "<span>child</span>",
           v
         );
-        expect(html, `${def.name}/${v}`).not.toMatch(/\{[#/:@]?[a-zA-Z]/);
+        // `{id}` and `{$group}` are the data runtime's own placeholders.
+        const leftovers = html.replace(/\{(id|\$group)\}/g, "");
+        expect(leftovers, `${def.name}/${v}`).not.toMatch(/\{[#/:@]?[a-zA-Z]/);
         expect(html, `${def.name}/${v}`).not.toContain("Unknown component");
       }
     }

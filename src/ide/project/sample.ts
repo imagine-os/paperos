@@ -69,16 +69,19 @@ export function sampleProjectFiles(): FileMap {
   </body>
 </html>
 `,
-    "styles.css": `:root {
+    "styles.css": `/* Design tokens from design/tokens.json arrive as --ds-* variables in the preview. */
+:root {
   color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  font-family: var(--ds-font-sans, system-ui, sans-serif);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f4f4f8;
-  color: #18181b;
+  background: var(--ds-color-bg, #f4f4f8);
+  background-image: radial-gradient(var(--ds-color-dot, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ds-color-text, #18181b);
 }
 
 .top {
@@ -86,8 +89,10 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: white;
-  border-bottom: 1px solid #e4e4ea;
+  background: var(--ds-color-glass, white);
+  backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--ds-color-border, #e4e4ea);
+  font-family: var(--ds-font-display, inherit);
 }
 
 .role select {
@@ -104,33 +109,38 @@ body {
 
 main {
   padding: 24px;
-  border-radius: 16px;
-  background: white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border-radius: var(--ds-radius-lg, 16px);
+  background: var(--ds-color-surface, white);
+  border: 1px solid var(--ds-color-border, #e4e4ea);
+  box-shadow: var(--ds-shadow-md, 0 10px 30px rgba(0, 0, 0, 0.08));
 }
 
-/* Design tokens from design/tokens.json arrive as --ds-* variables in the preview. */
 h1 {
   margin-top: 0;
+  font-family: var(--ds-font-display, inherit);
+  letter-spacing: var(--ds-tracking-display, -0.02em);
   color: var(--ds-color-primary, #2563eb);
 }
 
 button {
   font: inherit;
-  padding: 8px 14px;
-  border-radius: var(--ds-radius-md, 8px);
-  border: 1px solid #c9c9d1;
-  background: var(--ds-color-primary, #2563eb);
-  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--ds-radius-full, 999px);
+  border: 1px solid transparent;
+  background: var(--ds-gradient, var(--ds-color-primary, #2563eb));
+  color: var(--ds-color-accentInk, white);
   cursor: pointer;
+  box-shadow: var(--ds-shadow-sm, none);
 }
 
 /* Side menu (built by app.js) */
 .side {
-  background: white;
-  border-radius: 16px;
+  background: var(--ds-color-surface, white);
+  border-radius: var(--ds-radius-lg, 16px);
+  border: 1px solid var(--ds-color-border, #e4e4ea);
   padding: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ds-shadow-sm, 0 10px 30px rgba(0, 0, 0, 0.08));
   align-self: start;
 }
 
@@ -142,7 +152,7 @@ button {
 
 .side ul ul {
   margin-left: 22px;
-  border-left: 1px solid #e4e4ea;
+  border-left: 1px solid var(--ds-color-border, #e4e4ea);
 }
 
 .side a {
@@ -156,7 +166,7 @@ button {
 }
 
 .side a:hover {
-  background: #eef2ff;
+  background: var(--ds-color-surface2, #eef2ff);
 }
 
 .side svg,
@@ -171,8 +181,8 @@ button {
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #991b1b;
+  background: color-mix(in srgb, var(--ds-color-danger, #991b1b) 14%, transparent);
+  color: var(--ds-color-danger, #991b1b);
 }
 
 /* Mega menu (declarative data-source) */
@@ -187,7 +197,7 @@ button {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #6b7280;
+  color: var(--ds-color-primary, #6b7280);
 }
 
 .mega ul {
@@ -224,7 +234,7 @@ button {
 }
 
 .mega small {
-  color: #6b7280;
+  color: var(--ds-color-muted, #6b7280);
 }
 
 .mega__children {
@@ -235,7 +245,7 @@ button {
   display: flex;
   gap: 6px;
   align-items: center;
-  color: #2563eb;
+  color: var(--ds-color-primary, #2563eb);
   text-decoration: none;
   font-size: 13px;
   padding: 2px 0;
@@ -732,12 +742,58 @@ const NAV_ITEMS = [
   { label: "Admin", href: "#/admin" },
 ];
 
-const nav = (id: string) => ({
+const topbar = (id: string, cta = true) => ({
   id,
-  name: "Nav",
+  name: "Topbar",
   span: 12,
-  variant: "horizontal",
-  props: { brand: "Sample site", items: NAV_ITEMS },
+  props: { brand: "Sample site", items: NAV_ITEMS, sticky: false },
+  ...(cta
+    ? {
+        children: [
+          {
+            id: `${id}-cta`,
+            name: "Button",
+            span: 12,
+            props: { label: "Open admin", href: "#/admin", size: "sm" },
+          },
+        ],
+      }
+    : {}),
+});
+
+const footer = (id: string) => ({
+  id,
+  name: "Footer",
+  span: 12,
+  props: {
+    brand: "Sample site",
+    tagline: "A small site composed from the starter design system.",
+    columns: [
+      {
+        title: "Site",
+        links: [
+          { label: "Home", href: "#/" },
+          { label: "Products", href: "#/products" },
+          { label: "Admin", href: "#/admin" },
+        ],
+      },
+      {
+        title: "Data",
+        links: [
+          { label: "menu_items", href: "#products" },
+          { label: "roles", href: "#/admin" },
+        ],
+      },
+      {
+        title: "PaperOS",
+        links: [
+          { label: "Design window", href: "#/" },
+          { label: "Page Builder", href: "#/" },
+        ],
+      },
+    ],
+    copyright: "© 2026 Sample site. Built with PaperOS.",
+  },
 });
 
 /** Three pages composed from the starter components and bound to the tables. */
@@ -747,10 +803,12 @@ function samplePages(): FileMap {
       name: "home",
       title: "Home",
       route: "/",
-      description: "Landing page: hero, key figures and the mega menu.",
-      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      description:
+        "Landing page: hero, features, key figures, the mega menu, pricing and FAQ.",
+      texture: "dots",
+      layout: { columns: 12, gap: "5", maxWidth: "1200px" },
       components: [
-        nav("nav"),
+        topbar("nav"),
         {
           id: "hero",
           name: "Hero",
@@ -759,12 +817,59 @@ function samplePages(): FileMap {
             eyebrow: "Sample site",
             title: "Hello, PaperOS",
             subtitle:
-              "This page is composed from design components bound to the project's tables. Edit it in the Page Builder.",
+              "This page is composed from design components bound to the project's tables. Edit it in the Page Builder, recolor it in the Design window.",
             ctaLabel: "Browse products",
             ctaHref: "#/products",
-            secondaryLabel: "Admin",
+            secondaryLabel: "Open admin",
             secondaryHref: "#/admin",
+            note: "No build step. Tokens, components, pages and data are plain files.",
           },
+        },
+        {
+          id: "features",
+          name: "Section",
+          span: 12,
+          props: {
+            kicker: "What is inside",
+            title: "Tokens, components, pages, data",
+            text: "Four kinds of files, one canvas. Everything below reads the same tables the Data window edits.",
+            columns: 3,
+          },
+          children: [
+            {
+              id: "f-tokens",
+              name: "Card",
+              span: 4,
+              props: {
+                icon: "sparkles",
+                kicker: "Design",
+                title: "Tokens",
+                text: "Paper and ink, one accent gradient, hairlines and soft shadows. Swap a preset and the whole site follows.",
+              },
+            },
+            {
+              id: "f-components",
+              name: "Card",
+              span: 4,
+              props: {
+                icon: "grid",
+                kicker: "Library",
+                title: "Components",
+                text: "Thirty-odd components from Button to Kanban, each a JSON file with a template and variants.",
+              },
+            },
+            {
+              id: "f-data",
+              name: "Card",
+              span: 4,
+              props: {
+                icon: "chart",
+                kicker: "Data",
+                title: "Bound to tables",
+                text: "Tables, lists, stats and charts read data/*.json. Change a row and the page re-renders.",
+              },
+            },
+          ],
         },
         {
           id: "stats",
@@ -818,6 +923,106 @@ function samplePages(): FileMap {
             },
           ],
         },
+        {
+          id: "quotes",
+          name: "Testimonial",
+          span: 12,
+          props: {
+            items: [
+              {
+                quote:
+                  "I changed one token and the whole site recolored while I dragged the swatch.",
+                name: "Ada",
+                role: "Admin",
+                stars: 5,
+              },
+              {
+                quote:
+                  "The mega menu comes straight from a table. Editing a row edits the site.",
+                name: "Grace",
+                role: "Editor",
+                stars: 5,
+              },
+              {
+                quote:
+                  "Pages are JSON. The Page Builder and the editor never disagree.",
+                name: "Linus",
+                role: "Viewer",
+                stars: 4,
+              },
+            ],
+          },
+        },
+        {
+          id: "pricing",
+          name: "Pricing",
+          span: 12,
+          props: {
+            plans: [
+              {
+                name: "Viewer",
+                price: "$0",
+                period: "forever",
+                description: "Read the public pages.",
+                features: ["Home and products", "Mega menu", "Light and dark"],
+                cta: "Browse",
+                href: "#/products",
+              },
+              {
+                name: "Editor",
+                price: "$9",
+                period: "/ month",
+                description: "Change content and the catalog.",
+                features: [
+                  "Everything in Viewer",
+                  "Data window",
+                  "Drafts",
+                  "Page Builder",
+                ],
+                cta: "Open admin",
+                href: "#/admin",
+                featured: true,
+                flag: "Most popular",
+              },
+              {
+                name: "Admin",
+                price: "$29",
+                period: "/ month",
+                description: "Users, roles and settings.",
+                features: [
+                  "Everything in Editor",
+                  "Users and roles",
+                  "Design tokens",
+                  "Scripts and plugins",
+                ],
+                cta: "Open admin",
+                href: "#/admin",
+              },
+            ],
+          },
+        },
+        {
+          id: "faq",
+          name: "FAQ",
+          span: 12,
+          props: {
+            items: [
+              {
+                q: "Where does this page live?",
+                a: "In pages/home.json. The Page Builder edits it; the Preview renders it from the components in design/components/.",
+              },
+              {
+                q: "How do I change the colors?",
+                a: "Open the Design window: drag a swatch, or pick a theme preset (Paper, Ink, Studio, Bold).",
+              },
+              {
+                q: "Where does the data come from?",
+                a: "data/schema.json and data/<table>.json. Every list, table and stat here is bound to one of those tables.",
+              },
+            ],
+          },
+        },
+        footer("footer"),
       ],
       links: [
         { to: "products", label: "Browse products", from: "hero" },
@@ -830,14 +1035,15 @@ function samplePages(): FileMap {
       title: "Products",
       route: "/products",
       description: "The catalog: a table and a list of the product menu items.",
-      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      texture: "dots",
+      layout: { columns: 12, gap: "5", maxWidth: "1200px" },
       components: [
-        nav("nav"),
+        topbar("nav"),
         {
           id: "hero",
           name: "Hero",
           span: 12,
-          variant: "center",
+          variant: "compact",
           props: {
             eyebrow: "Catalog",
             title: "Products",
@@ -874,8 +1080,10 @@ function samplePages(): FileMap {
           span: 4,
           variant: "elevated",
           props: {
-            title: "Featured",
-            text: "Sub-items of Products, with thumbnails.",
+            kicker: "Featured",
+            title: "Sub-items of Products",
+            text: "With thumbnails, from the same table.",
+            hover: false,
           },
           children: [
             {
@@ -899,6 +1107,20 @@ function samplePages(): FileMap {
             },
           ],
         },
+        {
+          id: "chart",
+          name: "Chart",
+          span: 12,
+          props: {
+            title: "Menu items per category",
+            type: "bars",
+            xField: "category",
+            height: 160,
+            showTotal: true,
+          },
+          bindings: [{ table: "menu_items", fields: ["category"] }],
+        },
+        footer("footer"),
       ],
       links: [
         { to: "home", label: "Back home", from: "hero" },
@@ -910,103 +1132,175 @@ function samplePages(): FileMap {
       title: "Admin",
       route: "/admin",
       description:
-        "Administration: users table, a form from the users schema, role stats.",
+        "Administration: side menu, key figures, users table, a form from the users schema, role stats.",
       device: "desktop",
-      layout: { columns: 12, gap: "4", maxWidth: "1200px" },
+      layout: { columns: 12, gap: "4", maxWidth: "1400px" },
       components: [
-        nav("nav"),
         {
-          id: "stats",
-          name: "Grid",
-          span: 12,
-          props: { columns: 3 },
+          id: "sidebar",
+          name: "Sidebar",
+          span: 3,
+          props: {
+            brand: "Sample admin",
+            labelField: "label",
+            groupField: "category",
+          },
+          bindings: [
+            {
+              table: "menu_items",
+              fields: ["label", "href", "icon", "category", "required_role"],
+            },
+          ],
           children: [
             {
-              id: "active-users",
-              name: "Stat",
-              span: 4,
-              props: {
-                label: "Active users",
-                filter: "active=true",
-                trend: "up",
-                delta: "of all users",
-              },
-              bindings: [{ table: "users", fields: ["active"] }],
-            },
-            {
-              id: "roles-count",
-              name: "Stat",
-              span: 4,
-              props: { label: "Roles" },
-              bindings: [{ table: "roles" }],
-            },
-            {
-              id: "pages-count",
-              name: "Stat",
-              span: 4,
-              variant: "primary",
-              props: { label: "Published pages", filter: "published=true" },
-              bindings: [{ table: "pages", fields: ["published"] }],
+              id: "role-switcher",
+              name: "RoleSwitcher",
+              span: 12,
+              props: { label: "" },
+              bindings: [{ table: "roles", fields: ["name", "level"] }],
             },
           ],
         },
         {
-          id: "users",
-          name: "Table",
-          span: 8,
-          props: { caption: "Users" },
-          bindings: [
+          id: "main",
+          name: "Grid",
+          span: 9,
+          props: { columns: 1, gap: "4" },
+          children: [
             {
-              table: "users",
-              fields: [
-                "avatar",
-                "name",
-                "email",
-                "role_id",
-                "active",
-                "joined",
+              id: "header",
+              name: "PageHeader",
+              span: 12,
+              props: {
+                title: "Dashboard",
+                subtitle: "Users, roles and pages of the sample site.",
+              },
+              children: [
+                {
+                  id: "header-cta",
+                  name: "Button",
+                  span: 12,
+                  props: { label: "New user", icon: "plus", size: "sm" },
+                },
+              ],
+            },
+            {
+              id: "stats",
+              name: "Grid",
+              span: 12,
+              props: { columns: 3 },
+              children: [
+                {
+                  id: "active-users",
+                  name: "Stat",
+                  span: 4,
+                  props: {
+                    label: "Active users",
+                    filter: "active=true",
+                    trend: "up",
+                    delta: "of all users",
+                  },
+                  bindings: [{ table: "users", fields: ["active"] }],
+                },
+                {
+                  id: "roles-count",
+                  name: "Stat",
+                  span: 4,
+                  props: { label: "Roles" },
+                  bindings: [{ table: "roles" }],
+                },
+                {
+                  id: "pages-count",
+                  name: "Stat",
+                  span: 4,
+                  variant: "primary",
+                  props: { label: "Published pages", filter: "published=true" },
+                  bindings: [{ table: "pages", fields: ["published"] }],
+                },
+              ],
+            },
+            {
+              id: "users",
+              name: "Table",
+              span: 12,
+              props: { caption: "Users" },
+              bindings: [
+                {
+                  table: "users",
+                  fields: [
+                    "avatar",
+                    "name",
+                    "email",
+                    "role_id",
+                    "active",
+                    "joined",
+                  ],
+                },
+              ],
+            },
+            {
+              id: "row",
+              name: "Grid",
+              span: 12,
+              props: { columns: 2 },
+              children: [
+                {
+                  id: "new-user",
+                  name: "Form",
+                  span: 6,
+                  props: {
+                    title: "New user",
+                    text: "Generated from the users schema.",
+                    submitLabel: "Add user",
+                  },
+                  bindings: [
+                    {
+                      table: "users",
+                      fields: ["name", "email", "role_id", "active"],
+                      mode: "write",
+                    },
+                  ],
+                },
+                {
+                  id: "menu-chart",
+                  name: "Chart",
+                  span: 6,
+                  props: {
+                    title: "Menu items per category",
+                    xField: "category",
+                    height: 200,
+                  },
+                  bindings: [{ table: "menu_items", fields: ["category"] }],
+                },
+              ],
+            },
+            {
+              id: "tabs",
+              name: "Tabs",
+              span: 12,
+              props: {
+                items: [
+                  {
+                    label: "Roles",
+                    content:
+                      '<ul class="ds-list ds-list--plain" data-source="roles" data-order="-level"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="name"></strong><small data-field="description"></small></div></li></ul>',
+                  },
+                  {
+                    label: "Pages",
+                    content:
+                      '<ul class="ds-list ds-list--plain" data-source="pages"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="title"></strong><small data-field="path"></small></div></li></ul>',
+                  },
+                ],
+              },
+              bindings: [
+                { table: "roles", fields: ["name", "description", "level"] },
+                { table: "pages", fields: ["title", "path"] },
               ],
             },
           ],
         },
-        {
-          id: "new-user",
-          name: "Form",
-          span: 4,
-          props: { title: "New user", submitLabel: "Add user" },
-          bindings: [
-            {
-              table: "users",
-              fields: ["name", "email", "role_id", "active"],
-              mode: "write",
-            },
-          ],
-        },
-        {
-          id: "tabs",
-          name: "Tabs",
-          span: 12,
-          props: {
-            items: [
-              {
-                label: "Roles",
-                content:
-                  '<ul class="ds-list ds-list--plain" data-source="roles" data-order="-level"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="name"></strong><small data-field="description"></small></div></li></ul>',
-              },
-              {
-                label: "Pages",
-                content:
-                  '<ul class="ds-list ds-list--plain" data-source="pages"><li class="ds-list__item"><div class="ds-list__body"><strong data-field="title"></strong><small data-field="path"></small></div></li></ul>',
-              },
-            ],
-          },
-          bindings: [
-            { table: "roles", fields: ["name", "description", "level"] },
-            { table: "pages", fields: ["title", "path"] },
-          ],
-        },
       ],
-      links: [{ to: "home", label: "Home", from: "nav" }],
+      links: [{ to: "home", label: "Home", from: "sidebar" }],
       bindings: [{ table: "roles", fields: ["name", "level"], mode: "read" }],
     }),
   };

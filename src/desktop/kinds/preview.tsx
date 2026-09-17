@@ -9,7 +9,7 @@ import {
 } from "@/ide/console-store";
 import { docsChanged, readLiveText } from "@/ide/docs";
 import { isPagePath, pagePath } from "@/design/pages";
-import { bundle, pickEntry } from "@/ide/preview/bundle";
+import { bundle, pickEntry, splitEntry } from "@/ide/preview/bundle";
 import { previewReload } from "@/ide/preview/preview-state";
 import { getProjectStore } from "@/ide/project";
 import { useSignal } from "@/ide/use-signal";
@@ -37,7 +37,15 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
   const [paths, setPaths] = useState<string[]>([]);
   const [draft, setDraft] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  // `pages/x.json?tenant=2` carries the preview context in its query.
   const override = shape.props.content || null;
+  const parsed = override ? splitEntry(override) : null;
+  const overridePath = parsed?.path || null;
+  const query = parsed?.query ?? {};
+  const queryText =
+    override && override.includes("?")
+      ? override.slice(override.indexOf("?"))
+      : "";
 
   // Files of the active project (for picking the entry).
   useEffect(() => {
@@ -65,9 +73,11 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
 
   useEffect(() => {
     setEntry(
-      override && paths.includes(override) ? override : pickEntry(paths)
+      overridePath && paths.includes(overridePath)
+        ? overridePath
+        : pickEntry(paths)
     );
-  }, [override, paths]);
+  }, [overridePath, paths]);
 
   const rebuild = useCallback(async () => {
     if (!project || !entry) {
@@ -76,10 +86,12 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
     }
     const out = await bundle(entry, (p) => readLiveText(project, p, store), {
       list: () => paths,
+      context: query,
     });
     setSrcdoc(out.html);
     setMissing(out.missing);
-  }, [project, entry, store, paths]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, entry, store, paths, queryText]);
 
   // Debounced rebuild on any document or file change.
   useEffect(() => {
@@ -101,12 +113,12 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
       // A link to another page (href="#/route") switches the entry.
       if (e.data.type === "navigate" && e.data.page) {
         const target = pagePath(e.data.page);
-        if (paths.includes(target)) update({ content: target });
+        if (paths.includes(target)) update({ content: target + queryText });
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [paths, update]);
+  }, [paths, update, queryText]);
 
   // This window runs Console snippets (the latest preview wins).
   useEffect(() => {
@@ -122,11 +134,13 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
     };
   }, []);
 
+  const shown = entry ? `/${entry}${queryText}` : "";
   const commitEntry = () => {
     if (draft === null) return;
     const next = draft.trim().replace(/^\/+/, "");
     setDraft(null);
-    if (next && next !== entry) update({ content: next });
+    if (next && next !== `${entry ?? ""}${queryText}`)
+      update({ content: next });
   };
 
   return (
@@ -150,10 +164,10 @@ export function PreviewWindow({ shape, update }: WindowKindProps) {
           aria-label="Entry file"
           data-testid="preview-entry"
           list={`entries-${shape.id}`}
-          value={draft ?? (entry ? `/${entry}` : "")}
+          value={draft ?? shown}
           placeholder={paths.length ? "Entry file (index.html)" : "No files"}
           onChange={(e) => setDraft(e.target.value)}
-          onFocus={() => setDraft(entry ? `/${entry}` : "")}
+          onFocus={() => setDraft(shown)}
           onBlur={commitEntry}
           onKeyDown={(e) => {
             e.stopPropagation();

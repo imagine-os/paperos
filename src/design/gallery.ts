@@ -9,7 +9,7 @@ import { dataRuntimeScript } from "@/data/runtime";
 import type { DataSchema } from "@/data/schema";
 import { BASE_CSS } from "./base-css";
 import { defaultProps, type ComponentDef } from "./components";
-import { designCore, type RenderPayload } from "./render";
+import { designCore, designRuntimeScript, type RenderPayload } from "./render";
 import { tokensToCss, type DesignTokens } from "./tokens";
 
 export interface GalleryOptions {
@@ -28,6 +28,12 @@ body { margin: 0; padding: 16px; }
 .gallery__item { margin-bottom: 20px; border: 1px solid transparent; border-radius: var(--ds-radius-lg); padding: 8px; cursor: pointer; }
 .gallery__item:hover { border-color: var(--ds-color-border); }
 .gallery__item--selected { border-color: var(--ds-color-primary); }
+.gallery__variant .ds-tabbar--fixed, .gallery__variant .ds-topbar--sticky, .gallery__variant .ds-nav--sticky { position: static; }
+.gallery__variant .ds-modal { position: static; display: block; }
+.gallery__variant .ds-modal__backdrop { display: none; }
+.gallery__variant .ds-modal__dialog { width: 100%; animation: none; box-shadow: var(--ds-shadow-sm); }
+.gallery__variant .ds-post { max-width: 360px; }
+.gallery__variant .ds-post--landscape { max-width: 520px; }
 .gallery__head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px 4px; }
 .gallery__head h4 { margin: 0; font-size: var(--ds-font-size-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ds-color-muted); }
 .gallery__head small { color: var(--ds-color-muted); font-size: var(--ds-font-size-xs); }
@@ -43,12 +49,27 @@ const WIDE = new Set([
   "Table",
   "Form",
   "Nav",
+  "Topbar",
   "MegaMenu",
   "Hero",
   "Tabs",
   "Modal",
   "List",
   "Grid",
+  "Section",
+  "PageHeader",
+  "KpiGrid",
+  "Chart",
+  "Calendar",
+  "Kanban",
+  "Timeline",
+  "Thread",
+  "Pricing",
+  "Testimonial",
+  "FAQ",
+  "Footer",
+  "TabBar",
+  "EmptyState",
 ]);
 
 const GALLERY_SCRIPT = `document.addEventListener("click", function (e) {
@@ -72,6 +93,7 @@ export function galleryDocument(options: GalleryOptions): string {
           name: c.name,
           type: c.type,
           ref: c.ref,
+          ...(c.required ? { required: true } : {}),
         })),
       })),
     },
@@ -111,12 +133,16 @@ export function galleryDocument(options: GalleryOptions): string {
     schema: payload.schema!,
     tables: options.tables,
   });
+  // The design runtime draws charts, calendars, icons and initials; the
+  // components themselves are already rendered above.
+  const runtime = designRuntimeScript(payload);
   return `<!doctype html>
 <html lang="en" data-theme="${options.theme}">
 <head>
 <meta charset="utf-8" />
 <style>${tokensToCss(options.tokens)}${BASE_CSS}${GALLERY_CSS}</style>
 <script>${data}</script>
+<script>${runtime}</script>
 </head>
 <body class="ds-page" data-testid="gallery">
 ${body}

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { applyThemePreset, THEME_PRESETS } from "./presets";
 import {
   defaultTokens,
   isColor,
   parseTokens,
   scaleKeys,
+  SEMANTIC_COLORS,
   serializeTokens,
   tokensToCss,
   tokenVar,
@@ -59,15 +61,18 @@ describe("tokens", () => {
 
   it("generates --ds-* variables with a dark block", () => {
     const css = tokensToCss(defaultTokens());
-    expect(css).toContain("--ds-color-primary: #2563eb;");
-    expect(css).toContain("--ds-font-size-md: 15px;");
+    expect(css).toContain("--ds-color-primary: #e85d2f;");
+    expect(css).toContain("--ds-font-size-md: 16px;");
     expect(css).toContain("--ds-space-4: 16px;");
-    expect(css).toContain("--ds-radius-lg: 14px;");
+    expect(css).toContain("--ds-radius-lg: 20px;");
     expect(css).toContain("--ds-shadow-md:");
     expect(css).toContain("--ds-breakpoint-mobile: 390px;");
+    expect(css).toContain("--ds-motion-fast: 180ms;");
+    expect(css).toContain("--ds-tracking-display: -0.022em;");
+    expect(css).toContain("--ds-gradient: linear-gradient(");
     expect(css).toContain(':root[data-theme="dark"]');
     expect(css).toMatch(
-      /prefers-color-scheme: dark[\s\S]*--ds-color-primary: #60a5fa/
+      /prefers-color-scheme: dark[\s\S]*--ds-color-primary: #ff7a45/
     );
     expect(tokenVar("color", "bg")).toBe("--ds-color-bg");
     expect(tokenVar("font-size", "2xl")).toBe("--ds-font-size-2xl");
@@ -77,6 +82,30 @@ describe("tokens", () => {
     const t = defaultTokens();
     for (const c of Object.values(t.color)) c.dark = c.light;
     expect(tokensToCss(t)).not.toContain("data-theme");
+  });
+
+  it("applies theme presets by swapping colors, radius, shadow and motion", () => {
+    const t = defaultTokens();
+    t.typography.fontSize.md = "17px";
+    const bold = applyThemePreset(t, "bold");
+    expect(bold.preset).toBe("bold");
+    expect(bold.color.primary.light).toBe("#6d28d9");
+    expect(bold.typography.fontSize.md).toBe("17px");
+    expect(bold.spacing).toEqual(t.spacing);
+    const ink = applyThemePreset(bold, "ink");
+    expect(ink.color.bg.light).toBe(ink.color.bg.dark);
+    expect(THEME_PRESETS.map((p) => p.id)).toEqual([
+      "paper",
+      "ink",
+      "studio",
+      "bold",
+    ]);
+    for (const p of THEME_PRESETS)
+      for (const k of SEMANTIC_COLORS)
+        expect(p.tokens().color[k]).toBeDefined();
+    expect(() => applyThemePreset(t, "neon")).toThrow(/Unknown theme preset/);
+    // The preset name survives the file round trip.
+    expect(parseTokens(serializeTokens(bold)).tokens.preset).toBe("bold");
   });
 
   it("recognizes colors and sorts scales numerically", () => {

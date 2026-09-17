@@ -68,15 +68,24 @@ export interface PageDef {
   /** M4: an HTML file renders this page instead of blocks. */
   file?: string;
   description?: string;
+  /** Force a color scheme for this page (default: follow the system). */
+  theme?: "light" | "dark";
+  /** Background texture: the dot grid, or none. */
+  texture?: "dots" | "none";
+  /** Extra room at the bottom (a fixed TabBar). */
+  padBottom?: boolean;
 }
 
 export function pagePath(name: string): string {
   return `${PAGES_DIR}${name}.json`;
 }
 
-/** `pages/home.json` -> `home`; null otherwise. */
+/** `pages/home.json` -> `home`, `pages/apps/customer/home.json` -> `apps/customer/home`; null otherwise. */
 export function pageFromPath(path: string): string | null {
-  const m = /^pages\/([A-Za-z0-9][A-Za-z0-9_-]*)\.json$/.exec(path);
+  const m =
+    /^pages\/((?:[A-Za-z0-9][A-Za-z0-9_-]*\/)*[A-Za-z0-9][A-Za-z0-9_-]*)\.json$/.exec(
+      path
+    );
   return m ? m[1] : null;
 }
 
@@ -263,6 +272,9 @@ export function parsePage(
     page.device = r.device as Device;
   if (typeof r.file === "string" && r.file) page.file = r.file;
   if (typeof r.description === "string") page.description = r.description;
+  if (r.theme === "light" || r.theme === "dark") page.theme = r.theme;
+  if (r.texture === "dots" || r.texture === "none") page.texture = r.texture;
+  if (r.padBottom === true) page.padBottom = true;
   return { page, errors };
 }
 
@@ -274,6 +286,9 @@ export function serializePage(page: PageDef): string {
   };
   if (page.description) out.description = page.description;
   if (page.device) out.device = page.device;
+  if (page.theme) out.theme = page.theme;
+  if (page.texture) out.texture = page.texture;
+  if (page.padBottom) out.padBottom = true;
   if (page.file) out.file = page.file;
   out.layout = page.layout;
   out.components = page.components.map(serializeBlock);
@@ -364,6 +379,8 @@ export interface RenderPageOptions {
   head?: string;
   /** Mark blocks with `data-block="<id>"` (the Page Builder highlights them). */
   markBlocks?: boolean;
+  /** Force the color scheme (`<html data-theme>`); the page's own `theme` wins. */
+  theme?: "light" | "dark";
 }
 
 export function renderBlocks(
@@ -407,8 +424,16 @@ export function renderPage(
   ]
     .filter(Boolean)
     .join("; ");
+  const theme = page.theme ?? options.theme;
+  const bodyClass = [
+    "ds-page",
+    page.texture === "dots" ? "ds-page--dots" : null,
+    page.padBottom ? "ds-page--tabbar" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return `<!doctype html>
-<html lang="en">
+<html lang="en"${theme ? ` data-theme="${theme}"` : ""}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -416,7 +441,7 @@ export function renderPage(
 ${options.head ?? ""}
     <style data-paperos="page">${options.css ?? ""}</style>
   </head>
-  <body class="ds-page" data-page="${core.escape(page.name)}" data-route="${core.escape(page.route)}" style="${style}">
+  <body class="${bodyClass}" data-page="${core.escape(page.name)}" data-route="${core.escape(page.route)}" style="${style}">
     <div class="ds-grid">
 ${body}
     </div>

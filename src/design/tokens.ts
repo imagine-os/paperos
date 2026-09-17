@@ -6,25 +6,38 @@
  *
  * Shape of the file:
  *   {
- *     "color": { "primary": "#2563eb", "bg": { "light": "#fff", "dark": "#111" }, ... },
- *     "typography": { "fontFamily": { "sans", "mono" }, "fontSize": { "xs".."3xl" },
- *                     "fontWeight": { "regular", "medium", "bold" }, "lineHeight": {...} },
- *     "spacing": { "1": "4px", ... }, "radius": {...}, "shadow": {...}, "breakpoint": {...}
+ *     "preset": "paper",
+ *     "color": { "primary": "#e85d2f", "bg": { "light": "#f7f4ec", "dark": "#0d0c11" }, ... },
+ *     "typography": { "fontFamily": { "sans", "display", "mono" }, "fontSize": { "xs".."3xl" },
+ *                     "fontWeight": {...}, "lineHeight": {...}, "letterSpacing": {...} },
+ *     "spacing": { "1": "4px", ... }, "radius": {...}, "shadow": {...}, "breakpoint": {...},
+ *     "motion": { "ease": "cubic-bezier(...)", "fast": "180ms", "slow": "700ms" }
  *   }
- * A color is a string (same in both schemes) or `{light, dark}`.
+ * A color is a string (same in both schemes) or `{light, dark}`. The theme
+ * presets (Paper, Ink, Studio, Bold) in `presets.ts` are whole token sets.
  */
 
 export const TOKENS_PATH = "design/tokens.json";
 
 export const SEMANTIC_COLORS = [
   "bg",
+  "bg2",
   "surface",
+  "surface2",
+  "glass",
+  "ink",
   "text",
   "muted",
+  "border",
+  "borderStrong",
+  "dot",
   "primary",
   "accent",
+  "accent2",
+  "accentInk",
+  "ok",
+  "warn",
   "danger",
-  "border",
 ] as const;
 
 export type SemanticColor = (typeof SEMANTIC_COLORS)[number];
@@ -35,18 +48,31 @@ export interface ColorValue {
 }
 
 export interface DesignTokens {
+  /** Theme preset the tokens were last set from (paper, ink, studio, bold), if any. */
+  preset?: string;
   color: Record<string, ColorValue>;
   typography: {
     fontFamily: Record<string, string>;
     fontSize: Record<string, string>;
     fontWeight: Record<string, string>;
     lineHeight: Record<string, string>;
+    letterSpacing: Record<string, string>;
   };
   spacing: Record<string, string>;
   radius: Record<string, string>;
   shadow: Record<string, string>;
   breakpoint: Record<string, string>;
+  /** Easing and durations: `ease`, `fast`, `slow`. */
+  motion: Record<string, string>;
 }
+
+/** The body, display and mono stacks (system fonts only, see docs/BRAND.md). */
+export const FONT_STACKS = {
+  sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  display:
+    '"SF Pro Display", "Segoe UI Variable Display", "Avenir Next", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  mono: 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+} as const;
 
 const HEX_RE = /^#[0-9a-f]{3,8}$/i;
 const COLOR_FN_RE =
@@ -61,32 +87,49 @@ export function isColor(value: unknown): value is string {
   );
 }
 
+/**
+ * The "Paper" theme: warm paper with ink, one rose → ember → amber accent
+ * gradient, hairlines and layered shadows (docs/BRAND.md). Dark mode inverts
+ * the metaphor (ink page, paper text).
+ */
 export function defaultTokens(): DesignTokens {
   const c = (light: string, dark: string): ColorValue => ({ light, dark });
   return {
+    preset: "paper",
     color: {
-      bg: c("#f4f4f8", "#0f1117"),
-      surface: c("#ffffff", "#181b24"),
-      text: c("#18181b", "#e7e7ee"),
-      muted: c("#6b7280", "#9aa0ae"),
-      primary: c("#2563eb", "#60a5fa"),
-      accent: c("#7c3aed", "#a78bfa"),
-      danger: c("#dc2626", "#f87171"),
-      border: c("#e4e4ea", "#2a2f3d"),
+      bg: c("#f7f4ec", "#0d0c11"),
+      bg2: c("#efebe1", "#121118"),
+      surface: c("#fffdf8", "#17161d"),
+      surface2: c("#f3efe6", "#1e1d25"),
+      glass: c("rgba(255, 253, 248, 0.72)", "rgba(23, 22, 29, 0.66)"),
+      ink: c("#15141a", "#f2ead9"),
+      text: c("#2b2931", "#d8d2c6"),
+      muted: c("#6b6774", "#958f86"),
+      border: c("rgba(21, 20, 26, 0.10)", "rgba(242, 234, 217, 0.10)"),
+      borderStrong: c("rgba(21, 20, 26, 0.20)", "rgba(242, 234, 217, 0.20)"),
+      dot: c("rgba(21, 20, 26, 0.16)", "rgba(242, 234, 217, 0.14)"),
+      primary: c("#e85d2f", "#ff7a45"),
+      accent: c("#e14b78", "#ff5c8a"),
+      accent2: c("#f0a24a", "#ffc26b"),
+      accentInk: c("#ffffff", "#1a0d08"),
+      ok: c("#2f9e6a", "#5cd39a"),
+      warn: c("#d97706", "#fbbf24"),
+      danger: c("#c8322b", "#ff6b6b"),
     },
     typography: {
       fontFamily: {
-        sans: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-        mono: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        sans: FONT_STACKS.sans,
+        display: FONT_STACKS.display,
+        mono: FONT_STACKS.mono,
       },
       fontSize: {
         xs: "12px",
-        sm: "13px",
-        md: "15px",
-        lg: "18px",
-        xl: "22px",
-        "2xl": "28px",
-        "3xl": "36px",
+        sm: "14px",
+        md: "16px",
+        lg: "clamp(17px, 0.6vw + 14px, 20px)",
+        xl: "clamp(20px, 1.2vw + 14px, 26px)",
+        "2xl": "clamp(26px, 2.4vw + 14px, 40px)",
+        "3xl": "clamp(36px, 4.6vw + 14px, 72px)",
       },
       fontWeight: {
         regular: "400",
@@ -94,7 +137,12 @@ export function defaultTokens(): DesignTokens {
         semibold: "600",
         bold: "700",
       },
-      lineHeight: { tight: "1.2", normal: "1.5", loose: "1.7" },
+      lineHeight: { tight: "1.05", snug: "1.2", normal: "1.55", loose: "1.7" },
+      letterSpacing: {
+        display: "-0.022em",
+        hero: "-0.035em",
+        kicker: "0.06em",
+      },
     },
     spacing: {
       "1": "4px",
@@ -105,14 +153,22 @@ export function defaultTokens(): DesignTokens {
       "6": "32px",
       "7": "48px",
       "8": "64px",
+      "9": "96px",
+      "10": "128px",
     },
-    radius: { sm: "4px", md: "8px", lg: "14px", xl: "20px", full: "999px" },
+    radius: { sm: "8px", md: "12px", lg: "20px", xl: "28px", full: "999px" },
     shadow: {
-      sm: "0 1px 2px rgba(0, 0, 0, 0.08)",
-      md: "0 6px 18px rgba(0, 0, 0, 0.1)",
-      lg: "0 16px 40px rgba(0, 0, 0, 0.14)",
+      sm: "0 1px 2px rgba(21, 20, 26, 0.06), 0 2px 8px rgba(21, 20, 26, 0.06)",
+      md: "0 1px 2px rgba(21, 20, 26, 0.06), 0 8px 24px rgba(21, 20, 26, 0.08), 0 24px 64px rgba(21, 20, 26, 0.10)",
+      lg: "0 2px 4px rgba(21, 20, 26, 0.06), 0 16px 48px rgba(21, 20, 26, 0.12), 0 48px 96px rgba(21, 20, 26, 0.14)",
+      glow: "0 0 0 1px rgba(232, 93, 47, 0.25), 0 12px 40px rgba(232, 93, 47, 0.25)",
     },
     breakpoint: { mobile: "390px", tablet: "820px", desktop: "1280px" },
+    motion: {
+      ease: "cubic-bezier(0.2, 0.7, 0.2, 1)",
+      fast: "180ms",
+      slow: "700ms",
+    },
   };
 }
 
@@ -207,47 +263,53 @@ export function parseTokens(text: string): {
   )
     errors.push("typography: expected an object");
 
-  return {
-    tokens: {
-      color,
-      typography: {
-        fontFamily: stringMap(
-          t.fontFamily,
-          base.typography.fontFamily,
-          errors,
-          "typography.fontFamily"
-        ),
-        fontSize: stringMap(
-          t.fontSize,
-          base.typography.fontSize,
-          errors,
-          "typography.fontSize"
-        ),
-        fontWeight: stringMap(
-          t.fontWeight,
-          base.typography.fontWeight,
-          errors,
-          "typography.fontWeight"
-        ),
-        lineHeight: stringMap(
-          t.lineHeight,
-          base.typography.lineHeight,
-          errors,
-          "typography.lineHeight"
-        ),
-      },
-      spacing: stringMap(r.spacing, base.spacing, errors, "spacing"),
-      radius: stringMap(r.radius, base.radius, errors, "radius"),
-      shadow: stringMap(r.shadow ?? r.shadows, base.shadow, errors, "shadow"),
-      breakpoint: stringMap(
-        r.breakpoint ?? r.breakpoints,
-        base.breakpoint,
+  const tokens: DesignTokens = {
+    color,
+    typography: {
+      fontFamily: stringMap(
+        t.fontFamily,
+        base.typography.fontFamily,
         errors,
-        "breakpoint"
+        "typography.fontFamily"
+      ),
+      fontSize: stringMap(
+        t.fontSize,
+        base.typography.fontSize,
+        errors,
+        "typography.fontSize"
+      ),
+      fontWeight: stringMap(
+        t.fontWeight,
+        base.typography.fontWeight,
+        errors,
+        "typography.fontWeight"
+      ),
+      lineHeight: stringMap(
+        t.lineHeight,
+        base.typography.lineHeight,
+        errors,
+        "typography.lineHeight"
+      ),
+      letterSpacing: stringMap(
+        t.letterSpacing,
+        base.typography.letterSpacing,
+        errors,
+        "typography.letterSpacing"
       ),
     },
-    errors,
+    spacing: stringMap(r.spacing, base.spacing, errors, "spacing"),
+    radius: stringMap(r.radius, base.radius, errors, "radius"),
+    shadow: stringMap(r.shadow ?? r.shadows, base.shadow, errors, "shadow"),
+    breakpoint: stringMap(
+      r.breakpoint ?? r.breakpoints,
+      base.breakpoint,
+      errors,
+      "breakpoint"
+    ),
+    motion: stringMap(r.motion, base.motion, errors, "motion"),
   };
+  if (typeof r.preset === "string" && r.preset) tokens.preset = r.preset;
+  return { tokens, errors };
 }
 
 /** The file form: colors with the same light and dark value collapse to a string. */
@@ -258,12 +320,14 @@ export function serializeTokens(tokens: DesignTokens): string {
   return (
     JSON.stringify(
       {
+        ...(tokens.preset ? { preset: tokens.preset } : {}),
         color,
         typography: tokens.typography,
         spacing: tokens.spacing,
         radius: tokens.radius,
         shadow: tokens.shadow,
         breakpoint: tokens.breakpoint,
+        motion: tokens.motion,
       },
       null,
       2
@@ -281,6 +345,7 @@ const GROUP_PREFIX: Record<string, string> = {
   fontSize: "font-size",
   fontWeight: "font-weight",
   lineHeight: "line-height",
+  letterSpacing: "tracking",
   spacing: "space",
   radius: "radius",
   shadow: "shadow",
@@ -290,7 +355,8 @@ const GROUP_PREFIX: Record<string, string> = {
 /**
  * CSS for the tokens: `:root` holds the light scheme and every scale,
  * `[data-theme="dark"]` and `prefers-color-scheme: dark` (without a forced
- * light theme) hold the dark colors. Values are emitted as written.
+ * light theme) hold the dark colors. Values are emitted as written, plus one
+ * derived variable, `--ds-gradient` (accent → primary → accent2).
  */
 export function tokensToCss(tokens: DesignTokens): string {
   const light: string[] = [];
@@ -308,10 +374,16 @@ export function tokensToCss(tokens: DesignTokens): string {
   emit("fontSize", tokens.typography.fontSize);
   emit("fontWeight", tokens.typography.fontWeight);
   emit("lineHeight", tokens.typography.lineHeight);
+  emit("letterSpacing", tokens.typography.letterSpacing);
   emit("spacing", tokens.spacing);
   emit("radius", tokens.radius);
   emit("shadow", tokens.shadow);
   emit("breakpoint", tokens.breakpoint);
+  emit("motion", tokens.motion);
+  // Derived: the one accent gradient (rose → ember → amber in the Paper theme).
+  scales.push(
+    "  --ds-gradient: linear-gradient(120deg, var(--ds-color-accent), var(--ds-color-primary) 45%, var(--ds-color-accent2));"
+  );
   let css = `:root {\n${[...light, ...scales].join("\n")}\n  color-scheme: light dark;\n}\n`;
   if (dark.length) {
     css += `:root[data-theme="dark"] {\n${dark.join("\n")}\n}\n`;

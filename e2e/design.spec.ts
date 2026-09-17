@@ -56,7 +56,7 @@ test("the Design window shows the gallery and a token change recolors the previe
     .poll(async () =>
       preview.locator("h1").evaluate((el) => getComputedStyle(el).color)
     )
-    .toBe("rgb(37, 99, 235)");
+    .toBe("rgb(232, 93, 47)");
 
   await openKind(page, "design");
   const design = page.getByTestId("design-window");
@@ -64,7 +64,7 @@ test("the Design window shows the gallery and a token change recolors the previe
     timeout: 15000,
   });
   await expect(design.getByTestId("token-text-primary-light")).toHaveValue(
-    "#2563eb"
+    "#e85d2f"
   );
   // The token preview renders components from the current tokens.
   const tokenPreview = design.frameLocator('[data-testid="tokens-preview"]');
@@ -83,12 +83,13 @@ test("the Design window shows the gallery and a token change recolors the previe
       { timeout: 15000 }
     )
     .toBe("rgb(255, 0, 0)");
+  // Primary buttons wear the accent gradient; the hero eyebrow is the flat primary color.
   await expect
     .poll(async () =>
       tokenPreview
-        .locator(".ds-button--primary")
+        .locator(".ds-hero__eyebrow")
         .first()
-        .evaluate((el) => getComputedStyle(el).backgroundColor)
+        .evaluate((el) => getComputedStyle(el).color)
     )
     .toBe("rgb(255, 0, 0)");
 
@@ -98,7 +99,19 @@ test("the Design window shows the gallery and a token change recolors the previe
     timeout: 15000,
   });
   await expect(gallery.getByTestId("gallery-Table")).toBeVisible();
-  await expect(gallery.locator(".gallery__item")).toHaveCount(14);
+  await expect(gallery.locator(".gallery__item")).toHaveCount(35);
+  // Variants render with their own props, and the runtime draws charts and initials.
+  await expect(
+    gallery.locator('[data-testid="gallery-Badge"] .ds-badge--danger')
+  ).toHaveText("Blocked");
+  await expect(
+    gallery.locator('[data-testid="gallery-Chart"] .ds-chart__bar').first()
+  ).toBeVisible();
+  await expect(
+    gallery
+      .locator('[data-testid="gallery-Avatar"] .ds-avatar__initials')
+      .first()
+  ).toHaveText("AL");
   await design.getByTestId("component-Card").click();
   await expect(design.getByTestId("component-inspector")).toContainText("Card");
   await expect(gallery.locator(".ds-card__title")).toHaveText("Card title", {
@@ -173,16 +186,16 @@ test("map.generate from the Script window builds sections, cards and arrows", as
     ].join("\n")
   );
   await page.getByTestId("script-run").click();
-  await expect(page.getByTestId("script-output")).toContainText("map 6 32 49", {
+  await expect(page.getByTestId("script-output")).toContainText("map 6 53 85", {
     timeout: 20000,
   });
   await expect(
     page.getByTestId("script-output").locator('[data-level="result"]')
   ).toContainText("Map");
   await expect(page.locator(".tl-shape[data-shape-type=frame]")).toHaveCount(6);
-  await expect(page.locator(".pos-window[data-kind=card]")).toHaveCount(32);
+  await expect(page.locator(".pos-window[data-kind=card]")).toHaveCount(53);
   await expect(page.locator(".tl-shape[data-shape-type=arrow]")).toHaveCount(
-    49
+    85
   );
   const sections = await page.evaluate(() =>
     (window as unknown as { paperos: ApiShape }).paperos.sections
@@ -192,7 +205,7 @@ test("map.generate from the Script window builds sections, cards and arrows", as
   );
   expect(sections).toEqual([
     ["Code", 5],
-    ["Components", 16],
+    ["Components", 37],
     ["Data", 4],
     ["Design", 1],
     ["Pages", 3],

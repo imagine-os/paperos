@@ -212,6 +212,34 @@
 - [x] Validate: `npm run check`, `npm run build`, `npm run build:static`,
       screenshots, push, CI
 
+## M6 - Gorgeous design system, boards and tours, Small Business SaaS
+
+- [ ] Plan written, foundation read (`src/design/`, `src/map/`, `src/desktop/kinds/`,
+      `src/wm/`, `src/api/`, `src/ide/project/sample.ts`, `docs/BRAND.md`)
+- [ ] Part 1: `docs/BRAND.md` ported into `design/tokens.json` defaults (paper/ink
+      palette, rose-ember-amber gradient, display + body type, fluid scale, 4px
+      spacing, 8/12/20/pill radii, layered shadows, glass, dot grid, motion);
+      premium base CSS; upgraded 14 components + Pricing, Testimonial, FAQ,
+      Footer, Sidebar, Topbar, KpiGrid, Timeline, Calendar, Kanban, Thread,
+      Chart, EmptyState (+ TenantSwitcher, RoleSwitcher, PageHeader, TabBar,
+      Section, PostCard, AdCard); theme presets Paper / Ink / Studio / Bold in
+      the Design window; dark mode in the renderer; sample pages look like a
+      product; push
+- [ ] Part 2: boards (`src/boards/`, `boards/*.json`): model, layout, build,
+      save, list; tour mode with overlay, keys and captions; Canvas API
+      `boards` namespace; Boards menu; curated boards "Build a product",
+      "Ship a feature", "Agent-driven" in the sample; docs + CLI schema; push
+- [ ] Part 3: "Small Business SaaS" template (multi-tenant data model seeded
+      for 5 tenants, customer app, admin dashboard, marketing site, social and
+      ad production, outreach CRM), tenant / role switchers, showcase board,
+      viewport culling for heavy windows
+- [ ] Tests: unit (boards, tour, template, tenant filtering) and
+      `e2e/boards.spec.ts`
+- [ ] Docs: README, `docs/PLAN.md` (M6 done, decisions), `docs/CANVAS_API.md`,
+      landing status, this Review
+- [ ] Validate: `npm run check`, `npm run build`, `npm run build:static`,
+      `npm run e2e` (production build), screenshots and tour video, push, CI
+
 ## Review (M5)
 
 ### What changed
