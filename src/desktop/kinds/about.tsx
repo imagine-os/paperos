@@ -2,6 +2,7 @@
 
 import { stopEventPropagation } from "tldraw";
 import { openKindWindow } from "./data-common";
+import { confirmReset } from "../reset-action";
 import { startWelcomeTour } from "../welcome-tour";
 import type { WindowKindProps } from "../window-kinds";
 
@@ -68,6 +69,20 @@ export function AboutWindow({ editor }: WindowKindProps) {
         Local-first: projects, documents and the canvas live in this browser.
         The plan and every decision are in the repository&apos;s docs.
       </p>
+      <div className="pos-about__actions">
+        <button
+          type="button"
+          className="pos-button pos-button--small pos-about__danger"
+          data-testid="about-reset"
+          onClick={() => void confirmReset()}
+        >
+          Reset local data...
+        </button>
+        <span className="pos-about__muted pos-about__fine">
+          Removes every project, document and canvas stored in this browser and
+          starts over.
+        </span>
+      </div>
     </div>
   );
 }

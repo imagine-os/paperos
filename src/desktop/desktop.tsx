@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  react,
   DefaultKeyboardShortcutsDialog,
   DefaultKeyboardShortcutsDialogContent,
   DefaultStylePanel,
@@ -40,7 +41,9 @@ import {
 import { importDroppedItems, isProjectDrop } from "./project-actions";
 import { TopBar } from "./top-bar";
 import { WM_ACTION_IDS, wmActions } from "./wm-actions";
+import { ProblemToast } from "./problem-toast";
 import { StartHere } from "./start-here";
+import { zoomBand, type ZoomBand } from "./zoom-band";
 import { TourOverlay } from "./tour-overlay";
 import { openKindWindow } from "./kinds/data-common";
 import { startWelcomeTour, urlHasIntent, welcomeSeen } from "./welcome-tour";
@@ -164,6 +167,34 @@ export function Desktop() {
     };
   }, [editor]);
 
+  // Zoom band on the canvas container: CSS hides arrows and their labels
+  // when the camera is far out (see desktop.css), one attribute write per
+  // band change.
+  const canvasRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!editor) return;
+    let band: ZoomBand = "near";
+    let frame: number | null = null;
+    canvasRef.current?.setAttribute("data-zoom", band);
+    const off = react("zoom band", () => {
+      const zoom = editor.getZoomLevel();
+      if (frame !== null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        const next = zoomBand(editor.getZoomLevel(), band);
+        if (next !== band) {
+          band = next;
+          canvasRef.current?.setAttribute("data-zoom", band);
+        }
+      });
+      void zoom;
+    });
+    return () => {
+      off();
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [editor]);
+
   // Ctrl+S outside an editor: never let the browser offer to save the page
   // (bubble phase, so CodeMirror's own Ctrl+S runs first).
   useEffect(() => {
@@ -213,6 +244,7 @@ export function Desktop() {
     <div className="pos-desktop">
       <TopBar editor={editor} />
       <div
+        ref={canvasRef}
         className="pos-canvas"
         data-dropping={dropping}
         onDragOverCapture={onDragOver}
@@ -240,6 +272,7 @@ export function Desktop() {
       <StartHere editor={editor} />
       <TourOverlay editor={editor} />
       <CommandPalette editor={editor} />
+      <ProblemToast />
     </div>
   );
 }

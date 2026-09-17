@@ -3503,3 +3503,86 @@
 .pos-keys__keys kbd + kbd {
   margin-left: 3px;
 }
+
+/*
+ * Arrows and labels are culled by zoom band (set on .pos-canvas by the
+ * desktop). tldraw writes `display` inline on .tl-shape for its own
+ * culling, hence the !important.
+ */
+.pos-canvas[data-zoom="far"] .tl-shape[data-shape-type="arrow"],
+.pos-canvas[data-zoom="far"] .tl-arrow-label,
+.pos-canvas[data-zoom="mid"] .tl-arrow-label {
+  display: none !important;
+}
+
+/* A window body's mount point (remounted by "Reload window") */
+.pos-window__inner {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Problem toasts */
+.pos-toasts {
+  position: absolute;
+  right: 16px;
+  bottom: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 400;
+  width: min(420px, calc(100% - 32px));
+  pointer-events: none;
+}
+
+.pos-toast {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--pos-surface);
+  color: var(--pos-text);
+  border: 1px solid var(--pos-danger);
+  box-shadow: var(--pos-shadow);
+  font-family: var(--pos-font);
+  font-size: 13px;
+}
+
+.pos-toast__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pos-toast__body strong {
+  color: var(--pos-danger);
+}
+
+.pos-toast__message {
+  color: var(--pos-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-toast__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.pos-about__danger {
+  color: var(--pos-danger);
+  border-color: var(--pos-danger);
+}
+
+.pos-about__fine {
+  font-size: 12px;
+  align-self: center;
+}

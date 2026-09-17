@@ -40,6 +40,7 @@ import {
   openFolderProject,
   openSampleProject,
 } from "./project-actions";
+import { confirmReset } from "./reset-action";
 import { startWelcomeTour } from "./welcome-tour";
 import { listWindowKinds } from "./window-kinds";
 import { PRESET_SHORTCUTS } from "./wm-actions";
@@ -458,6 +459,15 @@ export function registerIdeCommands(editor: Editor): () => void {
       keywords: "version info",
       run: () => {
         openKindWindow(editor, "about", "", { reuse: true });
+      },
+    },
+    {
+      id: "help.reset",
+      title: "Reset local data...",
+      group: "Help",
+      keywords: "clear storage delete everything start over factory",
+      run: async () => {
+        await confirmReset();
       },
     }
   );

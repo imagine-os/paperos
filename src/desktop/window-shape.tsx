@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   BaseBoxShapeUtil,
   createShapePropsMigrationIds,
@@ -24,6 +24,7 @@ import { parseFileRef } from "@/ide/file-ref";
 import { initials, participantsOnWindow } from "@/collab/participants";
 import { getCollabSession } from "@/collab/session";
 import { WindowMenu } from "./window-menu";
+import { WindowErrorBoundary } from "./window-error-boundary";
 
 export interface WindowShapeProps {
   w: number;
@@ -445,7 +446,30 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
               <small>Zoom in to render</small>
             </div>
           ) : kind ? (
-            <kind.Component shape={shape} editor={editor} update={update} />
+            <WindowErrorBoundary
+              title={shape.props.title}
+              kind={shape.props.kind}
+            >
+              <Suspense
+                fallback={
+                  <div
+                    className="pos-window__placeholder"
+                    data-testid="window-loading"
+                  >
+                    <span
+                      className="pos-window__placeholder-icon"
+                      aria-hidden="true"
+                    >
+                      {kind.icon}
+                    </span>
+                    <strong>{shape.props.title}</strong>
+                    <small>Loading…</small>
+                  </div>
+                }
+              >
+                <kind.Component shape={shape} editor={editor} update={update} />
+              </Suspense>
+            </WindowErrorBoundary>
           ) : (
             <div className="pos-about pos-about__muted">
               Unknown window kind: {shape.props.kind}

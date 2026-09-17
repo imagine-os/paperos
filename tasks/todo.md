@@ -26,16 +26,16 @@ each pushed on its own.
 
 ## Commit 2 - Performance and robustness
 
-- [ ] Measure before: /app cold time to interactive, JS transferred, largest
+- [x] Measure before: /app cold time to interactive, JS transferred, largest
       chunks; 60-window pan frame time.
-- [ ] Code-split heavy window kinds (Design, Page Builder, Data, Schema,
+- [x] Code-split heavy window kinds (Design, Page Builder, Data, Schema,
       Connections, Lineage, Browser, Terminal, Share, Script, Plugins, Agent).
-- [ ] Culling for arrows/labels at low zoom; throttled store persistence.
-- [ ] Error boundary per window (Reload window card); global "Something
+- [x] Culling for arrows/labels at low zoom; throttled store persistence.
+- [x] Error boundary per window (Reload window card); global "Something
       broke" toast with Copy details.
-- [ ] Persistence: schema version in the project store, migration hook,
+- [x] Persistence: schema version in the project store, migration hook,
       "Reset local data" in About with a confirm.
-- [ ] Measure after; write both in the Review.
+- [x] Measure after; write both in the Review.
 
 ## Commit 3 - Accessibility and landing refresh
 
@@ -67,6 +67,81 @@ each pushed on its own.
       sync, project sync, sync server), e2e with two contexts + local server.
 - [x] Docs: docs/COLLAB.md, README Share section, PLAN M8 + decisions, landing
       status, todo review. Screenshots + webm.
+
+## Review (M9, commits 1 and 2)
+
+### Commit 1 - First-run experience (90a8309)
+
+- Tour steps carry `target` / `run` / `board` / `action`; the overlay moved
+  from tldraw's `InFrontOfTheCanvas` to the desktop root so it can frame
+  the top bar (`src/desktop/tour-overlay.tsx`). `src/desktop/welcome-tour.ts`
+  defines the eight steps; `paperos-v2:welcome-seen` keeps it to one showing.
+- Start here card (`start-here.tsx`), keyboard map (`keymap.ts`,
+  `kinds/keys.tsx`; built from the command registry plus tldraw's
+  `useActions()` / `useTools()`), `EmptyState` component used by Preview,
+  Files, Pages, Data and Schema with one-click fixes (`addFirstTable`,
+  `createStarterDesign`, `STARTER_HTML`).
+- Escape while a top-bar menu is open also ends a tour (both listen on
+  the document in the capture phase); the onboarding e2e closes menus by
+  clicking the button again. Known, small.
+
+### Commit 2 - Performance and robustness
+
+Measured with `.scratch/perf.mjs` (Playwright, Chromium headless, cache
+disabled, `next start` on localhost, 1440x900, medians of 3 cold loads;
+pan = 120 frames of `canvas.setCamera` on a canvas of 60 windows (notes,
+data grids, previews, editors, markdown, cards, schema) with 9 labeled
+arrows, frame time from requestAnimationFrame deltas).
+
+| Metric                                      | Before (90a8309)      | After                 |
+| ------------------------------------------- | --------------------- | --------------------- |
+| /app cold, top bar visible                  | 596 ms                | 559 ms                |
+| /app cold, canvas visible                   | 603 ms                | 584 ms                |
+| /app cold, `window.paperos` ready           | 620 ms                | 636 ms                |
+| First run, editor shows index.html          | 801 ms                | 781 ms                |
+| JS transferred on a cold /app (gzip)        | 1097 kB / 23 files    | 1052 kB / 25 files    |
+| JS uncompressed on a cold /app              | 2581 kB               | 2484 kB               |
+| Desktop chunk (everything under /app)       | 712 kB                | 436 kB                |
+| Pan, 60 windows, zoom 0.22: avg / p95 / max | 16.9 / 18.7 / 29.8 ms | 16.7 / 18.5 / 29.1 ms |
+| Pan, 60 windows, zoom 0.6: avg / p95 / max  | 16.6 / 18.9 / 30.0 ms | 16.6 / 18.3 / 22.6 ms |
+| Pan, 60 windows, zoom 0.08: avg / p95 / max | 16.6 / 16.8 / 20.6 ms | 16.6 / 17.0 / 19.6 ms |
+
+Reading: the pan is vsync-bound (16.7 ms at 60 Hz) before and after, so the
+60-window board already panned smoothly; the change is in the tail (p95 and
+max drop at every zoom). Cold load on localhost is dominated by tldraw's
+1.3 MB chunk (390 kB gzip), which every desktop paint needs; the code
+splitting moved 276 kB (uncompressed) of window kinds and the two sample
+templates out of the desktop chunk into 17 on-demand chunks, but the first
+run fetches the sample template chunk right away (a fresh store creates the
+sample), so the wire total only drops 45 kB. Largest chunks after: tldraw
+1309 kB, Prettier (on demand) 863 kB, desktop 436 kB, CodeMirror (on demand)
+206 kB, React 214 kB.
+
+What shipped:
+
+- Code splitting: every kind except Files, Editor, Preview, Console, Note
+  and About is `React.lazy` (`window-kinds.tsx`); the window frame wraps
+  the body in `Suspense` (placeholder while a chunk loads). The sample and
+  SaaS templates and the starter design library load on demand
+  (`store.createSampleProject`, `createStarterDesign`).
+- Culling: `zoom-band.ts` (near / mid / far with hysteresis) sets
+  `data-zoom` on the canvas container once per band change; CSS hides arrow
+  labels below 30% zoom and whole arrows below 10%.
+- Store persistence: the window manager writes its tree 250 ms after the
+  last change (flushed on dispose and `pagehide`) instead of on every atom
+  change.
+- Error boundaries: `WindowErrorBoundary` per window body (card with the
+  message, Reload window, Copy details); `problems.ts` collects crashes,
+  uncaught errors and unhandled rejections (deduped, last three) for the
+  "Something broke" toast with Copy details.
+- Persistence safety: `src/ide/project/migrations.ts` stamps the project
+  store with a schema version at init and runs ordered migrations (a newer
+  store is left alone and logged); "Reset local data..." in About (window
+  and menu) and the palette wipes `paperos-v2*` storage, the project store,
+  the Yjs databases and tldraw's document after a confirm and reloads into a
+  first run.
+- Tests: 337 unit (migrations, problems, zoom band), `e2e/robustness.spec.ts`
+  (crashing window, arrow culling, reset).
 
 # tasks/todo.md
 

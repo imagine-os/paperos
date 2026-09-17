@@ -44,6 +44,9 @@ import type { WorkspaceSnapshot } from "./workspace-store";
 export const NARROW_BREAKPOINT = 720;
 
 /** A tiled window has to move this far (page units) before it detaches. */
+/** How long after the last layout change the tree is written to storage. */
+export const PERSIST_DELAY_MS = 250;
+
 export const DETACH_DISTANCE = 24;
 
 const REFLOW_DELAY_MS = 150;
@@ -586,20 +589,39 @@ export class WindowManager {
     this.root.set(pruneTree(saved.root, existing));
   }
 
+  /**
+   * Writes the tree, preset, region and active workspace to storage a
+   * moment after the last change (gutter drags and reflows change the tree
+   * many times a second); the pending write is flushed on dispose.
+   */
   private persistOnChange() {
     if (!this.state) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let pending: WmState | null = null;
+    const flush = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      if (pending) this.state!.set(pending);
+      pending = null;
+    };
     this.disposers.push(
       react("wm.persist", () => {
-        const next: WmState = {
+        pending = {
           version: 1,
           preset: this.preset.get(),
           root: this.root.get(),
           region: this.region.get(),
           activeWorkspaceId: this.activeWorkspaceId.get(),
         };
-        this.state!.set(next);
-      })
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(flush, PERSIST_DELAY_MS);
+      }),
+      flush
     );
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagehide", flush);
+      this.disposers.push(() => window.removeEventListener("pagehide", flush));
+    }
   }
 
   /** Re-captures the region when the browser viewport changes size (debounced). */

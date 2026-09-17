@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { lazy, type ComponentType } from "react";
 import type { Editor } from "tldraw";
 import { signal } from "@/ide/signal";
 import type { WindowShape, WindowShapeProps } from "./window-shape";
@@ -8,21 +8,64 @@ import { FilesWindow } from "./kinds/files";
 import { EditorWindow } from "./kinds/editor";
 import { PreviewWindow } from "./kinds/preview";
 import { ConsoleWindow } from "./kinds/console";
-import { MarkdownWindow } from "./kinds/markdown";
-import { ScriptWindow } from "./kinds/script";
-import { PluginsWindow } from "./kinds/plugins";
-import { AgentWindow } from "./kinds/agent";
-import { DataWindow } from "./kinds/data";
-import { SchemaWindow } from "./kinds/schema";
-import { ConnectionsWindow } from "./kinds/connections";
-import { DesignWindow } from "./kinds/design";
-import { PagesWindow } from "./kinds/pages";
-import { CardWindow } from "./kinds/card";
-import { LineageWindow } from "./kinds/lineage";
-import { BrowserWindow } from "./kinds/browser";
-import { TerminalWindow } from "./kinds/terminal";
-import { ShareWindow } from "./kinds/share";
-import { KeysWindow } from "./kinds/keys";
+
+/**
+ * Heavy kinds load on demand (each is its own chunk), so the first paint of
+ * /app carries only the desktop, Files, the editor shell, the preview and
+ * the console. The window frame shows a placeholder while a chunk loads.
+ */
+const lazyKind = (
+  loader: () => Promise<ComponentType<WindowKindProps>>
+): ComponentType<WindowKindProps> =>
+  lazy(() =>
+    loader().then((C) => ({ default: C }))
+  ) as unknown as ComponentType<WindowKindProps>;
+
+const MarkdownWindow = lazyKind(() =>
+  import("./kinds/markdown").then((m) => m.MarkdownWindow)
+);
+const ScriptWindow = lazyKind(() =>
+  import("./kinds/script").then((m) => m.ScriptWindow)
+);
+const PluginsWindow = lazyKind(() =>
+  import("./kinds/plugins").then((m) => m.PluginsWindow)
+);
+const AgentWindow = lazyKind(() =>
+  import("./kinds/agent").then((m) => m.AgentWindow)
+);
+const DataWindow = lazyKind(() =>
+  import("./kinds/data").then((m) => m.DataWindow)
+);
+const SchemaWindow = lazyKind(() =>
+  import("./kinds/schema").then((m) => m.SchemaWindow)
+);
+const ConnectionsWindow = lazyKind(() =>
+  import("./kinds/connections").then((m) => m.ConnectionsWindow)
+);
+const DesignWindow = lazyKind(() =>
+  import("./kinds/design").then((m) => m.DesignWindow)
+);
+const PagesWindow = lazyKind(() =>
+  import("./kinds/pages").then((m) => m.PagesWindow)
+);
+const CardWindow = lazyKind(() =>
+  import("./kinds/card").then((m) => m.CardWindow)
+);
+const LineageWindow = lazyKind(() =>
+  import("./kinds/lineage").then((m) => m.LineageWindow)
+);
+const BrowserWindow = lazyKind(() =>
+  import("./kinds/browser").then((m) => m.BrowserWindow)
+);
+const TerminalWindow = lazyKind(() =>
+  import("./kinds/terminal").then((m) => m.TerminalWindow)
+);
+const ShareWindow = lazyKind(() =>
+  import("./kinds/share").then((m) => m.ShareWindow)
+);
+const KeysWindow = lazyKind(() =>
+  import("./kinds/keys").then((m) => m.KeysWindow)
+);
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {

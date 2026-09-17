@@ -9,8 +9,7 @@ import { fetchGithubRepo, parseGithubUrl } from "./github";
 import { browserKv, type KvStore } from "./kv";
 import { MemoryBackend } from "./memory-backend";
 import { normalizePath } from "./paths";
-import { SAMPLE_NAME, sampleProjectFiles } from "./sample";
-import { SAAS_NAME, saasProjectFiles } from "./saas";
+import { migrate } from "./migrations";
 import type {
   FileEntry,
   FileMap,
@@ -85,6 +84,12 @@ export class ProjectStore {
   }
 
   private async load() {
+    // Schema version first: an older store is migrated before it is read.
+    const report = await migrate(this.kv);
+    if (report.newer)
+      console.warn(
+        `PaperOS: the project store is at schema ${report.to}, newer than this build (${report.from}); leaving it as is.`
+      );
     const rows = await this.kv.list<StoredMeta>("meta", META_PREFIX);
     const projects: ProjectMeta[] = [];
     for (const row of rows) {
@@ -98,11 +103,7 @@ export class ProjectStore {
       activeId = projects[0]?.id ?? null;
     this.state.set({ status: "ready", projects, activeId });
     if (projects.length === 0) {
-      await this.createMemoryProject(
-        SAMPLE_NAME,
-        sampleProjectFiles(),
-        "sample"
-      );
+      await this.createSampleProject("sample");
     } else if (activeId) {
       await this.session(activeId);
     }
@@ -305,12 +306,18 @@ export class ProjectStore {
     return meta;
   }
 
-  /** The sample site, or the "Small Business SaaS" template. */
+  /**
+   * The sample site, or the "Small Business SaaS" template. The templates
+   * are large and load on demand (their own chunks), not with the desktop.
+   */
   async createSampleProject(
     template: SampleTemplate = "sample"
   ): Promise<ProjectMeta> {
-    if (template === "saas")
+    if (template === "saas") {
+      const { SAAS_NAME, saasProjectFiles } = await import("./saas");
       return this.createMemoryProject(SAAS_NAME, saasProjectFiles(), "saas");
+    }
+    const { SAMPLE_NAME, sampleProjectFiles } = await import("./sample");
     return this.createMemoryProject(
       SAMPLE_NAME,
       sampleProjectFiles(),

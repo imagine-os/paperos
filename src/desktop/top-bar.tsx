@@ -33,6 +33,7 @@ import {
   openFolderProject,
   openSampleProject,
 } from "./project-actions";
+import { confirmReset } from "./reset-action";
 import { startWelcomeTour } from "./welcome-tour";
 import { PRESET_SHORTCUTS } from "./wm-actions";
 import { listWindowKinds, windowKindsChanged } from "./window-kinds";
@@ -114,6 +115,13 @@ export function TopBar({ editor }: { editor: Editor | null }) {
               onSelect={() =>
                 openKindWindow(editor, "keys", "", { reuse: true })
               }
+            />
+            <MenuSeparator />
+            <MenuItem
+              label="Reset local data..."
+              danger
+              testId="about-reset-menu"
+              onSelect={() => void confirmReset()}
             />
           </Dropdown>
         ) : (
