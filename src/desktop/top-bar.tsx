@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { useValue, type Editor } from "tldraw";
 import { getBridgeClient } from "@/api/bridge-client";
+import { getCollabSession } from "@/collab/session";
+import { openKindWindow } from "./kinds/data-common";
 import {
   boardsOnCanvas,
   listBoards,
@@ -86,6 +88,7 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         >
           Commands <span className="pos-menu__kbd">Ctrl+K</span>
         </button>
+        <ShareButton editor={editor} />
         <BridgeToggle editor={editor} />
         <button
           type="button"
@@ -112,6 +115,40 @@ export function TopBar({ editor }: { editor: Editor | null }) {
         </Link>
       </div>
     </header>
+  );
+}
+
+/** Opens the Share window; shows the room state (dot and peer count) while in a room. */
+function ShareButton({ editor }: { editor: Editor | null }) {
+  const state = useSignal(getCollabSession().state);
+  const dot =
+    state.status === "connected" && state.online
+      ? "connected"
+      : state.status === "off"
+        ? "off"
+        : "waiting";
+  return (
+    <button
+      type="button"
+      className="pos-button pos-topbar__share"
+      disabled={!editor}
+      data-testid="share-button"
+      data-status={state.status}
+      title={
+        state.room
+          ? `Room ${state.room}: ${state.peers} other ${state.peers === 1 ? "peer" : "peers"}. Open the Share window.`
+          : "Share this canvas and project live with others (a room)"
+      }
+      onClick={() =>
+        editor && openKindWindow(editor, "share", "", { reuse: true })
+      }
+    >
+      <span
+        className={`pos-bridge-dot pos-bridge-dot--${dot}`}
+        aria-hidden="true"
+      />
+      {state.room ? `Share \u00B7 ${state.peers + 1}` : "Share"}
+    </button>
   );
 }
 

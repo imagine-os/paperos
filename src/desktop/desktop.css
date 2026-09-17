@@ -3093,3 +3093,209 @@
   outline: none;
   padding: 0;
 }
+
+/* Share window */
+.pos-share {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 14px;
+  overflow: auto;
+  background: var(--pos-surface);
+  font-size: 13px;
+}
+
+.pos-share__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pos-share__hint {
+  margin: 0;
+  color: var(--pos-text-muted);
+  line-height: 1.45;
+}
+
+.pos-share__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pos-share__field--grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.pos-share__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pos-text-muted);
+}
+
+.pos-share__row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.pos-share__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pos-share__name .pos-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pos-share__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+}
+
+.pos-share__create {
+  align-self: flex-start;
+}
+
+.pos-share__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pos-text-muted);
+  font-size: 12px;
+}
+
+.pos-share__divider::before,
+.pos-share__divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--pos-border);
+}
+
+.pos-share__room {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.pos-share__id {
+  font-family: var(--pos-mono);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.pos-share__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pos-text-muted);
+}
+
+.pos-share__people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pos-share__person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pos-share__person-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.pos-share__person-where {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--pos-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-share__badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--pos-accent);
+  background: color-mix(in srgb, var(--pos-accent) 14%, transparent);
+}
+
+.pos-share__leave {
+  align-self: flex-start;
+  color: var(--pos-danger);
+}
+
+.pos-share__error {
+  color: var(--pos-danger);
+  font-size: 12px;
+}
+
+/* Who is looking at a window: title-bar chips */
+.pos-window__peers {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+.pos-window__peer {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--pos-surface-2);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.3);
+}
+
+.pos-window__peer:first-child {
+  margin-left: 0;
+}
+
+.pos-window__peer--more {
+  background: var(--pos-text-muted);
+}
+
+/* Share button in the top bar */
+.pos-topbar__share {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}

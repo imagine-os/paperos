@@ -19,6 +19,7 @@ import {
   readBoard,
 } from "@/boards/build";
 import { getTourController } from "@/boards/tour-controller";
+import { getCollabSession } from "@/collab/session";
 import { lineagePages, openLineage } from "@/lineage/open";
 import { createWindow } from "./create-window";
 import { applyDataWorkspace } from "./data-workspace";
@@ -118,6 +119,67 @@ export function registerIdeCommands(editor: Editor): () => void {
       group: "Layout",
       keywords: "tokens components pages builder",
       run: () => void applyDesignWorkspace(editor),
+    }
+  );
+
+  const openShare = () => openKindWindow(editor, "share", "", { reuse: true });
+  list.push(
+    {
+      id: "share.open",
+      title: "Share: open the Share window",
+      group: "Share",
+      keywords: "collaborate room live multiplayer",
+      run: () => void openShare(),
+    },
+    {
+      id: "share.create",
+      title: "Share: create a room",
+      group: "Share",
+      keywords: "collaborate room live multiplayer invite",
+      run: async () => {
+        openShare();
+        await getCollabSession().create();
+      },
+    },
+    {
+      id: "share.join",
+      title: "Share: join a room...",
+      group: "Share",
+      keywords: "collaborate room live multiplayer link",
+      run: async () => {
+        const text = window.prompt("Room id or link");
+        if (!text?.trim()) return;
+        if (
+          !window.confirm(
+            `Join room "${text.trim()}"?\n\nIts canvas and project replace what you see here. Your own project stays in the Open menu.`
+          )
+        )
+          return;
+        openShare();
+        await getCollabSession().join(text);
+      },
+    },
+    {
+      id: "share.copy-link",
+      title: "Share: copy the room link",
+      group: "Share",
+      keywords: "collaborate invite",
+      run: async () => {
+        const link = getCollabSession().state.get().link;
+        if (!link) return;
+        try {
+          await navigator.clipboard.writeText(link);
+        } catch {
+          window.prompt("Room link", link);
+        }
+      },
+    },
+    {
+      id: "share.leave",
+      title: "Share: leave the room",
+      group: "Share",
+      keywords: "collaborate disconnect",
+      run: () => void getCollabSession().leave(),
     }
   );
 

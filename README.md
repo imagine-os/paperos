@@ -171,8 +171,9 @@ Every open file is a Yjs `Y.Doc` keyed by project id and path, persisted with
 unsaved edits survive a reload. The editor binds to it through
 `y-codemirror.next`; Preview and Markdown windows read the same text. "Dirty"
 means the buffer differs from what the backend holds; **Save** (`Ctrl+S`)
-writes it back. To make files collaborative later, attach a sync provider in
-`attachProvider()` in `src/ide/docs.ts`; nothing else changes.
+writes it back. In a room (see Share below) the document is the room's shared
+text for that file (`setDocSource()` in `src/ide/docs.ts`), it is never
+dirty, and a mirror writes each peer's backend.
 
 ### Windows
 
@@ -193,6 +194,7 @@ writes it back. To make files collaborative later, attach a sync provider in
 | Script       | A JavaScript editor that runs against the Canvas API (`paperos`) with a captured `console`; output pane, Snippets menu, `Ctrl+Enter`. See Programmability.                                                                                                                                                                                                                                           |
 | Plugins      | The plugin manager: built-in, project (`plugins/*.js`) and URL plugins, enable/disable, permissions note.                                                                                                                                                                                                                                                                                            |
 | Agent        | Read-only transcript of the tool calls an agent makes over the MCP bridge, with a Pause switch.                                                                                                                                                                                                                                                                                                      |
+| Share        | Rooms: create one (random readable id), copy the link, join by id or link, password, who is here with names and colors, status line, leave. See Share below and [`docs/COLLAB.md`](docs/COLLAB.md).                                                                                                                                                                                                  |
 | Terminal     | A terminal with two backends: the **project shell** (in the tab: `ls`, `cd`, `cat`, `grep`, `find`, `tree`, pipes, `>`/`>>`, plus `open <file>`, `preview <page>`, `data <table>`, `board <name>`, `layout <preset>`, `api <expression>` and a `js` REPL; Tab completes) and the **bridge shell** (a real shell on your machine through the agent bridge, opt-in with a confirmation). See Terminal. |
 | Browser      | A web browser: tabs, address bar with back / forward / reload / home, bookmarks in the project (`browser/bookmarks.json`), "Open in new tab". Shows the project preview (`paperos://preview/<entry>`), the docs (`paperos://docs/...`), `/legacy`, the landing and http(s) sites in a sandboxed iframe; sites that refuse embedding get a card with a way out. See Browser.                          |
 
@@ -454,8 +456,8 @@ canvas as a new board file. Tour mode animates the camera section by
 section, highlights the section and its arrows, shows a caption with
 previous / next / exit, and takes the arrow keys and Escape. The Canvas API
 has `boards.list / open / save / play / step / stop`. The sample site ships
-"Build a product", "Ship a feature" and "Agent-driven"; the SaaS sample
-ships "Small Business SaaS".
+"Build a product", "Ship a feature", "Agent-driven" and "Collaborate"; the
+SaaS sample ships "Small Business SaaS".
 
 ## Data lineage
 
@@ -569,6 +571,31 @@ when connected. The **Agent** window shows every tool call as it arrives and
 can pause them. No server is deployed and nothing leaves your machine. Details,
 options and security notes: [`docs/MCP.md`](docs/MCP.md).
 
+## Share (rooms)
+
+**Share** in the top bar opens the Share window: **Create a room** gives the
+canvas and the active project a readable id (`amber-fox-417`) and a link,
+`/app?room=amber-fox-417`, that works on GitHub Pages, Vercel and localhost.
+Whoever opens the link joins: after one confirmation the room's canvas and
+project replace theirs (their own project stays in the Open menu), and from
+then on windows, files, sections and arrows are the same for everyone, with
+tldraw cursors and selections, remote carets and names in the editors, and a
+chip in each window's title bar showing who is on it. The Share window lists
+the participants (agents connected over the MCP bridge show with a robot
+badge), the room's status ("Connected · 2 peers · WebRTC via ...") and
+**Leave room**, which keeps a local copy of everything.
+
+Rooms use free infrastructure only. By default peers connect directly over
+WebRTC (`y-webrtc`) and only meet through y-webrtc's public signaling server;
+a room can have a password. For teams behind strict networks, or when the
+room should outlive its peers, `npm run sync` starts a one-file y-websocket
+relay (`tools/paperos-sync`) and links carry `&sync=ws://your-host:1234`
+(or set `NEXT_PUBLIC_PAPEROS_SYNC_URL` at build time). Everything is one Yjs
+document per room, kept locally with `y-indexeddb`, so rejoining works
+offline and conflicts cannot happen. Scripts and agents use
+`paperos.collab.*`. How it works, self-hosting and swapping in a hosted
+backend in one line: [`docs/COLLAB.md`](docs/COLLAB.md).
+
 ## Hosting
 
 PaperOS is a static, local-first app; the only server code is the legacy
@@ -600,12 +627,14 @@ and open <http://localhost:3100/paperos/>.
 
 All optional. Copy `.env.example` to `.env.local` if you want to set any.
 
-| Variable                         | Used by   | Effect                                                         |
-| -------------------------------- | --------- | -------------------------------------------------------------- |
-| `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` | `/`       | tldraw SDK license key. Removes the watermark. No code change. |
-| `LIVEBLOCKS_SECRET_KEY`          | `/legacy` | Lets the 2025 prototype's collaboration client connect.        |
-| `PAPEROS_STATIC`                 | build     | `1` = static export for GitHub Pages (`npm run build:static`). |
-| `PAPEROS_BASE_PATH`              | build     | Base path of the static export. Default `/paperos`.            |
+| Variable                         | Used by   | Effect                                                                      |
+| -------------------------------- | --------- | --------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` | `/`       | tldraw SDK license key. Removes the watermark. No code change.              |
+| `LIVEBLOCKS_SECRET_KEY`          | `/legacy` | Lets the 2025 prototype's collaboration client connect.                     |
+| `PAPEROS_STATIC`                 | build     | `1` = static export for GitHub Pages (`npm run build:static`).              |
+| `PAPEROS_BASE_PATH`              | build     | Base path of the static export. Default `/paperos`.                         |
+| `NEXT_PUBLIC_PAPEROS_SYNC_URL`   | `/app`    | A `tools/paperos-sync` (y-websocket) server; rooms use it by default.       |
+| `NEXT_PUBLIC_PAPEROS_SIGNALING`  | `/app`    | Signaling server(s) for peer-to-peer rooms. Default: y-webrtc's public one. |
 
 ## Routes
 
@@ -700,7 +729,7 @@ src/
                        memory + File System Access backends, sample, ZIP,
                        GitHub import, ProjectStore (paperos-v2:projects)
     docs.ts            one Y.Doc per file, y-indexeddb, dirty/save,
-                       attachProvider() hook for a sync provider (M4)
+                       setDocSource() binds files to a room (M8)
     preview/bundle.ts  srcdoc bundler: inlines styles/scripts/SVG assets,
                        injects the console bridge and the data runtime (unit tested)
     editor/            CodeMirror factory (lazy) and the Prettier formatter
@@ -715,9 +744,13 @@ src/
     geometry.ts        drop zones, neighbour search, reading order
     window-manager.ts  applies trees to Window shapes via the tldraw editor
     workspace-store.ts localStorage-backed workspaces; wm-state.ts live arrangement
+  collab/         Rooms: room ids and links, transport selection, providers
+                  (y-webrtc, y-websocket), tldraw store <-> Yjs, project <-> Yjs,
+                  awareness -> participants, the CollabSession
   lib/            Shared helpers: env, bundled tldraw assets
   legacy/         The 2025 prototype, moved verbatim (see src/legacy/README.md)
 tools/paperos-mcp/ MCP server + WebSocket bridge CLI (own package, built with tsc)
+tools/paperos-sync/ y-websocket relay for rooms in one file (npm run sync)
 scripts/gen-api.mts Generates docs/CANVAS_API.md and the CLI's schema copy
 e2e/              Playwright: landing, smoke, window manager, IDE, API, data and design tests
 docs/PLAN.md      Milestones and architecture decisions
@@ -741,12 +774,10 @@ load anything from `cdn.tldraw.com`.
   `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` in your environment (Vercel: Project
   Settings -> Environment Variables) and redeploy. `src/lib/env.ts` passes it
   to `<Tldraw licenseKey>`.
-- **Real-time collaboration (M4):** the v2 canvas uses tldraw's local
-  persistence (`persistenceKey="paperos-v2"`, IndexedDB). Swapping in a sync
-  backend means replacing that one prop with a store from a sync provider
-  (tldraw sync, Liveblocks, Yjs over WebSocket, ...) in
-  `src/desktop/desktop.tsx`. Files are already Yjs documents: call
-  `attachProvider()` in `src/ide/docs.ts` with a function that connects a
-  provider to each `Y.Doc`. No other code depends on where the data lives.
+- **A hosted collaboration backend:** rooms are one Yjs document behind a
+  provider interface (`src/collab/providers.ts`). Add one entry to
+  `PROVIDERS` that wraps a vendor's Yjs provider (Liveblocks Yjs, Y-Sweet,
+  Hocuspocus, ...) and select it; the session, sync, presence and UI do not
+  change. Self-hosting needs no vendor at all: `npm run sync`.
 - **tldraw version:** one `tldraw` version serves both `/app` and `/legacy`;
   bump `tldraw` and `@tldraw/assets` together in `package.json`.

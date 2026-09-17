@@ -293,6 +293,7 @@ describe("sample boards", () => {
     expect(Object.keys(files).sort()).toEqual([
       "boards/agent-driven.json",
       "boards/build-product.json",
+      "boards/collaborate.json",
       "boards/ship-feature.json",
     ]);
     for (const [path, text] of Object.entries(files)) {

@@ -124,7 +124,7 @@ Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, secti
 paperos.windows.create(options: {kind: string, title?: string, content?: string, rect?: {x?: number, y?: number, w?: number, h?: number}, tiled?: boolean})
 ```
 
-Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.
+Creates a window of a registered kind (files, editor, preview, browser, terminal, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, share, or a plugin kind). Without a rect it cascades at the viewport center.
 
 Returns `WindowInfo {id, kind, title, content, x, y, w, h, tiled, focused, section}`. changes state · MCP tool `windows_create` · object-style call passes the object itself.
 

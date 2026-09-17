@@ -21,6 +21,7 @@ import { CardWindow } from "./kinds/card";
 import { LineageWindow } from "./kinds/lineage";
 import { BrowserWindow } from "./kinds/browser";
 import { TerminalWindow } from "./kinds/terminal";
+import { ShareWindow } from "./kinds/share";
 
 /** What a window kind's component receives. */
 export interface WindowKindProps {
@@ -212,6 +213,15 @@ registerWindowKind({
   icon: "\u{1F916}",
   defaultSize: { w: 460, h: 400 },
   Component: AgentWindow,
+});
+
+registerWindowKind({
+  id: "share",
+  label: "Share",
+  defaultTitle: "Share",
+  icon: "\u{1F465}",
+  defaultSize: { w: 420, h: 520 },
+  Component: ShareWindow,
 });
 
 registerWindowKind({

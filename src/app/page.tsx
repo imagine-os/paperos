@@ -440,13 +440,16 @@ export default function LandingPage() {
                   <li className="is-done">Full-stack sample project</li>
                   <li className="is-done">Boards and tours</li>
                   <li className="is-done">Browser and Terminal windows</li>
+                  <li className="is-done">
+                    Live collaboration: rooms, cursors, shared files
+                  </li>
                 </ul>
               </div>
               <div>
                 <h3>Next</h3>
                 <ul>
-                  <li className="is-now">Real-time collaboration</li>
-                  <li>Polish and a plugin catalogue</li>
+                  <li className="is-now">Polish and a plugin catalogue</li>
+                  <li>Themes, workspace export</li>
                 </ul>
               </div>
             </div>

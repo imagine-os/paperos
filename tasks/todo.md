@@ -10,14 +10,14 @@
 - [x] Session: create / join / leave, `?room=` links, joiner adopts the room's
       project (confirm), creator seeds an empty room, y-indexeddb per room.
 - [x] `tools/paperos-sync/`: tiny y-websocket server (ws + yjs + y-protocols).
-- [ ] UX: Share button + Share window kind, participants, status, title-bar
+- [x] UX: Share button + Share window kind, participants, status, title-bar
       chips, CodeMirror remote cursors, robot badge for bridge agents.
-- [ ] Canvas API `collab.*`, `collab.changed` event, palette commands, docs
+- [x] Canvas API `collab.*`, `collab.changed` event, palette commands, docs
       regenerated, MCP schema copy.
-- [ ] Board "Collaborate" in the sample + tour.
-- [ ] Tests: unit (room ids, transport selection, awareness mapping, store
+- [x] Board "Collaborate" in the sample + tour.
+- [x] Tests: unit (room ids, transport selection, awareness mapping, store
       sync, project sync, sync server), e2e with two contexts + local server.
-- [ ] Docs: docs/COLLAB.md, README Share section, PLAN M8 + decisions, landing
+- [x] Docs: docs/COLLAB.md, README Share section, PLAN M8 + decisions, landing
       status, todo review. Screenshots + webm.
 
 # tasks/todo.md
@@ -295,6 +295,60 @@
 - [x] Docs: CANVAS_API.md, README (Windows), PLAN (M7 done + decisions),
       landing status, this Review
 - [ ] Screenshots and webm in the scratchpad (`v2shots/m7/`)
+
+## Review (M8)
+
+### What changed
+
+- `src/collab/`: `room-id.ts` (ids, links, `roomKey`), `config.ts`
+  (transport selection: explicit > stored > env > public WebRTC),
+  `participants.ts` (awareness -> participants, colors, initials),
+  `identity.ts` (name and color in localStorage), `providers.ts` (y-webrtc
+  and y-websocket behind `CollabProvider`, loaded on demand), `store-sync.ts`
+  (tldraw store <-> `Y.Map`, presence <-> awareness), `project-sync.ts`
+  (seed, adopt, two-way mirror), `session.ts` (`CollabSession`: create,
+  join, leave, setName, `?room=` on load, focus and agent fields).
+- `src/ide/docs.ts`: `setDocSource()`, `resetFileDocs()`, `docsGeneration`,
+  `FileDoc.shared` / `awareness`, `clearFileDocStorage()`; shared docs are
+  never dirty and `reload()` never overwrites the room. Editors rebind on
+  the generation and pass the awareness to `yCollab`.
+- UI: Share button, Share window kind, title-bar chips (`WindowPeers`),
+  palette commands `share.*`, the "Collaborate" board and tour, landing
+  status.
+- Canvas API `collab.*` + `collab.changed`; fake host with an in-memory
+  room; docs and CLI schema regenerated.
+- `tools/paperos-sync/server.mjs` (+ `npm run sync`), used by
+  `playwright.config.ts` as a second web server for `e2e/collab.spec.ts`.
+- Docs: `docs/COLLAB.md`, README "Share (rooms)", PLAN M8 + decisions 52-57.
+
+### Verified
+
+- `npm run check` (322 unit tests), `npm run build`, `npm run build:static`,
+  `npm run e2e` against the production build with the local relay.
+- Two Chromium contexts in one room through `tools/paperos-sync`: a note
+  created in A appears in B, B adopts A's project under the same id, both
+  editors on `index.html` show the other's caret and text, both backends
+  follow the shared buffer, the chip shows the other peer, leaving keeps
+  the copy. Screenshots and a webm in the session scratchpad
+  (`v2shots/m8/`).
+
+### Decisions and notes
+
+- Remote store changes are applied in a microtask: a provider (or the
+  store's own integrity checker) can deliver while the store is inside a
+  transaction and `mergeRemoteChanges` must not nest.
+- The public signaling server is y-webrtc's `wss://y-webrtc-eu.fly.dev`;
+  tests never touch it (the e2e uses the local relay).
+- Joiners never seed: a join waits for the room's content (6 s before it
+  says "waiting", then indefinitely), so a slow first sync cannot merge two
+  projects into one room.
+- The tiling layout is personal (decision 8); positions travel with the
+  shapes, so a peer's "Tile all" moves everyone's windows but leaves their
+  trees alone. Shared layouts are a follow-up.
+- `y-indexeddb` databases of a project's local documents are removed on
+  leave (best effort, `indexedDB.databases()`), so stale pre-room buffers do
+  not reappear over the mirrored files.
+- Not done: TURN, relay persistence, access control, binary files (see PLAN).
 
 ## Review (M7)
 

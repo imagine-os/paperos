@@ -20,6 +20,9 @@ import { DETACH_DISTANCE, getWindowManager } from "@/wm/window-manager";
 import { useWindowManager } from "./use-window-manager";
 import { getWindowKind, windowKindsChanged } from "./window-kinds";
 import { useSignal } from "@/ide/use-signal";
+import { parseFileRef } from "@/ide/file-ref";
+import { initials, participantsOnWindow } from "@/collab/participants";
+import { getCollabSession } from "@/collab/session";
 import { WindowMenu } from "./window-menu";
 
 export interface WindowShapeProps {
@@ -357,6 +360,7 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
               {shape.props.title}
             </span>
           )}
+          <WindowPeers shape={shape} />
           <div className="pos-window__controls">
             <button
               type="button"
@@ -453,6 +457,45 @@ function WindowFrame({ shape }: { shape: WindowShape }) {
         )}
       </div>
     </HTMLContainer>
+  );
+}
+
+const MAX_PEER_CHIPS = 3;
+
+/** Who else is on this window (focused on it, or editing the file it shows). */
+function WindowPeers({ shape }: { shape: WindowShape }) {
+  const participants = useSignal(getCollabSession().participants);
+  if (participants.length === 0) return null;
+  const ref = parseFileRef(shape.props.content);
+  const here = participantsOnWindow(participants, {
+    id: shape.id,
+    file: ref ? `${ref.project}:${ref.path}` : null,
+  });
+  if (here.length === 0) return null;
+  const shown = here.slice(0, MAX_PEER_CHIPS);
+  return (
+    <span
+      className="pos-window__peers"
+      data-testid="window-peers"
+      title={here.map((p) => p.name).join(", ")}
+      aria-label={`Here: ${here.map((p) => p.name).join(", ")}`}
+    >
+      {shown.map((p) => (
+        <span
+          key={p.id}
+          className="pos-window__peer"
+          data-agent={p.agent}
+          style={{ background: p.color }}
+        >
+          {p.agent ? "\u{1F916}" : initials(p.name)}
+        </span>
+      ))}
+      {here.length > shown.length && (
+        <span className="pos-window__peer pos-window__peer--more">
+          +{here.length - shown.length}
+        </span>
+      )}
+    </span>
   );
 }
 

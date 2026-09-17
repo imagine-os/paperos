@@ -195,7 +195,7 @@ export const TOOLS: ToolSpec[] = [
   {
     name: "windows.create",
     description:
-      "Creates a window of a registered kind (files, editor, preview, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, or a plugin kind). Without a rect it cascades at the viewport center.",
+      "Creates a window of a registered kind (files, editor, preview, browser, terminal, console, markdown, data, schema, connections, design, pages, card, note, script, plugins, agent, share, or a plugin kind). Without a rect it cascades at the viewport center.",
     params: [
       {
         name: "options",

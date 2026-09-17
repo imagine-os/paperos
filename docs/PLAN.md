@@ -292,13 +292,46 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
   proxy; the bridge screenshot is the answer), a bridge port setting in the
   tab.
 
-### M8 - Collaboration
+### M8 - Collaboration (done)
 
-- Multiplayer canvas (tldraw sync or Liveblocks; decide then).
-- Presence: cursors, who is in which window.
-- Shared Yjs documents for files: attach a provider via
-  `attachProvider()` in `src/ide/docs.ts`; pass its awareness to
-  `yCollab` for remote cursors.
+- Rooms (`src/collab/`): one Yjs document per room carries the canvas
+  (document-scoped tldraw records in a `Y.Map`, remote changes applied
+  through `mergeRemoteChanges`) and the project (`meta`, `files` as
+  `Y.Text`, `dirs`); awareness carries `user`, tldraw `presence`, `focus`
+  (window and file), `agent` and the editor `cursor`. Readable room ids
+  (`amber-fox-417`), links `/app?room=<id>[&sync=<url>]`, optional password.
+- Transports behind one interface (`providers.ts`): `webrtc` (y-webrtc,
+  public signaling by default, self-hosted URL by env or setting) and
+  `websocket` (y-websocket against `tools/paperos-sync`, a one-file relay:
+  ws + yjs + y-protocols, rooms in memory). Local-only stays the default;
+  y-indexeddb keeps a copy of every room (`paperos-v2:room:<id>`).
+- Session (`session.ts`): create seeds an empty room with the active
+  project and canvas; join waits for the room's content and adopts its
+  project under the room's project id (a memory project; the local project
+  stays listed); leave keeps a copy. Per-file documents bind to the room's
+  texts through `setDocSource()` / `resetFileDocs()` in `src/ide/docs.ts`;
+  a shared document is never dirty, the mirror (`project-sync.ts`) writes
+  the local backend and applies local mutations (write, mkdir, rename,
+  delete) to the room.
+- UX: Share button (dot and peer count) and Share window kind (name, transport,
+  password, create, copy link, join, participants with colors and a robot
+  badge for bridge agents, status line, leave); tldraw cursors and
+  selections; a chip per window title bar showing who focuses that window
+  or edits its file; y-codemirror.next remote carets with names.
+- Canvas API `collab.create / join / leave / status / participants /
+setName`, event `collab.changed`, palette commands `Share: ...`, MCP tools
+  by generation. Board "Collaborate" in the sample with a tour.
+- Tests: 322 unit tests (room ids, transport selection, awareness mapping,
+  store binding through two documents, project mirror through two stores,
+  shared documents, the sync server with two y-websocket clients) and
+  `e2e/collab.spec.ts` (two browser contexts through a local relay started by
+  `playwright.config.ts`: a window created in one appears in the other, an
+  edit shows in the other editor with the remote caret, Share window,
+  chips, leave).
+- Not done, deferred: TURN for WebRTC behind strict NATs (use the relay),
+  server-side persistence for the relay (peers keep copies; y-leveldb is the
+  upgrade), shared layouts (the tiling tree stays personal by decision 8),
+  access control beyond id and password, binary files.
 
 ### M9 - Polish and plugins
 
@@ -591,3 +624,39 @@ side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
     a real emulator; that is the upgrade path if it is ever wanted.
 51. **Milestones renumbered again.** M7 became Browser and Terminal
     (the owner's next ask); collaboration moves to M8, polish to M9.
+52. **One Yjs document per room, bound to the live store.** Instead of
+    swapping the tldraw store for a vendor's (decision 4's plan), the
+    mounted store is bound to a `Y.Map` of its document-scoped records:
+    local changes are written to the map, remote changes enter through
+    `mergeRemoteChanges` (no echo, no undo entries, integrity checker after
+    each batch), and presence rides on Yjs awareness as `instance_presence`
+    records. The project shares the same document (`files` as `Y.Text`),
+    so canvas and files are always in step and one provider carries both.
+53. **Transports are providers behind one interface, free by default.**
+    `webrtc` (y-webrtc, peers connect directly, a signaling server only
+    introduces them) is the default and needs no infrastructure of ours;
+    `websocket` is a one-file relay (`tools/paperos-sync`) anyone can run
+    with `npm run sync`. A hosted backend is one more entry in `PROVIDERS`;
+    nothing above the provider knows which one is in use.
+54. **First one in seeds, joiners adopt.** A room is empty until its creator
+    seeds it with the active project and canvas. A joiner waits for the
+    room's content, then gets a local memory project with the room's project
+    id (so `{"project","path"}` references in shared windows resolve) and
+    the room's records replace its document records. Their own project
+    stays in the list; leaving keeps a copy of both. Joining asks once
+    (except on a first run, where nothing would be lost).
+55. **Shared files are never dirty.** In a room the file document is the
+    room's text; the mirror writes each peer's backend a debounce after the
+    last change and pushes local mutations to the room. Save stays a no-op
+    that writes immediately. This keeps the Files window, the bundler's
+    backend reads and `files.read` consistent on every peer without a
+    "who saved" protocol.
+56. **Passwords partition rooms.** The transport room name carries a hash of
+    the password (`roomKey()`), so a wrong password lands in a different,
+    empty room; y-webrtc additionally encrypts signaling with it. Passwords
+    never travel in links. This is privacy from strangers, not access
+    control: anyone with id and password is a full participant.
+57. **Agents are participants of their tab.** A bridge agent does not join a
+    room itself; the tab it drives publishes `agent: true` in awareness and
+    the others list "<name>'s agent" with a robot badge. Its edits carry the
+    tab's identity, which is also who is accountable for them.

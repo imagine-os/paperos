@@ -384,6 +384,7 @@ export function fakeHost(): FakeHost {
         "card",
         "browser",
         "terminal",
+        "share",
         "design",
         "pages",
       ],

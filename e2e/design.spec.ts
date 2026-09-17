@@ -186,14 +186,14 @@ test("map.generate from the Script window builds sections, cards and arrows", as
     ].join("\n")
   );
   await page.getByTestId("script-run").click();
-  await expect(page.getByTestId("script-output")).toContainText("map 6 57 85", {
+  await expect(page.getByTestId("script-output")).toContainText("map 6 58 85", {
     timeout: 20000,
   });
   await expect(
     page.getByTestId("script-output").locator('[data-level="result"]')
   ).toContainText("Map");
   await expect(page.locator(".tl-shape[data-shape-type=frame]")).toHaveCount(6);
-  await expect(page.locator(".pos-window[data-kind=card]")).toHaveCount(57);
+  await expect(page.locator(".pos-window[data-kind=card]")).toHaveCount(58);
   await expect(page.locator(".tl-shape[data-shape-type=arrow]")).toHaveCount(
     85
   );
@@ -204,7 +204,7 @@ test("map.generate from the Script window builds sections, cards and arrows", as
       .sort()
   );
   expect(sections).toEqual([
-    ["Code", 9],
+    ["Code", 10],
     ["Components", 37],
     ["Data", 4],
     ["Design", 1],

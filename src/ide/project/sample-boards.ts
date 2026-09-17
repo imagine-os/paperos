@@ -578,10 +578,114 @@ export function agentDrivenBoard(): BoardDef {
   };
 }
 
+const NOTE_COLLAB = `Two people, one canvas.
+
+1. Create a room in the Share window and copy the link.
+2. Open the link in another browser (or send it): the room's canvas and project replace theirs.
+3. Both edit index.html: cursors, names and every keystroke travel through Yjs; the preview follows.
+
+Rooms are peer-to-peer by default; npm run sync starts a relay you can host.`;
+
+export function collaborateBoard(): BoardDef {
+  return {
+    name: "collaborate",
+    title: "Collaborate",
+    description:
+      "The Share window that creates a room, two editors on the same project with remote cursors, and the preview both peers see.",
+    sections: [
+      {
+        id: "share",
+        title: "1. Share: one room for canvas and project",
+        grid: "row",
+        windows: [
+          {
+            id: "share-window",
+            kind: "share",
+            title: "Share",
+            size: { w: 420, h: 520 },
+          },
+          {
+            id: "how",
+            kind: "note",
+            title: "How it works",
+            content: NOTE_COLLAB,
+            size: { w: 380, h: 520 },
+          },
+        ],
+        notes:
+          "Create a room, copy the link, see who is here. Peer-to-peer or through your own sync server.",
+      },
+      {
+        id: "editors",
+        title: "2. Edit together: cursors and names in the editors",
+        grid: "row",
+        windows: [
+          {
+            id: "ed-index",
+            kind: "editor",
+            content: { file: "index.html" },
+            size: { w: 640, h: 560 },
+          },
+          {
+            id: "ed-css",
+            kind: "editor",
+            content: { file: "styles.css" },
+            size: { w: 520, h: 560 },
+          },
+        ],
+        notes:
+          "Every file is a shared document; the chip in a title bar shows who is on it.",
+      },
+      {
+        id: "preview",
+        title: "3. See it live: the same preview for everyone",
+        grid: "single",
+        windows: [
+          {
+            id: "shared-preview",
+            kind: "preview",
+            title: "Preview",
+            content: "index.html",
+            size: { w: 760, h: 560 },
+          },
+        ],
+        notes:
+          "The preview reads the shared buffers, so it follows every peer.",
+      },
+    ],
+    arrows: [
+      { from: "share-window", to: "editors", label: "same room" },
+      { from: "ed-index", to: "shared-preview", label: "renders" },
+      { from: "ed-css", to: "shared-preview", label: "styles" },
+    ],
+    steps: [
+      {
+        section: "share",
+        title: "Open a room",
+        caption:
+          "Create a room and copy its link. Whoever opens it joins your canvas and project; names and colors mark everyone.",
+      },
+      {
+        section: "editors",
+        title: "Type at the same time",
+        caption:
+          "Yjs merges every keystroke without conflicts. Remote cursors show where the others are; the title-bar chip shows who is on the file.",
+      },
+      {
+        section: "preview",
+        title: "One result",
+        caption:
+          "The preview reads the shared buffers, so what you see is what they see. Leaving a room keeps a local copy.",
+      },
+    ],
+  };
+}
+
 export function sampleBoardFiles(): FileMap {
   return {
     "boards/build-product.json": json(buildProductBoard()),
     "boards/ship-feature.json": json(shipFeatureBoard()),
     "boards/agent-driven.json": json(agentDrivenBoard()),
+    "boards/collaborate.json": json(collaborateBoard()),
   };
 }

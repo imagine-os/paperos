@@ -54,7 +54,7 @@ async function waitForProject(page: Page) {
   );
 }
 
-test("the sample ships three boards; 'Build a product' opens as sections with arrows and no overlaps", async ({
+test("the sample ships four boards; 'Build a product' opens as sections with arrows and no overlaps", async ({
   page,
 }) => {
   await skipFirstRun(page);
@@ -64,7 +64,12 @@ test("the sample ships three boards; 'Build a product' opens as sections with ar
       .map((b) => b.name)
       .sort()
   );
-  expect(names).toEqual(["agent-driven", "build-product", "ship-feature"]);
+  expect(names).toEqual([
+    "agent-driven",
+    "build-product",
+    "collaborate",
+    "ship-feature",
+  ]);
 
   const result = await page.evaluate(() =>
     (window as unknown as W).paperos.boards.open("build-product")
