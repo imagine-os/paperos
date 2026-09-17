@@ -104,7 +104,7 @@
 ## Hosting - GitHub Pages
 
 - [x] Static export mode in `next.config.ts` (`PAPEROS_STATIC=1`): `output:
-    "export"`, base path `/paperos`, trailing slashes, unoptimized images,
+  "export"`, base path `/paperos`, trailing slashes, unoptimized images,
       API route left out via `pageExtensions`
 - [x] `withBasePath()` helper; legacy `authEndpoint` uses it (the only
       hard-coded absolute URL; links already use `<Link>`)
@@ -120,33 +120,100 @@
 
 ## M4 - Data
 
-- [ ] Plan written, foundation read (`src/ide/project/`, `src/ide/docs.ts`,
+- [x] Plan written, foundation read (`src/ide/project/`, `src/ide/docs.ts`,
       `src/ide/preview/bundle.ts`, `src/desktop/window-kinds.tsx`, `src/api/`)
-- [ ] Data model (`src/data/`): schema types + parser, row validation
+- [x] Data model (`src/data/`): schema types + parser, row validation
       (types, required, unique, refs, defaults), in-memory query
       (filter/sort/paginate), CSV/JSON import-export, schema diff + row
       migration, `DataStore` over the project's files (through the Yjs docs)
       with a `changed` signal; unit tests
-- [ ] Bindings (`src/data/bindings.ts`): scanner for `data-source` /
+- [x] Bindings (`src/data/bindings.ts`): scanner for `data-source` /
       `data-field` attributes, `components/*.json` + `pages/*.json`
       `bindings`, and `paperos.data.<table>` calls; index by table and by
       source with file + line; unused tables and broken bindings; tests
-- [ ] Preview runtime (`src/data/runtime.ts`): `paperos.data` shim +
+- [x] Preview runtime (`src/data/runtime.ts`): `paperos.data` shim +
       `data-source` hydration injected by the bundler with the tables embedded;
-      tests
-- [ ] Window kinds `data` (grid), `schema` (SVG ERD + editable form),
-      `connections` (graph + lists); editor "open at line"
-- [ ] Sample project: `data/schema.json`, `roles`, `users`, `menu_items`,
+      tests (fake DOM)
+- [x] Window kinds `data` (grid), `schema` (SVG ERD + editable form),
+      `connections` (graph + lists); editor "reveal line"
+- [x] Sample project: `data/schema.json`, `roles`, `users`, `menu_items`,
       `pages`; `components/side-menu.json`, `components/mega-menu.json`,
       `pages/home.json`; index.html with a role switcher, side menu and mega menu
-- [ ] Canvas API `data` namespace (schema, host, facade, fake host, tests),
+- [x] Canvas API `data` namespace (schema, host, facade, fake host, tests),
       `data.changed` event, `npm run api:gen`
-- [ ] Commands (open Data / Schema / Connections, connections for the current
-      file, open table), "Data" workspace preset
-- [ ] Docs: README Data section, `docs/PLAN.md` (M4 done, decisions),
+- [x] Commands ("Show connections for current file", "Apply Data workspace";
+      New window offers Data / Schema / Connections), "Data" workspace preset
+- [ ] Follow-up: a palette command per table ("Open table: x") needs a
+      synchronous table cache; `paperos.data.open(table)` covers it for now
+- [x] Docs: README Data section, `docs/PLAN.md` (M4 done, decisions 25-30),
       `docs/CANVAS_API.md`, this Review
-- [ ] Tests: unit + `e2e/data.spec.ts`
-- [ ] Validate: `npm run check`, `npm run build`, screenshots, push, CI
+- [x] Tests: unit + `e2e/data.spec.ts`
+- [x] Validate: `npm run check`, `npm run build`, screenshots, push, CI
+
+## Review (M4)
+
+### What changed
+
+- `src/data/`: `schema.ts` (types, tolerant parser, row parsing, display and
+  image helpers), `validate.ts` (row validation, coercion, ids, referrers),
+  `query.ts` (filter grammar, sort, paginate), `csv.ts`, `migrate.ts` (schema
+  diff with renames, row migration, step descriptions), `store.ts`
+  (`DataStore` over `DataFs`, `memoryDataFs`), `project-fs.ts` (browser
+  `DataFs` over the Yjs documents, `getDataStore`, `scanProjectBindings`),
+  `bindings.ts` (scanner + index), `runtime.ts` (`paperos.data` for the
+  preview, injected as source), `erd.ts` (layered ERD layout).
+- `src/ide/docs.ts` gained `writeLiveText` (used by the Canvas API host and
+  the DataStore); `src/ide/preview/bundle.ts` injects the data runtime with
+  the tables when `data/schema.json` exists; `src/ide/reveal.ts` +
+  `EditorHandle.gotoLine` let Connections open a file at a line
+  (`openFile(..., { line })`).
+- Window kinds `data`, `schema`, `connections` (`src/desktop/kinds/`), shared
+  helpers in `kinds/data-common.ts` (active DataStore hook, async value hook,
+  open/reuse a window of a kind, download, file picker). CSS at the end of
+  `desktop.css`, tokens only.
+- Sample project rewritten around the data model (four tables, two
+  components, one page, role switcher, side menu via the JS API, declarative
+  mega menu with grouping, thumbnails and nested children). The old lines the
+  M2 e2e tests rely on (`<h1>Hello, PaperOS</h1>`, `#count`, the console log)
+  are unchanged.
+- Canvas API: 10 `data.*` methods, `data.changed` event, docs and CLI schema
+  regenerated (52 methods, 11 namespaces); "Data" default workspace
+  (`ws_data`) built by `data-workspace.ts`, `preset-workspaces.ts` replaces
+  the three IDE-specific checks; commands `layout.data` and
+  `data.connections-for-file`; a "Query and change a table" snippet.
+- Tests: `src/data/*.test.ts` (model, store, bindings, runtime, erd), bundle
+  injection, API data namespace, workspace defaults; `e2e/data.spec.ts`
+  (menus from data + live edit, role switch, Schema + Connections + open at
+  line, Data workspace + `paperos.data`).
+
+### Verified in a real browser (Chromium 1440x900)
+
+- Fresh install: the sample renders the side menu (11 items as Admin, 7 as
+  Viewer, 8 as Editor), the mega menu (4 categories, 5 thumbnails) and the
+  role switcher; editing a `menu_items` label in the Data grid updates the
+  preview and the open `menu_items.json` editor; the Schema form adds a column
+  and the row file gains it; Connections opens `components/mega-menu.json`
+  at its binding line. Zero console errors on `/`; `/legacy` unchanged.
+- Screenshots and a webm of edit-to-preview are in the session scratchpad
+  (`v2shots/m4/`).
+
+### Decisions and notes
+
+- PLAN decisions 25-30: data as files, `DataFs` seam, runtime injected as
+  source, text-indexed bindings, schema edits as a plan, milestones
+  renumbered (collaboration is M7).
+- Switching from the IDE workspace to the Data one leaves the Editor and
+  Console windows floating over the layout (the M1 rule: windows not in a
+  workspace float). Close or tile them; a "hide other windows" option is a
+  follow-up.
+- The `id` column of a table cannot be edited in the grid when it is numeric
+  (change it in the JSON file); other unique columns can.
+- Deleting a referenced row asks once, then clears the references (nullify);
+  cascade is available through the API only.
+- Playwright's `addInitScript` also runs in the sandboxed preview iframes,
+  where `localStorage` throws; the new e2e helper wraps it in try/catch. The
+  older `skipFirstRun` helper still logs that page error in the preview (it
+  does not affect the tests).
 
 ## Review (M3)
 

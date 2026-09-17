@@ -114,7 +114,71 @@ API later makes it programmable.
   sandbox for scripts and plugins (documented as running with page
   privileges), bodies of non-text windows are not part of screenshots.
 
-### M4 - Collaboration
+### M4 - Data (done)
+
+- Data model as project files (`src/data/`, pure TypeScript, unit tested):
+  `data/schema.json` (tables, columns typed string / number / boolean / date /
+  json / ref / image with required, unique, default, ref target; primary key
+  and display column) and `data/<table>.json` (rows). Tolerant parser that
+  repairs what it can and reports the rest; row validation (types, required,
+  unique, references), input coercion, a filter grammar (`col=value`,
+  `col>3`, `col:part`, free text) with sorting and pagination, CSV/JSON
+  import-export, schema diff with renames and row migration.
+- `DataStore` over a small `DataFs`: tables with counts, query, insert /
+  update / delete with referential checks (block, nullify, cascade),
+  import/export, `setSchema` with a described plan, change detection that
+  compares file text and bumps a `changed` signal. In the browser the fs is
+  the live Yjs documents (`project-fs.ts`, `writeLiveText`), so the Data
+  window, editors and the preview share one source of truth.
+- Bindings: a scanner indexes `data-source` / `data-field` attributes in HTML,
+  `bindings` in `components/*.json` and `pages/*.json` (pages also list
+  `components`), and `paperos.data.<table>.<method>()` calls in scripts, each
+  with file and line; by table, by source, unused tables, broken bindings.
+- Preview runtime: `paperos.data` (list / get / find / count / display per
+  table, `hydrate()` with a visibility hook, `icons`, `setContext`) and a
+  declarative renderer for `data-source` lists (first child = row template,
+  `data-field` fills text / `src` / `href` / `data-attr`, `data-as="icon|html"`,
+  `data-display` for ref display values, `data-filter` with `{col}` and
+  `@context` placeholders, `data-order`, `data-group`, nested lists,
+  `data-empty`). The bundler injects it with the tables embedded whenever the
+  project has a schema.
+- Window kinds `data` (table list with counts, sortable grid, inline editing
+  by type, ref click-through, thumbnails, folding JSON, add / delete rows with
+  reference handling, filter, pagination, import / export, open the JSON
+  file, show connections), `schema` (SVG entity-relationship diagram with
+  layered layout, pan / zoom, click-through to Data; form to add tables and
+  columns, rename, change type / ref / constraints; Apply shows the migration
+  plan and rewrites the row files), `connections` (two-column graph, tables
+  and sources lists, per-binding `path:line` links that open the editor at
+  the line, unused tables and broken bindings). Editors gained "reveal line".
+- Sample project: `roles`, `users`, `menu_items` (nested, categorized, icons,
+  SVG data-URI thumbnails, `required_role`) and `pages`; `components/
+side-menu.json`, `components/mega-menu.json`, `pages/home.json`; the page
+  has a role switcher, a side menu built with the JS API and a declarative
+  mega menu grouped by category with thumbnails and nested children.
+- Canvas API `data` namespace (tables, schema, setSchema, list, get, insert,
+  update, delete, bindings, open), `data.changed` event, MCP tools generated
+  from it; commands "Apply Data workspace" and "Show connections for current
+  file"; "Data" workspace preset; a data snippet in the Script window.
+- Tests: 198 unit tests (model, store, bindings, runtime with a fake DOM,
+  bundler injection, ERD layout, API facade) and `e2e/data.spec.ts`.
+- Not done, deferred: binary images in projects (thumbnails are URLs or data
+  URIs), a query language beyond the filter grammar (joins are done in JS),
+  live collaboration on data (it rides on the Yjs documents, so a provider in
+  `attachProvider()` will cover it), a visual page builder for
+  `pages/*.json` (M5).
+
+### M5 - Page builder
+
+- Arrange components on pages: edit `pages/*.json` and `components/*.json`
+  visually, place bound components, preview per page.
+
+### M6 - Full-stack sample
+
+- Grow the sample into a small SaaS (auth-like roles, CRUD screens, menus,
+  dashboards) that exercises every window kind.
+
+### M7 - Collaboration
 
 - Multiplayer canvas (tldraw sync or Liveblocks; decide then).
 - Presence: cursors, who is in which window.
@@ -122,7 +186,7 @@ API later makes it programmable.
   `attachProvider()` in `src/ide/docs.ts`; pass its awareness to
   `yCollab` for remote cursors.
 
-### M5 - Polish and plugins
+### M8 - Polish and plugins
 
 - GenMoji plugin (see the original "3D GenMoji Generator" issue), now as a
   PaperOS plugin (`activate(api)`).
@@ -141,7 +205,7 @@ API later makes it programmable.
    `@tldraw/assets`; nothing is loaded from tldraw's CDN.
 3. **Local-first persistence.** The canvas is stored in the browser via
    tldraw's `persistenceKey`. No backend, no accounts, no keys to run.
-4. **No vendor until M4.** Collaboration providers are a swap of the store in
+4. **No vendor until collaboration (M7).** Collaboration providers are a swap of the store in
    `src/desktop/desktop.tsx`; nothing else may depend on a vendor. The
    Liveblocks packages present today exist only for the legacy route.
 5. **One Yjs document per file.** The 2025 prototype bound every editor to a
@@ -183,7 +247,7 @@ API later makes it programmable.
     file's `Y.Doc` is keyed `paperos-v2:doc:<project>:<path>` and saved by
     `y-indexeddb`, so the buffer (including unsaved edits) survives reloads.
     "Saved" compares the buffer with the backend content. A single hook,
-    `attachProvider(doc, key)`, is where M4 plugs a sync provider in.
+    `attachProvider(doc, key)`, is where M7 plugs a sync provider in.
 13. **Own srcdoc bundler instead of Sandpack.** Sandpack needs its bundler
     served from a CDN or self-hosted; PaperOS must run offline with no
     vendor. `bundle()` inlines stylesheets, `@import`, `url()` SVG assets and
@@ -241,7 +305,6 @@ API later makes it programmable.
     file window below the focused (else last) tiled editor; the Files column
     keeps its width however many files are opened. `WindowManager.setTree`
     replaces the tree without re-capturing the region.
-
 24. **GitHub Pages hosts a static export; Vercel keeps the server build.**
     `PAPEROS_STATIC=1 next build` (`npm run build:static`) turns on
     `output: "export"` with `basePath`/`assetPrefix` `/paperos`, trailing
@@ -253,6 +316,40 @@ API later makes it programmable.
     stays offline as it does without a key. `withBasePath()` (`src/lib/env.ts`)
     is for hand-written URLs; `<Link>` and imported assets already get the
     prefix. `.github/workflows/pages.yml` deploys on push to `main`.
+25. **Data is files.** Tables live in `data/schema.json` and
+    `data/<table>.json`, nothing else: they travel with the project (ZIP,
+    GitHub, folder), diff in git, and need no database or service. The
+    DataStore reads and writes them through the same Yjs documents as the
+    editor (`writeLiveText`), so the grid, an open editor and the preview
+    never disagree, and change detection is "the file text differs", which
+    also catches edits made in an editor or by an agent.
+26. **The DataStore talks to a `DataFs`, not to the project store.** Five
+    methods (list, read, write, rename, remove) plus a change callback are
+    enough; `project-fs.ts` binds them to the live documents in the browser,
+    a Map implementation serves tests and the fake Canvas API host. Same
+    pattern as `CanvasHost` (decision 19).
+27. **One runtime, injected as source.** `paperos.data` for the preview is a
+    self-contained function in `src/data/runtime.ts` whose `toString()` is
+    put into the srcdoc with the tables embedded as JSON. It is unit tested
+    in Node against a tiny fake DOM and runs unchanged in the sandbox; a test
+    checks its filter grammar agrees with `query.ts`. The same convention
+    (`data-source`, `data-field`) is what the bindings scanner indexes, so
+    what the Connections window shows is what the page renders.
+28. **Bindings are a convention, indexed by text.** `data-source` attributes,
+    `bindings` arrays in `components/*.json` / `pages/*.json` and
+    `paperos.data.<table>` calls are found with regular expressions and
+    `JSON.parse`, with file and line. No build step, no AST: good enough to
+    answer "who uses this table" and to flag missing tables and columns, and
+    cheap enough to rescan on every edit (debounced).
+29. **Schema edits are a plan.** `diffSchema(before, after, renames)` yields
+    steps (add / drop / rename table or column, change type) that are shown
+    before applying; `setSchema` then rewrites the row files (defaults for
+    new columns, dropped columns removed, values converted). Renames are
+    explicit (the form tracks original names) because a rename and a
+    drop-plus-add are indistinguishable from the schema alone.
+30. **Milestones renumbered.** The owner's direction put data ahead of
+    collaboration: M4 is Data, M5 the page builder, M6 the full-stack sample,
+    M7 collaboration (unchanged in content), M8 polish.
 
 ## Notes
 

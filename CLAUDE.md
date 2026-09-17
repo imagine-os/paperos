@@ -4,7 +4,8 @@
 
 PaperOS v2: a zoomable canvas that behaves like an OS desktop. Windows are the
 one primitive. A tiling engine arranges them (M1), windows hold IDE tools (M2),
-and a Canvas API makes the desktop programmable (M3). The 2025 prototype is
+a Canvas API makes the desktop programmable (M3), and projects carry a data
+model (tables as JSON files) with Data, Schema and Connections windows (M4). The 2025 prototype is
 frozen under `src/legacy/` and served at `/legacy`; it must keep working.
 
 Read `docs/PLAN.md` for milestones and the architecture decisions already
@@ -28,7 +29,12 @@ backend) one-line changes.
 - `src/app/` routes. `/` is the v2 desktop, `/legacy` the prototype.
 - `src/desktop/` the desktop: canvas, Window shape, window tool, window kinds
   registry, cascading placement.
-- `src/wm/` window manager types and the layout engine (placeholder until M1).
+- `src/wm/` window manager types and the layout engine.
+- `src/ide/` the IDE: project model, per-file Yjs documents, preview bundler.
+- `src/data/` the data model: schema, DataStore, bindings scanner, preview
+  runtime, ERD layout. Pure TypeScript except `project-fs.ts`.
+- `src/api/` the Canvas API (schema as data, facade, hosts, bridge client);
+  `src/plugins/` the plugin system; `tools/paperos-mcp/` the MCP CLI.
 - `src/lib/` shared helpers (env, bundled tldraw assets).
 - `src/legacy/` the 2025 prototype, verbatim. Only touch it to keep it
   compiling. Its original working notes are in `src/legacy/README.md`.
